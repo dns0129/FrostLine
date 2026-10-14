@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation } from '../simulation.js';
+import { normalizeWorkshop, presetLoadout } from '../aircraft-systems.js';
 import * as THREE from '../vendor/three.module.js';
 
 const DT = 1 / 60;
@@ -52,6 +53,7 @@ test('controls have inertia, bank induces a left turn, pitch produces a climb', 
 
 test('pulling the stick pitches up upright and towards the ground when inverted', () => {
   const upright = new Simulation(), inverted = new Simulation();
+  const clean=normalizeWorkshop(null);clean.loadouts.fa18c=presetLoadout('clean');upright.configureAircraft(clean);inverted.configureAircraft(clean);
   upright.start('training'); inverted.start('training');
   inverted.player.bank = Math.PI;
   run(upright, 1.2, { pitch: 0.65 });
@@ -202,7 +204,7 @@ test('intercept has three waves, resupplies between them and ends after nine kil
   sim.start('intercept');
   sim.player.health = 40;
   sim.player.ammo = 100;
-  sim.player.missiles = 0;
+  sim.player.missiles = 0; for(const slot of sim.player.stores)if(['aim9','aim7','aim120'].includes(slot.store))slot.count=0;
   for (let wave = 1; wave <= 3; wave++) {
     assert.equal(sim.wave, wave);
     assert.equal(sim.enemies.length, wave + 1);
@@ -258,7 +260,7 @@ test('restarting clears prior combat state and restores consumables', () => {
   assert.equal(sim.time, 0);
   assert.equal(sim.shots, 0);
   assert.equal(sim.kills, 0);
-  assert.equal(sim.player.ammo, 900);
+  assert.equal(sim.player.ammo, 578);
   assert.equal(sim.player.flares, 8);
   assert.equal(sim.tracers.length, 0);
   assert.equal(sim.particles.length, 0);

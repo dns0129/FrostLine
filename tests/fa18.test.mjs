@@ -56,3 +56,14 @@ test('disposing an F/A-18 instance retains the other aircraft and all shared sou
   first.userData.dispose();first.userData.dispose();assert.equal(owned,4);assert.equal(shared,0);
   assert.ok(second.userData.gear.every(o=>o.visible));
 });
+
+test('custom stores use one draw per visible weapon and dispose their owned resources exactly once',()=>{
+  const jet=makeFA18(fa18Assets,jetAssets),geometries=new Set(),materials=new Set();
+  jet.userData.stores.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material);});
+  assert.equal(geometries.size,5);assert.equal(materials.size,5);
+  let visible=0;jet.userData.stores.traverse(o=>{if(o.userData.store&&o.visible){visible++;assert.equal(o.children.length,1);}});assert.equal(visible,9);
+  jet.userData.setLoadout(Array.from({length:9},(_,i)=>({station:i+1,store:null,count:0})));
+  jet.userData.stores.traverse(o=>{if(o.userData.store)assert.equal(o.visible,false);});
+  let disposed=0;for(const resource of [...geometries,...materials])resource.addEventListener('dispose',()=>disposed++);
+  jet.userData.dispose();jet.userData.dispose();assert.equal(disposed,10);
+});

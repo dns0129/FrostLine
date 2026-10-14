@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { makeJet } from './aircraft.js';
+import { attachAircraftStores } from './aircraft-stores.js';
 
 export async function loadFA18Assets() {
   const url = new URL('./assets/models/fa18c.glb', import.meta.url);
@@ -66,15 +67,19 @@ export function makeFA18(assets, jetAssets, { parked = false } = {}) {
   jet.userData.airframeScale = assets.metadata.span / 17.1;
   jet.userData.wingtips = assets.metadata.wingtips.map(p => new THREE.Vector3(...p));
   jet.userData.groundOffset = assets.metadata.parkedGroundOffset;
+  const stores = attachAircraftStores(jet);
+  jet.userData.setLoadout = stores.setLoadout;
+  jet.userData.stores = stores.group;
   const update = jet.userData.update;
   jet.userData.update = (dt, state = {}) => {
     update(dt, state);
+    if (state.stores) stores.setLoadout(state.stores);
     if (parked) { jet.userData.exhaust.visible = false; jet.userData.exhaustCore.visible = false; }
   };
   const dispose = jet.userData.dispose; let disposed = false;
   jet.userData.dispose = () => {
     if (disposed) return; disposed = true;
-    dispose(); ownedGeometry.forEach(g => g.dispose());
+    dispose(); ownedGeometry.forEach(g => g.dispose()); stores.dispose();
   };
   return jet;
 }

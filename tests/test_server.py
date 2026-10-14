@@ -18,7 +18,7 @@ class PortDetectionTests(unittest.TestCase):
 
 class DestroyerServingTests(unittest.TestCase):
     def test_ship_runtime_modules_are_served(self):
-        for name in ('destroyer.js', 'ship-camera.js', 'naval-models.js', 'ambient-fleet.js', 'campaign.js'):
+        for name in ('destroyer.js', 'ship-camera.js', 'naval-models.js', 'ambient-fleet.js', 'campaign.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md'):
             with self.subTest(name=name):
                 self.assertIsNotNone(server.game_path('/' + name))
 

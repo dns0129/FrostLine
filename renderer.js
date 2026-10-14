@@ -309,16 +309,18 @@ export class WorldRenderer {
     this.speedEffects?.dispose();
     this.ambientFleet?.dispose();
     this.disposed=true;this.terrain.userData.dispose();this.scene.remove(this.terrain);
-    this.playerJet.userData.dispose?.();
+    this.playerJet?.userData.dispose?.();
     this.scene.remove(this.playerJet);this.fa18Assets?.dispose();
     // Enemy class caches own shared resources. Release their instances before
     // traversing other scene resources, avoiding double disposal or stale refs.
     for(const[id,model]of this.enemies)if(model.userData.kind==='ship')this._removeEnemy(id,model);
     const geometries=new Set(),materials=new Set(),textures=new Set();
-    Object.values(this.jetAssets.geometries).forEach(g=>geometries.add(g));
-    geometries.add(this.jetAssets.exhaustGeometry);geometries.add(this.jetAssets.exhaustCoreGeometry);
-    Object.values(this.jetAssets.materials).forEach(m=>materials.add(m));
-    Object.values(this.jetAssets.textures).forEach(t=>textures.add(t));
+    if(this.jetAssets){
+      Object.values(this.jetAssets.geometries).forEach(g=>geometries.add(g));
+      geometries.add(this.jetAssets.exhaustGeometry);geometries.add(this.jetAssets.exhaustCoreGeometry);
+      Object.values(this.jetAssets.materials).forEach(m=>materials.add(m));
+      Object.values(this.jetAssets.textures).forEach(t=>textures.add(t));
+    }
     this.scene.traverse(obj=>{if(obj.geometry)geometries.add(obj.geometry);if(obj.material){for(const m of Array.isArray(obj.material)?obj.material:[obj.material]){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}}});
     if(this.missileAssets){Object.values(this.missileAssets.geometries).forEach(g=>geometries.add(g));Object.values(this.missileAssets.materials).forEach(m=>materials.add(m));}
     if(this.fireMap)textures.add(this.fireMap);
