@@ -1,0 +1,41 @@
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const site = join(root, 'sites/frostline');
+const dist = join(site, 'dist');
+const files = [
+  'index.html', 'style.css', 'app.js', 'input.js', 'audio.js',
+  'campaign.js', 'base-scene.js', 'vehicle-catalog.js', 'destroyer.js', 'naval-models.js', 'ambient-fleet.js', 'ship-camera.js', 'simulation.js', 'flight-presentation.js', 'chase-camera.js', 'speed-effects.js', 'renderer.js', 'terrain.js',
+  'aircraft.js', 'fa18.js', 'assets/models/fa18c.glb', 'assets/models/fa18c.metadata.json', 'assets/models/fa18-source.zip', 'assets/models/FA18-LICENSE.txt', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js', 'atmosphere.js', 'water-reflection.js', 'world-math.js',
+  'sw.js', 'manifest.webmanifest', 'vendor/three.module.js', 'vendor/LICENSE.txt',
+  'assets/briefing.jpg', 'assets/sky-panorama.jpg', 'assets/rock-albedo.jpg', 'assets/icon.svg',
+];
+for (const file of files) {
+  if (!statSync(join(root, file)).isFile()) throw new Error(`Missing runtime file: ${file}`);
+}
+// Refuse to remove unexpected files from a previously prepared directory.
+function inspect(directory, prefix = '') {
+  if (!existsSync(directory)) return;
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const relative = prefix + entry.name;
+    if (entry.isDirectory()) inspect(join(directory, entry.name), relative + '/');
+    else if (!files.includes(relative)) throw new Error(`Unexpected Site output: ${relative}`);
+  }
+}
+inspect(dist);
+mkdirSync(dist, { recursive: true });
+for (const file of files) {
+  const destination = join(dist, file);
+  mkdirSync(dirname(destination), { recursive: true });
+  copyFileSync(join(root, file), destination);
+}
+const manifestPath = join(site, '.openai/hosting.json');
+if (existsSync(manifestPath)) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  manifest.static = { ...manifest.static, directory: 'dist' };
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+}
+writeFileSync(join(site, '.gitignore'), '.DS_Store\nnode_modules/\n.sites-runtime/\n');
+console.log(JSON.stringify({ site, directory: dist, files: files.length, bytes: files.reduce((total, file) => total + statSync(join(dist, file)).size, 0) }));

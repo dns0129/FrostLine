@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+
+# Local packages, verification artifacts, and generated deployment output
+/FROSTLINE-*.zip
+/verification/
+/sites/frostline/dist/
+/sites/
+.openai/
+.sites-runtime/
+.env
+.env.*

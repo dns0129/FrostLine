@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#142c36"><meta name="description" content="霜线 FROSTLINE · 原创单机空战。在机库与海军基地检阅战机和驱逐舰，穿越海雾，守住最后一道防线。">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>霜线 FROSTLINE · 单机空战</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="world" aria-label="三维空战场景"></canvas><canvas id="hudCanvas" aria-hidden="true"></canvas>
+<div id="boot"><span class="emblem">✦</span><p>FROSTLINE</p><small id="bootText">正在准备飞行系统</small></div>
+<main id="menu" class="base-menu" hidden>
+ <div class="base-vignette" aria-hidden="true"></div>
+ <header class="masthead">
+  <a class="brand" href="#" aria-label="霜线主页"><span class="brand-mark">╱╲</span><span>FROSTLINE<span class="brand-sub">AIR &amp; SEA COMBAT</span></span></a>
+  <nav class="base-tabs" aria-label="基地设施"><button data-base="aircraft" class="selected" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2 8 7 5v2l-7-2-1 5h-2l-1-5-7 2v-2l7-5Z"/></svg>机库<span>HANGAR</span></button><button data-base="destroyer" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14h18l-3 5H7l-4-5Zm5-2V8h9v4M12 8V3m-3 2h7M3 21q3-2 6 0t6 0t6 0"/></svg>海军基地<span>NAVAL BASE</span></button></nav>
+  <div class="base-account"><span class="status-dot"></span><span>本地指挥官<small>1 架飞机 · 1 艘战舰</small></span></div>
+  <button id="settingsBtn" class="icon-btn" aria-label="设置">⚙</button>
+ </header>
+ <section class="base-dossier" aria-labelledby="ownedVehicleName">
+  <div class="eyebrow"><span class="line"></span><span id="baseLocation">北境航空站 · 01 号机库</span></div>
+  <div class="base-service"><span class="status-dot"></span>已拥有 · 随时出击</div>
+  <p class="base-code" id="ownedVehicleCode">F/A-18C <span>HORNET</span></p>
+  <h1 id="ownedVehicleName">大黄蜂</h1>
+  <p class="base-type" id="ownedVehicleType">多用途战斗机</p>
+  <p class="base-description" id="ownedVehicleDescription">经典双发多用途战斗机。驾驶大黄蜂升空，执行拦截、训练与战役任务。</p>
+  <div class="dossier-heading">载具性能 <span>SPECIFICATIONS</span></div>
+  <dl class="base-stats" id="ownedVehicleStats"></dl>
+  <div class="base-loadout"><span>标准装备 / LOADOUT</span><p id="ownedVehicleWeapons"></p></div>
+ </section>
+ <div id="baseViewport" role="region" tabindex="0" aria-label="3D 载具展示：拖动旋转，滚轮或双指缩放，方向键旋转，Home 回正"></div>
+ <div class="base-view-tools"><span id="baseViewLabel">机库 / HANGAR 01</span><div><button id="baseRotateLeft" aria-label="向左旋转载具">↶</button><button id="baseReset" aria-label="回正载具展示">回正视角</button><button id="baseRotateRight" aria-label="向右旋转载具">↷</button></div><small>拖动环绕 · 滚轮 / 双指缩放</small></div>
+ <section class="briefing" id="quickBriefing" aria-label="出击任务">
+   <div class="eyebrow">作战部署 <span>SORTIE</span></div>
+   <nav class="play-mode-tabs" aria-label="游戏模式"><button data-play-mode="quick" aria-pressed="true">快速任务</button><button data-play-mode="campaign" aria-pressed="false">战役模式 <span>03</span></button></nav>
+   <div class="mission-heading"><span>选择任务</span><span id="missionVehicleRole">空中格斗 / 领空拦截</span></div>
+   <div class="missions" role="group" aria-label="选择任务">
+    <button class="mission selected" data-mode="intercept" aria-pressed="true"><span class="mission-no">01</span><span><strong>破晓拦截</strong><small>三波敌机 · 守住空域</small></span><span class="mission-indicator">›</span></button>
+    <button class="mission" data-mode="free" aria-pressed="false"><span class="mission-no">02</span><span><strong>无尽巡猎</strong><small>持续交战 · 挑战极限</small></span><span class="mission-indicator">›</span></button>
+    <button class="mission" data-mode="training" aria-pressed="false"><span class="mission-no">03</span><span><strong id="trainingName">初次升空</strong><small id="trainingDetail">安全训练 · 熟悉飞行</small></span><span class="mission-indicator">›</span></button>
+    <button class="mission naval-only" data-mode="naval" aria-pressed="false" hidden><span class="mission-no">04</span><span><strong>海峡歼敌</strong><small>三波敌舰 · 炮击与机动</small></span><span class="mission-indicator">›</span></button>
+    <button class="mission naval-only" data-mode="naval-training" aria-pressed="false" hidden><span class="mission-no">05</span><span><strong>舰炮训练</strong><small>两艘靶舰 · 练习海上射击</small></span><span class="mission-indicator">›</span></button>
+   </div>
+   <p class="briefing-note" id="missionNote">驾驶 F/A-18C「大黄蜂」，清除三波入侵机群。波次间补给弹药与机体。</p>
+   <div class="launch-row"><button id="startBtn" class="primary">开始飞行 <span>↗</span></button></div>
+   <button id="guideBtn" class="base-guide">操作指南 <span>↗</span></button>
+ </section>
+ <section id="campaignPanel" aria-label="北境航线战役" hidden>
+   <header class="campaign-heading"><div><span class="eyebrow">STORY CAMPAIGN / 01</span><h2>北境航线</h2><p>从紧急拦截到切断空中指挥链。</p></div><div class="campaign-heading-right"><nav class="play-mode-tabs" aria-label="游戏模式"><button data-play-mode="quick" aria-pressed="false">快速任务</button><button data-play-mode="campaign" aria-pressed="true">战役模式 <span>03</span></button></nav><span id="campaignProgress" aria-live="polite">战役进度 0 / 3</span></div></header>
+   <div class="campaign-route" aria-hidden="true"><svg viewBox="0 0 960 74"><path d="M0 63 35 19 86 42 137 10 192 40 251 18 298 54M685 70l38-27 49 14 40-38 58 24 35-17 55 28" class="campaign-coast"/><path d="M93 40h270q38 0 38-17h149q30 0 30 26h264" class="campaign-path"/><circle cx="93" cy="40" r="6"/><circle cx="470" cy="23" r="6"/><circle cx="844" cy="49" r="6"/><text x="110" y="35">01 外海警戒线</text><text x="486" y="19">02 中央海峡</text><text x="716" y="43">03 北侧航道</text></svg></div>
+   <div class="campaign-layout"><nav id="campaignMissions" aria-label="战役关卡"></nav><article class="campaign-detail" aria-labelledby="campaignTitle"><div class="campaign-meta"><span id="campaignTag"></span><span id="campaignLocation"></span></div><h3 id="campaignTitle"></h3><p class="campaign-subtitle" id="campaignSubtitle"></p><p id="campaignStory"></p><h4>作战目标</h4><ul id="campaignObjectives"></ul><p id="campaignRules" class="campaign-rules"></p><p id="campaignStatus" class="campaign-status" aria-live="polite"></p><div class="campaign-launch"><button id="campaignBriefingBtn" class="secondary">剧情与任务简报</button><button id="campaignStartBtn" class="primary">进入第一关 ↗</button></div></article></div>
+ </section>
+ <footer class="fleet-deck">
+  <div class="fleet-heading"><span>我的载具 <small>OWNED VEHICLES</small><b>02</b></span><span class="fleet-station">北境群岛 / NORTHERN ARCHIPELAGO</span><span class="fleet-record">任务最高纪录 <strong id="bestScore">00000 <small>PTS</small></strong></span></div>
+  <div class="fleet-cards" role="group" aria-label="已拥有的飞机与战舰">
+   <button data-vehicle="aircraft" class="vehicle-card selected" aria-pressed="true"><span class="vehicle-card-status">已拥有 <i></i></span><svg class="vehicle-card-art" viewBox="0 0 150 70" aria-hidden="true"><path d="m10 39 46-8 25-21 7 2-10 18 25 1 18-9 7 2-8 18-30 8-20 13-8-1 7-13-44-1-15-6Z"/><path d="m24 39 79-4m-39-2 18 7"/></svg><span class="vehicle-card-name">F/A-18C <strong>大黄蜂</strong><small>多用途战斗机</small></span><span class="vehicle-card-detail">双发 / 空空导弹 / 热焰弹</span><span class="vehicle-card-check">✓</span></button>
+   <button data-vehicle="destroyer" class="vehicle-card" aria-pressed="false"><span class="vehicle-card-status">已拥有 <i></i></span><svg class="vehicle-card-art" viewBox="0 0 150 70" aria-hidden="true"><path d="m6 48 133-4-12 13H25L6 48Zm35-3 2-13h36l5 12m-27-12V22h14v10m-7-10V9m-8 7h17m13 29V36h21v8m-73 2V39h12v7m-8-6-15-4"/></svg><span class="vehicle-card-name">D-21 <strong>霜卫</strong><small>防空驱逐舰</small></span><span class="vehicle-card-detail">舰炮 / 防空导弹 / 反舰导弹</span><span class="vehicle-card-check">✓</span></button>
+  </div>
+  <p class="fleet-note"><span>霜线 / FROSTLINE</span> 离线单机 · 选择与设置保存在这台设备</p>
+ </footer>
+</main>
+<div id="flightUI" hidden>
+ <header class="flight-top"><div><span class="hud-label">FROSTLINE / <span id="modeLabel">INTERCEPT</span></span><strong id="objective">清除敌方机群</strong></div><div class="flight-top-right"><span id="waveInfo">WAVE 01 / 03</span><button id="pauseBtn" class="hud-button" aria-label="暂停">Ⅱ</button></div></header>
+ <div class="flight-readout left"><span class="hud-label" id="speedLabel">空速 KTS</span><strong id="speedValue">420</strong><span class="readout-line"></span><span id="gValue">1.0 G</span></div>
+ <div class="flight-readout right"><span class="hud-label" id="altLabel">高度 M</span><strong id="altValue">1100</strong><span class="readout-line"></span><span id="headingValue">000° N</span></div>
+ <div id="warning" role="status" hidden></div><div id="toast" role="status" hidden></div>
+ <div class="flight-bottom"><div class="airframe"><div class="hud-label"><span id="healthLabel">机体</span> <span id="healthValue">100%</span></div><div class="meter"><i id="healthBar"></i></div><div class="hud-label"><span id="heatLabel">机炮温度</span> <span id="heatValue">0%</span></div><div class="meter heat"><i id="heatBar"></i></div></div><div class="weapons"><span><small id="gunLabel">机炮</small><strong id="ammoValue">800</strong></span><span><small id="missileLabel">导弹</small><strong id="missileValue">06</strong><em id="samLockStatus" class="weapon-status ship-only">等待空中目标</em></span><span id="antiShipWeapon" class="ship-only"><small>反舰 R</small><strong id="antiShipValue">06</strong><em id="antiShipStatus" class="weapon-status">等待海上目标</em></span><span><small id="flareLabel">热焰弹</small><strong id="flareValue">08</strong></span></div><div class="score-box"><small><span id="killsLabel">击落</span> <b id="killsValue">0</b></small><strong id="scoreValue">00000</strong></div></div>
+ <div class="desktop-hints" id="desktopHints"><span>W/S 俯仰</span><span>A/D 滚转</span><span>空格 机炮</span><span>F 导弹</span><span>X 热焰弹</span><span>C 视角</span><span>ESC 暂停</span></div>
+ <div class="throttle-control"><label for="throttle">油门 <b id="throttleValue">72%</b></label><input id="throttle" type="range" min="12" max="100" value="72" aria-label="油门"><span>− / +</span></div>
+ <div id="touchControls"><div id="joystick" aria-label="飞行摇杆"><div class="joystick-ring"></div><div id="stick"></div><span>飞行控制</span></div><div id="aimJoystick" aria-label="舰炮瞄准摇杆"><div class="joystick-ring"></div><div id="aimStick"></div><span>舰炮瞄准</span></div><div class="touch-actions"><button id="touchFlare" class="touch-small">热焰弹<span>X</span></button><button id="touchMissile" class="touch-missile">导弹<span id="touchLock">等待锁定</span></button><button id="touchAntiShip" class="touch-anti-ship ship-only" aria-label="发射反舰导弹">反舰<span id="touchAntiShipLock">等待锁定</span></button><button id="touchFire" class="touch-fire">开火<span>GUN</span></button></div><button id="touchBoost" class="touch-boost">加力</button><button id="touchTarget" class="touch-target" aria-label="切换雷达目标">换目标</button><button id="touchCamera" class="touch-camera" aria-label="切换视角">视角</button><button id="touchRecenter" class="touch-recenter ship-only" aria-label="回正舰船跟随视角">回正</button></div>
+ <div id="touchHint" hidden>左侧摇杆控制飞行 · 右侧按住开火<br>让敌机停留在瞄准圈内，完成导弹锁定</div>
+</div>
+<div id="modalBackdrop" class="modal-backdrop" hidden>
+ <section id="guidePanel" class="panel" hidden><div class="panel-top"><span class="eyebrow">PILOT HANDBOOK</span><button class="close-panel" aria-label="关闭">×</button></div><h2>掌握你的载具</h2><p class="panel-intro">先倾斜机翼，再带杆转弯。保持速度，才能保持优势。</p><div class="guide-grid"><div><h3>PC 键鼠</h3><dl><dt>W / S · ↑ / ↓</dt><dd>压杆 / 拉杆</dd><dt>A / D · ← / →</dt><dd>向左 / 向右滚转</dd><dt>Q / E</dt><dd>方向舵微调</dd><dt>空格 / 鼠标左键</dt><dd>持续机炮射击</dd><dt>F / X / Tab</dt><dd>导弹 / 热焰弹 / 切换目标</dd><dt>Shift / Ctrl</dt><dd>加力 / 减速板</dd><dt>鼠标滚轮</dt><dd>拉近 / 拉远追尾镜头</dd><dt>− / + · C · Esc</dt><dd>油门 / 视角 / 暂停</dd></dl></div><div><h3>手机触控</h3><p>建议横屏。左下摇杆控制滚转与俯仰；右下持续按住机炮，同时操纵飞机。</p><p>拖动油门条改变推力，按住「加力」迅速增速。</p><h3>交战技巧</h3><p>把敌机带入瞄准圈，保持约 1 秒获得导弹锁定。机炮要瞄准敌机前方的提前量圆点。</p><p>导弹来袭时，释放热焰弹并转向。低速会失速，俯冲或加力恢复速度。</p></div></div><div class="ship-guide"><h3>驱逐舰 · D-21 霜卫</h3><p>先推油门起航；A/D 或 ←/→ 转舵，−/+ 调整油门，Ctrl 紧急减速。J/L 左右转炮，W/S 抬炮/压炮，空格或鼠标左键开炮。舰外视角中，舰炮跟随屏幕中央准星瞄准。鼠标右键拖动转动视角，准星对准敌舰后按空格或鼠标左键开炮；J/L、W/S 可微调视角，滚轮缩放，V 回正到舰艉。</p><p>手机在画面空白处滑动瞄准，中央准星对准敌舰后按住「开火」；双指捏合缩放，点击「回正」返回舰艉。左摇杆转舵，油门条控制航速，可以同时转舵、拖动视角和持续开火。舰桥视角保留右摇杆与 J/L、W/S 手动瞄炮。点击「换目标」切换雷达目标；空中目标锁定后按 F 或「防空」发射防空导弹；敌舰持续锁定 1.5 秒后按 R 或「反舰」发射反舰导弹。两类导弹有独立库存和冷却。X /「诱饵」干扰来袭导弹。C /「舰桥」切换舰桥与自由跟随视角，返回时保留观察角度。避开岛屿，油门归零会缓慢停船。</p><p>海战选择「海峡歼敌」或「舰炮训练」。转动视角，将中央准星对准敌舰或提前量圆点；等待「舰炮就绪」后开炮。舰炮会逐渐转向，转炮期间的小圈显示实际落点方向；Tab /「换目标」可选择下一艘。敌舰会机动并用舰炮反击，转舵规避来袭炮弹。防空导弹用于空中目标；海上目标可用舰炮或反舰导弹。反舰雷达范围为 5.5 公里，岛屿会阻挡锁定与导弹飞行。</p></div><button id="guideTrain" class="primary">进入飞行训练 <span>↗</span></button></section>
+ <section id="settingsPanel" class="panel narrow" hidden><div class="panel-top"><span class="eyebrow">FLIGHT CONFIGURATION</span><button class="close-panel" aria-label="关闭">×</button></div><h2>作战设置</h2><label class="setting-row"><span>作战难度<small>影响敌机进攻频率与伤害</small></span><select id="difficultySetting"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">王牌</option></select></label><label class="setting-row"><span>画面质量<small>低画质适合低功耗手机</small></span><select id="qualitySetting"><option value="auto">自动</option><option value="high">精细</option><option value="low">流畅</option></select></label><label class="setting-row"><span>跟随镜头距离<small>左侧拉近 · 右侧拉远，作战中也可滚轮或舰船双指缩放</small></span><input id="cameraDistanceSetting" aria-label="跟随镜头距离" type="range" min="78" max="140" value="100"></label><label class="setting-row"><span>音效<small>引擎、舰炮与锁定提示</small></span><input id="soundSetting" type="checkbox" checked></label><label class="setting-row"><span>触控俯仰反转<small>开启后向上推杆变为抬头</small></span><input id="invertSetting" type="checkbox"></label><p class="save-note">设置自动保存在这台设备。难度在下一次出击生效。</p></section>
+ <section id="pausePanel" class="panel narrow" hidden><span class="eyebrow">FLIGHT PAUSED</span><h2>暂离航线</h2><p class="panel-intro">战场已暂停，准备好后继续。</p><button id="resumeBtn" class="primary">继续作战 <span>↗</span></button><button id="pauseGuideBtn" class="wide secondary">操作指南</button><button id="restartBtn" class="wide secondary">重新出击</button><button id="exitBtn" class="text-btn">返回基地</button></section>
+ <section id="resultPanel" class="panel narrow" hidden><span class="eyebrow" id="resultEyebrow">MISSION COMPLETE</span><h2 id="resultTitle">空域已肃清</h2><p id="resultDescription" class="panel-intro">你守住了北境的天空。</p><div class="result-stats"><div><small>任务得分</small><strong id="resultScore">00000</strong></div><div><small id="resultKillsLabel">击落 / 机炮命中率</small><strong id="resultKills">0 / 0%</strong></div><div><small>作战时间</small><strong id="resultTime">00:00</strong></div></div><button id="campaignNextBtn" class="primary" hidden>进入下一关 ↗</button><button id="againBtn" class="primary">再次出击 <span>↗</span></button><button id="resultExitBtn" class="text-btn">返回基地</button></section>
+ <section id="campaignBriefingPanel" class="panel campaign-briefing-panel" hidden><div class="panel-top"><span class="eyebrow" id="chapterBriefingCode"></span><button class="close-panel" aria-label="关闭">×</button></div><h2 id="chapterBriefingTitle"></h2><p id="chapterBriefingStory"></p><h3>任务简报</h3><p id="chapterBriefingRules"></p><div id="chapterBriefingRadio" class="chapter-radio"></div><button id="chapterBriefingStart" class="primary">立即出击 ↗</button></section>
+</div>
+<script>window.addEventListener("error",function(e){var b=document.getElementById("bootText");if(b&&!document.getElementById("boot").hidden)b.textContent=location.protocol==="file:"?"请使用启动器或在线网址打开游戏。":"飞行系统加载失败，请检查网络后刷新页面，并确认浏览器支持 WebGL 2。";});</script>
+<script type="module" src="app.js"></script>
+</body></html>
