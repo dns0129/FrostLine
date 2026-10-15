@@ -1,0 +1,14 @@
+歼-16 模型素材
+原作者/项目：FGUK / FGMEMBERS SU-27（FGUK Hangar）
+许可：GPL-2.0（全文见同目录 COPYING）
+来源：https://github.com/FGMEMBERS/SU-27
+原始 commit：a9c4863886a5835dfa4406698dd4557fbf72a3aa
+使用文件：Models/Su-27.ac、Models/Su-27_Flanker_P01.png、Models/Liveries/PLAAF2Div.png(.xml)、COPYING、README.txt、SU-27-readme.txt
+
+修改（2026-10-15）：
+- 用自写 AC3D 读取器（scripts/ac3d_reader.py）导入 Blender 5.2，坐标改为 +Z 向上、机头朝 -Y。
+- 删除原座舱盖、风挡玻璃与前轮挡泥板；新建双座长座舱盖、风挡与框架、后座舱槽、后仪表板、第二具座椅；抬高座舱后背脊。
+- 垂尾与方向舵加高 0.42 m；起落架停机压缩 0.31 m；整体按 21.9 m 机长缩放 0.992。
+- 新增翼尖电子战吊舱、PL-15 / PL-10 弹体、机腹与进气道挂架、外翼发射导轨。
+- 涂装重绘为歼-16 灰色（scripts/j16-livery.py），去掉原舷号、部队徽章与尾部色带，加示意舷号 70316。
+完整构建脚本：scripts/build-j16.py。

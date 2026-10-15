@@ -1,0 +1,57 @@
+{
+  "asset": "j16.glb",
+  "blend": "assets/models/j16-source/J-16.blend",
+  "blend_sha256": "8104bd288b6837d104ecbdcb5413066e6fe8017804ac7b254518e59e75c657eb",
+  "units": "metres",
+  "blender_axes": "+Z up, nose -Y, +X port",
+  "glb_axes": "+Y up, nose -Z",
+  "length": 21.9,
+  "span_incl_wingtip_pods": 15.247,
+  "height": 6.36,
+  "scale_from_source": 0.99199,
+  "fin_height_gain_m": 0.42,
+  "parked_oleo_compression_m": 0.311,
+  "triangles": 12755,
+  "stores": [
+    {
+      "type": "PL-15",
+      "station": "PL-15 tunnel front"
+    },
+    {
+      "type": "PL-15",
+      "station": "PL-15 tunnel rear"
+    },
+    {
+      "type": "PL-15",
+      "station": "PL-15 under-intake port"
+    },
+    {
+      "type": "PL-15",
+      "station": "PL-15 inner wing port"
+    },
+    {
+      "type": "PL-10",
+      "station": "PL-10 outer wing port"
+    },
+    {
+      "type": "PL-15",
+      "station": "PL-15 under-intake starboard"
+    },
+    {
+      "type": "PL-15",
+      "station": "PL-15 inner wing starboard"
+    },
+    {
+      "type": "PL-10",
+      "station": "PL-10 outer wing starboard"
+    },
+    {
+      "type": "wingtip ECM pod",
+      "station": "wingtips",
+      "count": 2
+    }
+  ],
+  "license": "GPL-2.0",
+  "source": "https://github.com/FGMEMBERS/SU-27",
+  "source_commit": "a9c4863886a5835dfa4406698dd4557fbf72a3aa"
+}
