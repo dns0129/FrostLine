@@ -18,7 +18,7 @@ function holdShips(sim, targets = sim.enemies) {
 }
 function lock(sim) { run(sim, 1.6); assert.equal(sim.antiShipLockProgress, 1); }
 
-test('destroyers carry an independent six-missile surface weapon and aircraft do not', () => {
+test('destroyers carry six surface missiles and the standard multirole aircraft carries two', () => {
   for (const mode of ['naval', 'naval-training', 'intercept', 'training', 'free']) {
     const sim = new Simulation(); sim.start(mode, 'normal', 'destroyer');
     assert.equal(sim.player.antiShipMissiles, 6); assert.equal(DESTROYER.maxAntiShipMissiles, 6);
@@ -26,7 +26,7 @@ test('destroyers carry an independent six-missile surface weapon and aircraft do
     assert.equal(sim.antiShipCooldown, 0); assert.equal(sim.missileCooldown, 0);
   }
   const aircraft = new Simulation(); aircraft.start('training');
-  assert.ok(!aircraft.player.antiShipMissiles);
+  assert.equal(aircraft.player.antiShipMissiles, 2);
   assert.equal(aircraft.launchAntiShipMissile(), false);
   assert.equal(aircraft.missiles.length, 0);
 });
@@ -260,14 +260,14 @@ test('all three real naval waves can be completed with ASm and replenish three u
   assert.ok(sim.player.health > 0); assert.ok(sim.score > 2000);
 });
 
-test('surface resupply uses its own cap and restarting into aircraft clears surface state', () => {
+test('surface resupply uses its own cap and restarting into aircraft restores its configured surface inventory', () => {
   const sim = naval('naval'); sim.player.antiShipMissiles = 1; sim.player.missiles = 0;
   sim.enemies.forEach(e => { e.health = 0; }); sim.update(DT);
   assert.equal(sim.player.antiShipMissiles, 4); assert.equal(sim.player.missiles, 6);
   run(sim, 4.7); sim.player.antiShipMissiles = 5; sim.enemies.forEach(e => { e.health = 0; }); sim.update(DT);
   assert.equal(sim.player.antiShipMissiles, 6);
   sim.start('training');
-  assert.ok(!sim.player.antiShipMissiles); assert.equal(sim.antiShipLockProgress, 0);
+  assert.equal(sim.player.antiShipMissiles, 2); assert.equal(sim.antiShipLockProgress, 0);
   assert.equal(sim.antiShipLockTarget, null); assert.equal(sim.antiShipTargetId, null);
   assert.equal(sim.antiShipCooldown, 0); assert.equal(sim.launchAntiShipMissile(), false);
   assert.equal(sim.missiles.length, 0);

@@ -235,14 +235,14 @@ test('keyboard helm and weapons still work after focusing the throttle slider', 
 });
 
 
-test('R and the anti-ship touch button are discrete ship-only actions independent of F', t => {
+test('R and the anti-ship touch button are discrete actions for both vehicle types independent of F', t => {
   let vehicle='destroyer';
   const {input,key,elements,actions}=fixture(t,{vehicle:()=>vehicle});
   key('keydown','KeyR');key('keydown','KeyR',{repeat:true});key('keyup','KeyR');key('keydown','KeyF');key('keyup','KeyF');
   dispatch(elements.touchAntiShip,'click');
   assert.deepEqual(actions,['antiShip','missile','antiShip']);
-  vehicle='aircraft';key('keydown','KeyR');dispatch(elements.touchAntiShip,'click');assert.equal(actions.length,3);
-  vehicle='destroyer';input.active=false;key('keydown','KeyR');dispatch(elements.touchAntiShip,'click');assert.equal(actions.length,3);
+  vehicle='aircraft';key('keydown','KeyR');dispatch(elements.touchAntiShip,'click');assert.deepEqual(actions.slice(3),['antiShip','antiShip']);
+  vehicle='destroyer';input.active=false;key('keydown','KeyR');dispatch(elements.touchAntiShip,'click');assert.equal(actions.length,5);
 });
 
 test('right mouse drag orbits in viewport units without firing or changing the rudder', t => {

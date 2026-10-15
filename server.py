@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parent
 GAME_FILES = frozenset({
     "index.html", "style.css", "app.js", "input.js", "audio.js",
     "campaign.js", "base-scene.js", "vehicle-catalog.js", "destroyer.js", "naval-models.js", "ambient-fleet.js", "ship-camera.js", "simulation.js", "renderer.js", "world-math.js", "sw.js",
-    "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/fa18-source.zip", "assets/models/FA18-LICENSE.txt", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
+    "aircraft-systems.js", "aircraft-stores.js", "hangar-workshop.js", "docs/aircraft-systems.md",
+    "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/f18-source/F-A-18C-rebuilt-v2.blend", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
     "manifest.webmanifest",
 })
 ASSET_EXTENSIONS = frozenset({
@@ -34,6 +35,7 @@ MIME_TYPES = {
     ".css": "text/css; charset=utf-8",
     ".webmanifest": "application/manifest+json; charset=utf-8",
     ".svg": "image/svg+xml",
+    ".md": "text/plain; charset=utf-8",
 }
 
 
@@ -56,7 +58,7 @@ def game_path(request_target):
         return None
     allowed = relative in GAME_FILES
     if len(parts) >= 2 and parts[0] == "assets":
-        allowed = Path(relative).suffix.lower() in ASSET_EXTENSIONS
+        allowed = allowed or Path(relative).suffix.lower() in ASSET_EXTENSIONS
     if len(parts) == 2 and parts[0] == "vendor":
         allowed = parts[1] in {"three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js"}
     if not allowed:

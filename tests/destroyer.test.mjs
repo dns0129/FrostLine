@@ -361,7 +361,7 @@ test('ship destruction ends the mission and restart restores clean aircraft defa
   assert.equal(sim.player.kind, 'aircraft');
   assert.equal(sim.player.maxHealth, 100);
   assert.equal(sim.player.health, 100);
-  assert.equal(sim.player.ammo, 900);
+  assert.equal(sim.player.ammo, 578);
   assert.equal(sim.player.missiles, 6);
   assert.equal(sim.player.pos.y, 1100);
   assert.equal(sim.player.speed, 185);
@@ -370,7 +370,7 @@ test('ship destruction ends the mission and restart restores clean aircraft defa
   assert.equal(sim.particles.length, 0);
   assert.equal(sim.missiles.length, 0);
   run(sim, 1, { pitch: 0.5 });
-  assert.ok(sim.player.pos.y > 1110);
+  assert.ok(sim.player.pos.y > 1105);
   sim.start('training', 'easy', 'destroyer');
   assert.equal(sim.player.flares, 8);
   assert.equal(sim.player.speed, 0);
