@@ -1,6 +1,6 @@
 // Original fictional campaign. Definitions drive briefings, mission rules and saves.
 export const CAMPAIGN_TITLE = '北境航线';
-export const CAMPAIGN_SYNOPSIS = '北境航线上，失联的“灰潮”无人机群突然袭扰联合护航编队。你驾驶 F/A-18C“大黄蜂”，呼号“苍隼”，从一次紧急拦截出发，逐步追踪并切断它们的空中指挥链。';
+export const CAMPAIGN_SYNOPSIS = '北境航线上，失联的“灰潮”无人机群突然袭扰联合护航编队。你驾驶机库中的战机（F/A-18C 大黄蜂或歼-16），呼号“苍隼”，从一次紧急拦截出发，逐步追踪并切断它们的空中指挥链。';
 export const CAMPAIGN_LEVELS = Object.freeze([
   Object.freeze({
     id: 'dawn', number: 1, title: '晨雾警报', subtitle: '先遣拦截', location: '北境南部 · 外海警戒线', tag: 'INTERCEPT',

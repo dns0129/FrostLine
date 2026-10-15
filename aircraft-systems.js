@@ -1,21 +1,27 @@
-// Public F/A-18C compatibility and masses; game ranges/handling are scaled for
+// Public F/A-18C and J-16 compatibility and masses; game ranges/handling are scaled for
 // the existing island arena. Sources and approximation boundaries: docs/aircraft-systems.md.
 const freeze = value => {
   if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
   return value;
 };
 const boundedInt = (value, max) => Number.isFinite(value) ? Math.max(0, Math.min(max, Math.floor(value))) : 0;
+// `visual` sizes the generated store meshes (metres); `hang` lowers a fatter
+// store so it still meets a pylon calibrated for a slimmer missile.
 export const STORES = freeze({
-  'aim9': { name: 'AIM-9M 响尾蛇', short: 'AIM-9M', kind: 'anti-air', massKg: 86, drag: .018, range: 2800, lockSeconds: 1.2, cone: 10, speed: 610, life: 9, damage: 125, guidance: '红外 / 近程' },
-  'aim7': { name: 'AIM-7M 麻雀', short: 'AIM-7M', kind: 'anti-air', massKg: 231, drag: .03, range: 4500, lockSeconds: 1.5, cone: 18, speed: 720, life: 13, damage: 145, guidance: '半主动雷达 / 中程' },
-  'aim120': { name: 'AIM-120C AMRAAM', short: 'AIM-120C', kind: 'anti-air', massKg: 162, drag: .024, range: 6500, lockSeconds: 1.1, cone: 25, speed: 820, life: 16, damage: 135, guidance: '主动雷达 / 中远程' },
-  'harpoon': { name: 'AGM-84D 鱼叉', short: 'AGM-84D', kind: 'anti-ship', massKg: 540, drag: .065, range: 7000, lockSeconds: 1.5, cone: 45, speed: 280, life: 38, damage: 280, guidance: '主动雷达 / 反舰' },
-  'tank': { name: '330 加仑副油箱', short: '330 gal', kind: 'fuel', massKg: 1100, fuelKg: 1000, drag: .085, guidance: '增加燃油 / 单挂' },
+  'aim9': { name: 'AIM-9M 响尾蛇', short: 'AIM-9M', kind: 'anti-air', massKg: 86, drag: .018, range: 2800, lockSeconds: 1.2, cone: 10, speed: 610, life: 9, damage: 125, guidance: '红外 / 近程', visual: { length: 2.87, radius: .063 } },
+  'aim7': { name: 'AIM-7M 麻雀', short: 'AIM-7M', kind: 'anti-air', massKg: 231, drag: .03, range: 4500, lockSeconds: 1.5, cone: 18, speed: 720, life: 13, damage: 145, guidance: '半主动雷达 / 中程', visual: { length: 3.66, radius: .105 } },
+  'aim120': { name: 'AIM-120C AMRAAM', short: 'AIM-120C', kind: 'anti-air', massKg: 162, drag: .024, range: 6500, lockSeconds: 1.1, cone: 25, speed: 820, life: 16, damage: 135, guidance: '主动雷达 / 中远程', visual: { length: 3.65, radius: .105 } },
+  'harpoon': { name: 'AGM-84D 鱼叉', short: 'AGM-84D', kind: 'anti-ship', massKg: 540, drag: .065, range: 7000, lockSeconds: 1.5, cone: 45, speed: 280, life: 38, damage: 280, guidance: '主动雷达 / 反舰', visual: { length: 3.8, radius: .17 } },
+  'tank': { name: '330 加仑副油箱', short: '330 gal', kind: 'fuel', massKg: 1100, fuelKg: 1000, drag: .085, guidance: '增加燃油 / 单挂', visual: { length: 4.1, radius: .4 } },
+  'pl10': { name: 'PL-10 霹雳-10', short: 'PL-10', kind: 'anti-air', massKg: 105, drag: .016, range: 3000, lockSeconds: 1, cone: 14, speed: 640, life: 9, damage: 125, guidance: '红外 / 近程大离轴', visual: { length: 3.05, radius: .08 } },
+  'pl15': { name: 'PL-15 霹雳-15', short: 'PL-15', kind: 'anti-air', massKg: 210, drag: .026, range: 7500, lockSeconds: 1.2, cone: 25, speed: 860, life: 18, damage: 135, guidance: '主动雷达 / 远程', visual: { length: 4, radius: .1 } },
+  'yj83k': { name: 'YJ-83K 鹰击-83K', short: 'YJ-83K', kind: 'anti-ship', massKg: 600, drag: .07, range: 7500, lockSeconds: 1.5, cone: 45, speed: 290, life: 40, damage: 250, guidance: '主动雷达 / 反舰', visual: { length: 5.2, radius: .18, hang: .08 } },
 });
 const wing = { aim9: 1, aim7: 1, aim120: 2, harpoon: 1 };
+// Presets list one store per station, in station order. `doubles` marks dual racks.
 export const AIRCRAFT = freeze({
   fa18c: {
-    id: 'fa18c', name: 'F/A-18C 大黄蜂', role: '标准多用途战斗机',
+    id: 'fa18c', name: 'F/A-18C 大黄蜂', shortName: '大黄蜂', role: '标准多用途战斗机', gun: 'M61A1',
     real: { emptyKg: 10455, internalFuelKg: 4930, maxTakeoffKg: 23537, maxPayloadKg: 6215, cannonRounds: 578, engineThrustKN: 157.4 },
     base: { health: 100, flares: 6, thrust: 43, boostThrust: 31, maxSpeed: 300, boostSpeed: 320, rollRate: 1.8, pitchRate: .64, gunDamage: 24, gunInterval: .078 },
     // Station weight ceilings are deliberately conservative game envelopes,
@@ -31,19 +37,55 @@ export const AIRCRAFT = freeze({
       { id: 8, name: '右外翼', x: 3.95, position: [3.95, -.7, 1.1], limitKg: 1100, allowed: { ...wing } },
       { id: 9, name: '右翼尖', x: 5.95, position: [5.95, -.12, 1.65], limitKg: 100, allowed: { aim9: 1 } },
     ],
+    presets: {
+      multirole: { name: '标准多用途', stores: ['aim9', 'aim120', 'harpoon', 'aim120', 'tank', 'aim120', 'harpoon', 'aim120', 'aim9'] },
+      air: { name: '制空拦截', stores: ['aim9', 'aim120', 'aim120', 'aim120', null, 'aim120', 'aim120', 'aim120', 'aim9'], doubles: [2, 3, 7, 8] },
+      sea: { name: '对海打击', stores: ['aim9', 'harpoon', 'harpoon', 'aim120', 'tank', 'aim120', 'harpoon', 'harpoon', 'aim9'] },
+      clean: { name: '轻载训练', stores: ['aim9', null, null, null, null, null, null, null, 'aim9'] },
+    },
+    workshopNote: '翼尖仅挂 AIM-9；AIM-120 可在翼下双联；鱼叉仅挂翼下，副油箱占用内翼或中心线。重载与不对称挂载会降低机动响应。',
+  },
+  // J-16 figures are public estimates (no official specification is published).
+  // Stations follow the pylons modelled in assets/models/j16.glb; positions are
+  // the baked missile centres, relative to the nozzle-axis origin used by j16.js.
+  // The wingtip ECM pods are fixed airframe equipment, not configurable stations.
+  j16: {
+    id: 'j16', name: '歼-16', shortName: '歼-16', role: '重型多用途战斗机', gun: 'GSh-30-1',
+    real: { emptyKg: 17700, internalFuelKg: 9400, maxTakeoffKg: 35000, maxPayloadKg: 8000, cannonRounds: 150, engineThrustKN: 270 },
+    base: { health: 125, flares: 8, thrust: 42, boostThrust: 33, maxSpeed: 305, boostSpeed: 330, rollRate: 1.6, pitchRate: .6, gunDamage: 40, gunInterval: .11 },
+    stations: [
+      { id: 1, name: '左外翼', x: -6.43, position: [-6.43, .11, 4.6], limitKg: 150, allowed: { pl10: 1 } },
+      { id: 2, name: '左内翼', x: -4.81, position: [-4.81, -.04, 3.68], limitKg: 1000, allowed: { pl10: 1, pl15: 1, yj83k: 1 } },
+      { id: 3, name: '左进气道', x: -1.26, position: [-1.26, -.89, -1.63], limitKg: 400, allowed: { pl15: 1 } },
+      { id: 4, name: '机腹前', x: 0, position: [0, -.05, -.49], limitKg: 400, allowed: { pl15: 1 } },
+      { id: 5, name: '机腹后', x: 0, position: [0, -.14, 3.78], limitKg: 400, allowed: { pl15: 1 } },
+      { id: 6, name: '右进气道', x: 1.26, position: [1.26, -.89, -1.63], limitKg: 400, allowed: { pl15: 1 } },
+      { id: 7, name: '右内翼', x: 4.81, position: [4.81, -.04, 3.68], limitKg: 1000, allowed: { pl10: 1, pl15: 1, yj83k: 1 } },
+      { id: 8, name: '右外翼', x: 6.43, position: [6.43, .11, 4.6], limitKg: 150, allowed: { pl10: 1 } },
+    ],
+    presets: {
+      multirole: { name: '标准多用途', stores: ['pl10', 'yj83k', 'pl15', 'pl15', 'pl15', 'pl15', 'yj83k', 'pl10'] },
+      air: { name: '制空拦截', stores: ['pl10', 'pl15', 'pl15', 'pl15', 'pl15', 'pl15', 'pl15', 'pl10'] },
+      sea: { name: '对海打击', stores: ['pl10', 'yj83k', 'pl15', null, null, 'pl15', 'yj83k', 'pl10'] },
+      clean: { name: '轻载训练', stores: ['pl10', null, null, null, null, null, null, 'pl10'] },
+    },
+    workshopNote: '外翼仅挂 PL-10；内翼可挂 PL-10、PL-15 或鹰击-83K；进气道与机腹串列挂点挂 PL-15。翼尖电子战吊舱为固定设备。',
   },
 });
 export const aircraftById = id => AIRCRAFT[id] || AIRCRAFT.fa18c;
 export const DEFAULT_AIRCRAFT_ID = 'fa18c';
-export const LOADOUT_PRESETS = freeze({
-  multirole: { name: '标准多用途', stores: ['aim9', 'aim120', 'harpoon', 'aim120', 'tank', 'aim120', 'harpoon', 'aim120', 'aim9'] },
-  air: { name: '制空拦截', stores: ['aim9', 'aim120', 'aim120', 'aim120', null, 'aim120', 'aim120', 'aim120', 'aim9'], doubles: [2, 3, 7, 8] },
-  sea: { name: '对海打击', stores: ['aim9', 'harpoon', 'harpoon', 'aim120', 'tank', 'aim120', 'harpoon', 'harpoon', 'aim9'] },
-  clean: { name: '轻载训练', stores: ['aim9', null, null, null, null, null, null, null, 'aim9'] },
-});
+// The HUD weapon shown once no air-to-air store is left: the airframe's first compatible type.
+export const primaryAirWeapon = aircraftId => aircraftById(aircraftId).stations.flatMap(s => Object.keys(s.allowed)).find(id => STORES[id].kind === 'anti-air');
+// Kept for existing callers: the F/A-18C preset table. New code uses presetsFor().
+export const LOADOUT_PRESETS = AIRCRAFT.fa18c.presets;
+export const presetsFor = aircraftId => aircraftById(aircraftId).presets;
 export function presetLoadout(name = 'multirole', aircraftId = DEFAULT_AIRCRAFT_ID) {
-  const aircraft = aircraftById(aircraftId), preset = LOADOUT_PRESETS[name] || LOADOUT_PRESETS.multirole;
+  const aircraft = aircraftById(aircraftId), preset = aircraft.presets[name] || aircraft.presets.multirole;
   return aircraft.stations.map((s, i) => ({ station: s.id, store: preset.stores[i] || null, count: preset.stores[i] ? preset.doubles?.includes(s.id) ? 2 : 1 : 0 }));
+}
+// The longest-range loaded store of a kind; launch and lock checks use it.
+export function storeRange(stores, kind) {
+  return Math.max(0, ...stores.filter(s => s.count > 0 && STORES[s.store]?.kind === kind).map(s => STORES[s.store].range));
 }
 export function validateLoadout(loadout, aircraftId = DEFAULT_AIRCRAFT_ID) {
   const aircraft = aircraftById(aircraftId), errors = [];

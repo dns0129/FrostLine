@@ -12,9 +12,15 @@
 
 完整参数、费用、奖励公式、现实参考与游戏近似见 [系统说明](docs/aircraft-systems.md)。`npm run check`、`npm test`、Python 服务器测试和 `npm run prepare` 可在云端运行；浏览器验证使用 `npm run test:workshop`（需要 Playwright Core 与 Chromium）。
 
-## Blender 模型素材：福建舰与歼-16（未接入游戏）
+## 1.14 歼-16 与福建舰模型（云端开发）
 
-`assets/models/` 新增两套可编辑 Blender 模型及 GLB：福建舰（CV-18）全部程序生成，甲板平面依据 Wikimedia Commons 线图（CC BY-SA 4.0）校准到 316 × 76 m；歼-16 由 GPL-2.0 的 FlightGear 苏-27 网格改为双座、加高垂尾、翼尖吊舱与 PL-15/PL-10 挂载，校准到 21.9 m 机长。带尺寸标注的三视图与透视渲染在 `assets/three-views/`。来源、改动与重建命令见 [FUJIAN-ART.md](assets/FUJIAN-ART.md) 和 [J16-ART.md](assets/J16-ART.md)。
+`assets/models/` 中的两套 Blender 模型已接入游戏。此版本的代码与发布目录已在云端准备完成，公开站点需另行发布才会更新。
+
+- **歼-16（新增可驾驶飞机）**：首页「我的载具」新增第三张卡片，机库展示停放的歼-16。按 1.13 的同一规则在 `AIRCRAFT.j16` 注册独立基础值与现实参考：机体 125 HP、GSh-30-1 机炮 150 发、8 个可配置挂点（PL-10、PL-15、鹰击-83K）和固定翼尖电子战吊舱。挂载与升级中心随所选飞机切换挂点、预设和挂点示意；技术等级与大黄蜂共用，挂载分别保存。可执行全部五种快速任务和战役；对海任务使用鹰击-83K，R 发射。
+- **福建舰（替换原模型）**：默认中方编队的 CN-CV-18 改用 `fujian.glb`，取代原程序模型。近景按材质合并为 15 个绘制对象，远景 5 个；尺寸取自模型元数据（全长 315.5 m、甲板高 17.5 m）。仍只作场景巡航，不参与交战。
+- 两套模型与 F/A-18C 共用导入规则：`imported-airframe.js`（米制、机头 −Z、+Y 向上、起落架、喷口与翼尖标定）。
+
+参数来源、公开估计与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)；模型来源、改动与重建命令见 [FUJIAN-ART.md](assets/FUJIAN-ART.md) 和 [J16-ART.md](assets/J16-ART.md)。浏览器验证：`npm run test:j16-fujian`（需要 Playwright 与 Chromium）。
 
 ## 机库与海军基地（1.8.0）
 

@@ -4,12 +4,15 @@ import { aircraftById, STORES, presetLoadout } from './aircraft-systems.js';
 
 // Fixed-size reusable slots avoid allocations during launch, replenishment or
 // menu changes. Every instance owns and disposes only its stores resources.
-export function attachAircraftStores(jet, aircraftId = 'fa18c') {
+// `templates` maps store ids to model-supplied meshes (centred on the store);
+// those are cloned, share the model's geometry/materials and are never disposed here.
+export function attachAircraftStores(jet, aircraftId = 'fa18c', { templates = {} } = {}) {
   const group = new THREE.Group(); group.name = 'Custom external stores'; jet.add(group);
-  const bodies = {}, geometry = new Set(), material = new Set();
-  for (const id of Object.keys(STORES)) {
-    const tank = id === 'tank', large = id === 'harpoon', length = tank ? 4.1 : large ? 3.8 : id === 'aim7' ? 3.66 : id === 'aim120' ? 3.65 : 2.87;
-    const radius = tank ? .4 : large ? .17 : id === 'aim9' ? .063 : .105;
+  const aircraft = aircraftById(aircraftId), bodies = {}, geometry = new Set(), material = new Set();
+  const used = new Set(aircraft.stations.flatMap(station => Object.keys(station.allowed)));
+  for (const id of used) {
+    if (templates[id]) continue;
+    const tank = id === 'tank', { length, radius, hang = 0 } = STORES[id].visual;
     const body = new THREE.CylinderGeometry(radius, radius, length * .8, 10);
     body.rotateX(Math.PI / 2);
     const nose = new THREE.ConeGeometry(radius, length * .2, 10); nose.rotateX(-Math.PI / 2); nose.translate(0, 0, -length * .5);
@@ -23,18 +26,23 @@ export function attachAircraftStores(jet, aircraftId = 'fa18c') {
     }
     const merged = mergeGeometries([body,nose,tail,cross]);
     [body,nose,tail,cross].forEach(g=>g.dispose());
+    if (hang) merged.translate(0, -hang, 0);
     const paint = new THREE.MeshStandardMaterial({vertexColors:true,roughness:.7});
     geometry.add(merged); material.add(paint);
     bodies[id] = { geometry:merged, paint };
   }
-  const slots = aircraftById(aircraftId).stations.map(station => {
+  const makeStore = id => {
+    if (templates[id]) return templates[id].clone(true);
+    const mesh = new THREE.Mesh(bodies[id].geometry, bodies[id].paint); mesh.castShadow = true; return mesh;
+  };
+  const slots = aircraft.stations.map(station => {
     const root = new THREE.Group(); root.position.set(...station.position); group.add(root);
     const types = {};
     for (const id of Object.keys(station.allowed)) {
-      const asset = bodies[id], instances = [];
+      const instances = [];
       for (let n = 0; n < station.allowed[id]; n++) {
         const store = new THREE.Group(); store.userData.store = id; store.userData.station = station.id;
-        const mesh = new THREE.Mesh(asset.geometry,asset.paint); mesh.castShadow = true; store.add(mesh);
+        store.add(makeStore(id));
         root.add(store); instances.push(store);
       }
       types[id] = instances;
@@ -42,7 +50,7 @@ export function attachAircraftStores(jet, aircraftId = 'fa18c') {
     return { station: station.id, root, types };
   });
   let key = '';
-  const setLoadout = (value = presetLoadout()) => {
+  const setLoadout = (value = presetLoadout('multirole', aircraftId)) => {
     const nextKey = value.map(s => `${s.station}:${s.store}:${s.count}`).join('|');
     if (nextKey === key) return; key = nextKey;
     for (const slot of slots) {

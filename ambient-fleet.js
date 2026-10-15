@@ -87,8 +87,11 @@ function foamMap() {
 }
 
 export class AmbientFleet {
-  constructor(scene) {
+  // `imported` maps asset ids (NAVAL_MODELS[type].asset) to loaded models such as
+  // the Fujian GLB; the caller keeps ownership and disposes them.
+  constructor(scene, { imported = {} } = {}) {
     this.scene = scene; this.assets = makeNavalAssets(); this.group = new THREE.Group(); this.group.name = 'US and Chinese underway fleets';
+    Object.assign(this.assets.imported, imported);
     this.map = foamMap(); this.wakeAssets = Object.fromEntries(Object.entries(NAVAL_MODELS).map(([key, d]) => [key, wakeAssets(d, this.map)]));
     this.ships = DEFAULT_FLEET.map(def => {
       const model = makeNavalShip(this.assets, def.type, def.number); model.userData.fleetId = def.id;

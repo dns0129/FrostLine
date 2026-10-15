@@ -2,9 +2,11 @@ import * as THREE from './vendor/three.module.js';
 
 // Original, game-scale interpretations of publicly photographed silhouettes.
 // Metres, +Y up, -Z bow. Painted steel is deliberately rough, not bare chrome.
+// `asset` classes are imported Blender models (fujian.js); their dimensions come
+// from the model's metadata and are used here only for wakes and placement.
 export const NAVAL_MODELS = Object.freeze({
   forrestal: Object.freeze({ name: '弗莱斯特级航空母舰', country: 'US', kind: 'carrier', length: 316, beam: 76, hullBeam: 40, deckY: 18, number: '59' }),
-  fujian: Object.freeze({ name: '福建舰', country: 'CN', kind: 'carrier', length: 316, beam: 76, hullBeam: 41, deckY: 19, number: '18' }),
+  fujian: Object.freeze({ name: '福建舰', country: 'CN', kind: 'carrier', length: 315.5, beam: 76.47, hullBeam: 40, deckY: 17.5, number: '18', asset: 'fujian' }),
   burke: Object.freeze({ name: '阿利·伯克级驱逐舰', country: 'US', kind: 'destroyer', length: 154, beam: 20, hullBeam: 20, deckY: 6.2, number: '51' }),
   type052d: Object.freeze({ name: '052D 型驱逐舰', country: 'CN', kind: 'destroyer', length: 157, beam: 18, hullBeam: 18, deckY: 6.8, number: '172' }),
 });
@@ -170,7 +172,7 @@ function ciws(parts, x, y, z, chinese = false) {
   parts.dark.push(box(chinese ? .65 : .4, .4, 2.8, x, y + 2, z - 1.8));
 }
 function sphere(r, x, y, z) { const g = new THREE.SphereGeometry(r, 12, 8); return g.translate(x, y, z); }
-function islandDetails(parts, ix, iz, y, cn) {
+function islandDetails(parts, ix, iz, y) {
   // Overhanging bridge wings, inset doors, roof galleries, radar domes and lattice.
   parts.structure.push(box(16.5, .5, 24, ix, y + 15.7, iz - 8), box(16, .55, 23, ix, y + 19.1, iz - 9));
   parts.dark.push(box(8.8, .18, 14, ix, y + 19.47, iz - 9));
@@ -182,28 +184,28 @@ function islandDetails(parts, ix, iz, y, cn) {
     // Stacks carry narrow exhaust-grille fins instead of an unbroken black cap.
     for (let i = 0; i < 6; i++) parts.steel.push(box(.16, 2.7, .22, ix + side * 5.1, y + 18.3, iz + 7 + i));
   }
-  const height = cn ? 34 : 37;
+  const height = 37;
   parts.structure.push(cylinder(.55, height - 19, ix, y + (height + 19) / 2, iz - 4, 8));
   for (const side of [-1, 1]) {
     parts.structure.push(box(.18, 8, .18, ix + side * 1.5, y + 27, iz - 4, 0, side * -.2));
     for (const h of [24, 27, 30]) parts.structure.push(box(4, .16, .3, ix, y + h, iz - 4));
     parts.structure.push(cylinder(.12, 7, ix + side * 5.3, y + 27, iz - 4, 5));
   }
-  const ry = cn ? y + 34 : y + 38;
+  const ry = y + 38;
   parts.structure.push(box(9, 3.7, .26, ix, ry, iz - 4));
   parts.dark.push(box(8.4, 3.1, .15, ix, ry, iz - 4.22));
   for (let h = -1.5; h <= 1.5; h += .6) parts.structure.push(box(8.5, .08, .16, ix, ry + h, iz - 4.32));
   for (let x = -4; x <= 4; x += 1) parts.structure.push(box(.07, 3.2, .16, ix + x, ry, iz - 4.32));
   parts.structure.push(sphere(1.7, ix, y + 22, iz + 19));
 }
-function parkedJet(parts, x, y, z, chinese, heading = 0) {
+function parkedJet(parts, x, y, z, heading = 0) {
   const geometries = { structure: [], dark: [], glass: [] };
   const profile = [[-8.8, .06, .1], [-5.6, .7, .3], [-1.5, 1.05, .35], [4.7, 1, .2], [7.4, .72, 0]];
   geometries.structure.push(loft(profile, .65, -.5, .8),
     slab([[-.8, -2], [-6.6, 3.7], [-6.1, 6], [-1, 4.8], [1, 4.8], [6.1, 6], [6.6, 3.7], [.8, -2]], .12, .2),
     slab([[-.5, 4], [-3.8, 6.4], [-3.4, 7.3], [3.4, 7.3], [3.8, 6.4], [.5, 4]], .4, .18));
   for (const side of [-1, 1]) {
-    geometries.structure.push(box(.14, 2.6, 2.9, side * (chinese ? 1.2 : 1.55), 1.5, 5.4, 0, side * .16));
+    geometries.structure.push(box(.14, 2.6, 2.9, side * 1.55, 1.5, 5.4, 0, side * .16));
     geometries.dark.push(cylinder(.43, .25, side * .6, .15, 7.3, 8, Math.PI / 2));
     geometries.dark.push(box(.3, .8, .6, side * 1.2, -.6, 2));
   }
@@ -212,44 +214,40 @@ function parkedJet(parts, x, y, z, chinese, heading = 0) {
   for (const [key, list] of Object.entries(geometries)) for (const g of list) { g.rotateY(heading); g.translate(x, y + 1.2, z); parts[key].push(g); }
 }
 function carrier(parts, type, detailed) {
-  const cn = type === 'fujian', d = NAVAL_MODELS[type], y = d.deckY;
+  const d = NAVAL_MODELS[type], y = d.deckY;
   hull(parts, d);
-  const outline = cn
-    ? [[-24, -158], [23, -158], [31, -135], [32, -75], [38, -51], [38, 125], [29, 158], [-27, 158], [-37, 130], [-38, 48], [-29, 13], [-29, -130]]
-    : [[-21, -158], [20, -158], [27, -132], [29, -65], [38, -42], [36, 120], [25, 158], [-25, 158], [-36, 136], [-38, 52], [-30, 8], [-29, -119]];
+  const outline = [[-21, -158], [20, -158], [27, -132], [29, -65], [38, -42], [36, 120], [25, 158], [-25, 158], [-36, 136], [-38, 52], [-30, 8], [-29, -119]];
   parts.hull.push(slab(outline, y - .23, 1.15)); parts.deck.push(slab(outline.map(([x, z]) => [x * .994, z * .998]), y, .23));
-  // Starboard island: Forrestal's taller conventional stack; Fujian's compact faceted tower.
-  const ix = cn ? 25 : 24, iz = cn ? 29 : -13;
-  parts.structure.push(house(13, 8.5, cn ? 42 : 49, .9, ix, y + 4.3, iz),
+  // Starboard island with Forrestal's tall conventional stack.
+  const ix = 24, iz = -13;
+  parts.structure.push(house(13, 8.5, 49, .9, ix, y + 4.3, iz),
     house(14, 7, 23, .86, ix, y + 11.8, iz - 8), house(13, 3.5, 18, .88, ix, y + 17, iz - 11));
-  parts.structure.push(house(cn ? 10 : 12, cn ? 10 : 13, 12, .85, ix, y + 17, iz + 10));
-  parts.dark.push(box(8.6, .35, 9, ix, y + (cn ? 22.15 : 23.65), iz + 10));
+  parts.structure.push(house(12, 13, 12, .85, ix, y + 17, iz + 10));
+  parts.dark.push(box(8.6, .35, 9, ix, y + 23.65, iz + 10));
   windows(parts, ix, y + 17.4, iz - 20.1, 11.8, 14);
-  parts.steel.push(cylinder(.42, cn ? 16 : 20, ix, y + 29, iz - 4, 8),
+  parts.steel.push(cylinder(.42, 20, ix, y + 29, iz - 4, 8),
     box(16, .27, .4, ix, y + 30, iz - 4), box(10, .3, .4, ix, y + 35, iz - 4));
-  if (cn) for (const s of [-1, 1]) parts.dark.push(box(.2, 3.9, 4, ix + s * 6.4, y + 12, iz - 9));
-  else parts.dark.push(box(8, 3.8, .25, ix, y + 38, iz - 4));
+  parts.dark.push(box(8, 3.8, .25, ix, y + 38, iz - 4));
   if (!detailed) {
     parts.white.push(line([-22, 141], [0, -92], y + .065, .75), line([-5, 141], [17, -92], y + .065, .75));
     return;
   }
-  islandDetails(parts, ix, iz, y, cn);
+  islandDetails(parts, ix, iz, y);
   // Angled recovery lane, broken centreline, threshold bars, four arresting wires.
   const recovery = z => -13 + (141 - z) * .1;
   for (const offset of [-9, 9]) parts.white.push(line([recovery(143) + offset, 143], [recovery(-86) + offset, -86], y + .065, .46));
   for (let z = -82; z < 140; z += 12) parts.white.push(line([recovery(z), z], [recovery(z + 5), z + 5], y + .07, .34));
   for (const z of [78, 89, 100, 111]) parts.steel.push(line([recovery(z) - 10, z], [recovery(z) + 10, z], y + .12, .16));
   for (let x = -21; x <= -6; x += 2) parts.white.push(box(.7, .07, 6, x, y + .07, 140));
-  // Two bow catapults and one/two waist catapults distinguish the deck plans.
-  const cats = [[[-12, -146], [-12, -49]], [[10, -145], [10, -45]], [[-24, 12], [-14, -75]]];
-  if (!cn) cats.push([[-11, 25], [1, -71]]);
+  // Two bow and two waist catapults.
+  const cats = [[[-12, -146], [-12, -49]], [[10, -145], [10, -45]], [[-24, 12], [-14, -75]], [[-11, 25], [1, -71]]];
   for (const [a, b] of cats) {
     parts.dark.push(line(a, b, y + .06, .95)); parts.steel.push(line(a, b, y + .105, .26));
     parts.yellow.push(line([a[0] - 2, a[1]], [b[0] - 2, b[1]], y + .07, .18));
     const blast = box(7, .2, 3.4, b[0], y + .18, b[1] + 4); parts.steel.push(blast);
   }
   // Recessed deck-edge elevator panels with inset borders and underside supports.
-  const elevators = cn ? [[29, -74], [30, 80]] : [[29, -81], [29, 57], [-28, -18], [29, 117]];
+  const elevators = [[29, -81], [29, 57], [-28, -18], [29, 117]];
   for (const [x, z] of elevators) {
     parts.dark.push(box(14.5, .07, 19.5, x, y + .05, z)); parts.deck.push(box(13.8, .06, 18.8, x, y + .12, z));
     parts.yellow.push(line([x - 6.8, z - 9.3], [x + 6.8, z - 9.3], y + .18, .18));
@@ -264,16 +262,16 @@ function carrier(parts, type, detailed) {
     }
     rail(parts, [side * 25, -102], [side * 25, -37], y - 4.6);
     rail(parts, [side * 25.2, 23], [side * 25.2, 96], y - 4.6);
-    ciws(parts, side * 28, y - 3.8, side < 0 ? 117 : -115, cn);
+    ciws(parts, side * 28, y - 3.8, side < 0 ? 117 : -115);
     // Thin flight-deck safety net supports along stern/perimeter.
     for (let z = 45; z <= 130; z += 10) parts.steel.push(box(2.4, .12, 5.5, side * 36, y - .5, z, 0, side * .12));
   }
   for (const z of [-104, -76, 70, 98, 126]) {
     const x = z < 0 ? 19 : 24;
-    parkedJet(parts, x, y, z, cn, z < 0 ? -.18 : .18);
+    parkedJet(parts, x, y, z, z < 0 ? -.18 : .18);
     parts.yellow.push(line([x - 6, z - 10], [x + 6, z - 10], y + .08, .16));
   }
-  parkedJet(parts, -24, y, 111, cn, .28);
+  parkedJet(parts, -24, y, 111, .28);
   // Tie-down grid is merged geometry, no separate object per fixture.
   for (let z = -120; z < 139; z += 10) for (let x = -19; x < 24; x += 8) {
     parts.steel.push(box(.28, .06, .28, x, y + .05, z));
@@ -363,9 +361,11 @@ function buildClass(type, materials) {
 
 export function makeNavalAssets() {
   const paint = surfaceMaps(), deck = surfaceMaps(true), materials = materialsFor(paint, deck);
-  const classes = Object.fromEntries(Object.keys(NAVAL_MODELS).map(type => [type, buildClass(type, materials)]));
+  const classes = Object.fromEntries(Object.keys(NAVAL_MODELS).filter(type => !NAVAL_MODELS[type].asset)
+    .map(type => [type, buildClass(type, materials)]));
   const owned = new Set(); let disposed = false;
-  return { classes, materials, textures: { paint, deck }, owned,
+  // `imported` holds caller-owned model assets (see fujian.js); never disposed here.
+  return { classes, materials, textures: { paint, deck }, owned, imported: {},
     dispose() {
       if (disposed) return; disposed = true;
       for (const { levels } of Object.values(classes)) for (const level of levels) for (const { geometry } of level) geometry.dispose();
@@ -376,17 +376,20 @@ export function makeNavalAssets() {
 }
 
 export function makeNavalShip(assets, type, number = NAVAL_MODELS[type]?.number) {
-  if (!assets.classes[type]) throw new Error(`Unknown naval model: ${type}`);
-  const { def, levels } = assets.classes[type], root = new THREE.Group(), lod = new THREE.LOD();
+  const def = NAVAL_MODELS[type], source = def?.asset ? assets.imported[def.asset] : assets.classes[type];
+  if (!source) throw new Error(def ? `Naval model not loaded: ${type}` : `Unknown naval model: ${type}`);
+  const { levels } = source, root = new THREE.Group(), lod = new THREE.LOD();
   root.name = `${def.name} ${number}`; root.userData = { modelType: type, country: def.country, kind: def.kind, number, definition: def, lod };
   levels.forEach((list, index) => {
     const group = new THREE.Group(); group.name = index ? 'distant-silhouette' : 'detailed-ship';
     for (const { key, geometry, material } of list) {
       const mesh = new THREE.Mesh(geometry, material); mesh.name = `naval-${type}-${key}`;
-      mesh.castShadow = index === 0 && key !== 'glass'; mesh.receiveShadow = true; group.add(mesh);
+      mesh.castShadow = index === 0 && key !== 'glass' && !material.transparent; mesh.receiveShadow = true; group.add(mesh);
     }
     lod.addLevel(group, index ? 2600 : 0);
   });
+  // The imported Fujian carries its own modelled hull numbers.
+  if (def.asset) { root.add(lod); return root; }
   const y = def.deckY;
   const stencilParts = [];
   if (def.kind === 'carrier') stencilParts.push(digits(number, 6.5, 1, y + .14, -127));

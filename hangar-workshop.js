@@ -1,17 +1,17 @@
-import { AIRCRAFT, STORES, LOADOUT_PRESETS, UPGRADE_TRACKS, PILOT_XP, presetLoadout, loadoutSummary, validateLoadout,
+import { AIRCRAFT, STORES, presetsFor, UPGRADE_TRACKS, PILOT_XP, presetLoadout, loadoutSummary, validateLoadout,
   normalizeWorkshop, pilotLevel, effectiveAircraft, upgradeAvailability, purchaseUpgrade } from './aircraft-systems.js';
 
 const $ = id => document.getElementById(id);
 const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
+// Header copy per airframe; the source note distinguishes published figures from estimates.
+const WORKSHOP_COPY = {
+  fa18c: { eyebrow: 'HORNET / AIRCRAFT WORKSHOP', source: '兼容性与公开重量参考现实 F/A-18C；单挂点重量上限、飞行响应、升级增益和射程采用游戏参数。' },
+  j16: { eyebrow: 'J-16 / AIRCRAFT WORKSHOP', source: '歼-16 无官方公开参数，重量与挂点为公开估计值及模型挂架；单挂点上限、飞行响应、升级增益和射程采用游戏参数。' },
+};
 export class HangarWorkshop {
   constructor(profile, onChange) {
     this.profile = normalizeWorkshop(profile); this.onChange = onChange;
     this.aircraftId = 'fa18c'; this.saved = true;
-    $('loadoutPresets').replaceChildren(...Object.entries(LOADOUT_PRESETS).map(([id, preset]) => {
-      const button = element('button', 'workshop-preset', preset.name); button.dataset.preset = id;
-      button.addEventListener('click', () => this.commitLoadout(presetLoadout(id, this.aircraftId)));
-      return button;
-    }));
     $('workshopPanel').addEventListener('keydown', event => {
       if (event.key !== 'Tab') return;
       const items = [...$('workshopPanel').querySelectorAll('button:not(:disabled),select:not(:disabled),a[href]')];
@@ -21,6 +21,7 @@ export class HangarWorkshop {
     });
   }
   setProfile(profile) { this.profile = normalizeWorkshop(profile); this.render(); }
+  setAircraft(aircraftId) { this.aircraftId = Object.hasOwn(AIRCRAFT, aircraftId) ? aircraftId : 'fa18c'; }
   commit(profile, message) {
     this.profile = normalizeWorkshop(profile);
     this.saved = this.onChange(this.profile) !== false;
@@ -35,6 +36,19 @@ export class HangarWorkshop {
   render() {
     const p = this.profile, aircraft = AIRCRAFT[this.aircraftId], slots = p.loadouts[this.aircraftId];
     const stats = effectiveAircraft(this.aircraftId, p), summary = loadoutSummary(slots, this.aircraftId), level = pilotLevel(p.xp);
+    const copy = WORKSHOP_COPY[this.aircraftId];
+    $('workshopEyebrow').textContent = copy.eyebrow; $('workshopSourceNote').textContent = copy.source;
+    $('workshopAircraft').textContent = `${aircraft.name} · ${aircraft.role}`;
+    $('workshopStationCount').textContent = `${aircraft.stations.length} 个挂点`; $('loadoutNote').textContent = aircraft.workshopNote;
+    // SVG elements have no `hidden` property; toggle the attribute itself.
+    document.querySelectorAll('.hardpoint-map').forEach(map => map.toggleAttribute('hidden', map.dataset.aircraft !== this.aircraftId));
+    // Rebuild preset buttons only when the airframe changes, so a click keeps focus.
+    if (this.presetAircraft !== this.aircraftId) $('loadoutPresets').replaceChildren(...Object.entries(presetsFor(this.aircraftId)).map(([id, preset]) => {
+      const button = element('button', 'workshop-preset', preset.name); button.dataset.preset = id;
+      button.addEventListener('click', () => this.commitLoadout(presetLoadout(id, this.aircraftId)));
+      return button;
+    }));
+    this.presetAircraft = this.aircraftId;
     $('workshopRank').textContent = `指挥官 ${level} 级`;
     $('workshopCredits').textContent = `${p.credits.toLocaleString()} 改装点`;
     const nextXp = PILOT_XP[level];
@@ -62,7 +76,7 @@ export class HangarWorkshop {
     if (focused) $(`station-${focused}`)?.focus();
     $('loadoutMass').textContent = `${Math.round(summary.payloadKg).toLocaleString()} / ${aircraft.real.maxPayloadKg.toLocaleString()} kg`;
     $('loadoutTakeoff').textContent = `${Math.round(summary.takeoffKg).toLocaleString()} / ${aircraft.real.maxTakeoffKg.toLocaleString()} kg`;
-    $('loadoutInventory').textContent = `空空 ${summary.air} · 反舰 ${summary.sea} · M61A1 ${stats.maxAmmo} 发`;
+    $('loadoutInventory').textContent = `空空 ${summary.air} · 反舰 ${summary.sea} · ${aircraft.gun} ${stats.maxAmmo} 发`;
     $('loadoutWarning').textContent = summary.warning || '挂点与起飞重量检查通过';
     $('loadoutWarning').classList.toggle('unbalanced', !!summary.warning);
     $('upgradeTracks').replaceChildren(...Object.entries(UPGRADE_TRACKS).map(([id, track]) => {

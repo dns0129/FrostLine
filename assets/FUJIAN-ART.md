@@ -1,6 +1,6 @@
 # 福建舰（CV-18）Blender 模型
 
-可编辑源文件 `assets/models/fujian-source/Fujian-CV18.blend`，导出件 `assets/models/fujian.glb`（公制、Y 向上、舰艏朝 -Z，甲板贴图以 JPEG 内嵌）。三视图与海面透视渲染见 `assets/three-views/Fujian-CV18-three-view.png`。本模型尚未接入游戏，也与游戏里 `naval-models.js` 的程序化福建舰相互独立。
+可编辑源文件 `assets/models/fujian-source/Fujian-CV18.blend`，导出件 `assets/models/fujian.glb`（公制、Y 向上、舰艏朝 -Z，甲板贴图以 JPEG 内嵌）。三视图与海面透视渲染见 `assets/three-views/Fujian-CV18-three-view.png`。1.14 起本模型替换了游戏中原有的程序化福建舰：`fujian.js` 按材质合并网格（近景 15 个绘制对象、约 2.6 万三角形），并从舰体、甲板、舷台和舰岛主体生成远景轮廓（5 个绘制对象、约 3 千三角形），由 `ambient-fleet.js` 用于默认中方编队的 CN-CV-18。
 
 网上没有可免费使用的开放授权福建舰网格（检索到的 CGTrader / TurboSquid / RenderHub 版本均为付费或仅限编辑用途），所以全部几何体由 `scripts/build-fujian.py` 在 Blender 中程序生成。
 

@@ -15,7 +15,7 @@
  <header class="masthead">
   <a class="brand" href="#" aria-label="霜线主页"><span class="brand-mark">╱╲</span><span>FROSTLINE<span class="brand-sub">AIR &amp; SEA COMBAT</span></span></a>
   <nav class="base-tabs" aria-label="基地设施"><button data-base="aircraft" class="selected" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2 8 7 5v2l-7-2-1 5h-2l-1-5-7 2v-2l7-5Z"/></svg>机库<span>HANGAR</span></button><button data-base="destroyer" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14h18l-3 5H7l-4-5Zm5-2V8h9v4M12 8V3m-3 2h7M3 21q3-2 6 0t6 0t6 0"/></svg>海军基地<span>NAVAL BASE</span></button></nav>
-  <div class="base-account"><span class="status-dot"></span><span>本地指挥官<small>1 架飞机 · 1 艘战舰</small></span></div>
+  <div class="base-account"><span class="status-dot"></span><span>本地指挥官<small>2 架飞机 · 1 艘战舰</small></span></div>
   <button id="workshopBtn" class="workshop-open plane-only">挂载 / 升级</button>
   <button id="settingsBtn" class="icon-btn" aria-label="设置">⚙</button>
  </header>
@@ -53,9 +53,10 @@
    <div class="campaign-layout"><nav id="campaignMissions" aria-label="战役关卡"></nav><article class="campaign-detail" aria-labelledby="campaignTitle"><div class="campaign-meta"><span id="campaignTag"></span><span id="campaignLocation"></span></div><h3 id="campaignTitle"></h3><p class="campaign-subtitle" id="campaignSubtitle"></p><p id="campaignStory"></p><h4>作战目标</h4><ul id="campaignObjectives"></ul><p id="campaignRules" class="campaign-rules"></p><p id="campaignStatus" class="campaign-status" aria-live="polite"></p><div class="campaign-launch"><button id="campaignBriefingBtn" class="secondary">剧情与任务简报</button><button id="campaignStartBtn" class="primary">进入第一关 ↗</button></div></article></div>
  </section>
  <footer class="fleet-deck">
-  <div class="fleet-heading"><span>我的载具 <small>OWNED VEHICLES</small><b>02</b></span><span class="fleet-station">北境群岛 / NORTHERN ARCHIPELAGO</span><span class="fleet-record">任务最高纪录 <strong id="bestScore">00000 <small>PTS</small></strong></span></div>
+  <div class="fleet-heading"><span>我的载具 <small>OWNED VEHICLES</small><b>03</b></span><span class="fleet-station">北境群岛 / NORTHERN ARCHIPELAGO</span><span class="fleet-record">任务最高纪录 <strong id="bestScore">00000 <small>PTS</small></strong></span></div>
   <div class="fleet-cards" role="group" aria-label="已拥有的飞机与战舰">
    <button data-vehicle="aircraft" class="vehicle-card selected" aria-pressed="true"><span class="vehicle-card-status">已拥有 <i></i></span><svg class="vehicle-card-art" viewBox="0 0 150 70" aria-hidden="true"><path d="m10 39 46-8 25-21 7 2-10 18 25 1 18-9 7 2-8 18-30 8-20 13-8-1 7-13-44-1-15-6Z"/><path d="m24 39 79-4m-39-2 18 7"/></svg><span class="vehicle-card-name">F/A-18C <strong>大黄蜂</strong><small>多用途战斗机</small></span><span class="vehicle-card-detail">双发 / 空空导弹 / 热焰弹</span><span class="vehicle-card-check">✓</span></button>
+   <button data-vehicle="j16" class="vehicle-card" aria-pressed="false"><span class="vehicle-card-status">已拥有 <i></i></span><svg class="vehicle-card-art" viewBox="0 0 150 70" aria-hidden="true"><path d="m4 41 34-7 15-2 7-6h12l7 6 25 1 13-19h7l-4 19 20 1 6 4-6 5-28 2-15 10h-8l5-9-36 1-33-1Z"/><path d="m53 32 19 0m6 6 40-1m-60 4 12 6"/></svg><span class="vehicle-card-name">J-16 <strong>歼-16</strong><small>重型多用途战斗机</small></span><span class="vehicle-card-detail">双座 / 霹雳-15 / 鹰击-83K</span><span class="vehicle-card-check">✓</span></button>
    <button data-vehicle="destroyer" class="vehicle-card" aria-pressed="false"><span class="vehicle-card-status">已拥有 <i></i></span><svg class="vehicle-card-art" viewBox="0 0 150 70" aria-hidden="true"><path d="m6 48 133-4-12 13H25L6 48Zm35-3 2-13h36l5 12m-27-12V22h14v10m-7-10V9m-8 7h17m13 29V36h21v8m-73 2V39h12v7m-8-6-15-4"/></svg><span class="vehicle-card-name">D-21 <strong>霜卫</strong><small>防空驱逐舰</small></span><span class="vehicle-card-detail">舰炮 / 防空导弹 / 反舰导弹</span><span class="vehicle-card-check">✓</span></button>
   </div>
   <p class="fleet-note"><span>霜线 / FROSTLINE</span> 离线单机 · 选择与设置保存在这台设备</p>
@@ -74,27 +75,31 @@
 </div>
 <div id="modalBackdrop" class="modal-backdrop" hidden>
  <section id="workshopPanel" class="panel workshop-panel" role="dialog" aria-modal="true" aria-labelledby="workshopTitle" hidden>
-  <div class="panel-top"><span class="eyebrow">HORNET / AIRCRAFT WORKSHOP</span><button class="close-panel" aria-label="关闭改装中心">×</button></div>
-  <div class="workshop-heading"><div><h2 id="workshopTitle">挂载与升级</h2><p>F/A-18C 大黄蜂 · 标准多用途战斗机</p></div><div class="workshop-wallet"><strong id="workshopCredits"></strong><span id="workshopRank"></span></div></div>
+  <div class="panel-top"><span class="eyebrow" id="workshopEyebrow">HORNET / AIRCRAFT WORKSHOP</span><button class="close-panel" aria-label="关闭改装中心">×</button></div>
+  <div class="workshop-heading"><div><h2 id="workshopTitle">挂载与升级</h2><p id="workshopAircraft">F/A-18C 大黄蜂 · 标准多用途战斗机</p></div><div class="workshop-wallet"><strong id="workshopCredits"></strong><span id="workshopRank"></span></div></div>
   <div class="workshop-experience"><progress id="workshopXpBar" max="1" value="0" aria-label="指挥官经验进度"></progress><span id="workshopXp"></span></div>
   <div class="workshop-layout">
-   <section class="loadout-editor" aria-labelledby="loadoutTitle"><div class="workshop-section-title"><h3 id="loadoutTitle">任务挂载</h3><span>9 个挂点</span></div>
+   <section class="loadout-editor" aria-labelledby="loadoutTitle"><div class="workshop-section-title"><h3 id="loadoutTitle">任务挂载</h3><span id="workshopStationCount">9 个挂点</span></div>
     <div id="loadoutPresets" class="loadout-presets" role="group" aria-label="推荐挂载"></div>
-    <svg class="hardpoint-map" viewBox="0 0 510 100" role="img" aria-label="挂点示意：从左翼尖 1 到右翼尖 9，中线为 5；4 和 6 在机身两侧">
+    <svg class="hardpoint-map" data-aircraft="fa18c" viewBox="0 0 510 100" role="img" aria-label="挂点示意：从左翼尖 1 到右翼尖 9，中线为 5；4 和 6 在机身两侧">
      <path d="m255 6 13 32 165 34-2 9-161-22-6 27h-18l-6-27L79 81l-2-9 165-34Z" fill="#8caaa522" stroke="#8caaa570"/>
      <g fill="#e8c591" font-size="12" text-anchor="middle"><text x="38" y="88">1</text><text x="110" y="83">2</text><text x="172" y="71">3</text><text x="232" y="48">4</text><text x="255" y="97">5</text><text x="278" y="48">6</text><text x="338" y="71">7</text><text x="400" y="83">8</text><text x="472" y="88">9</text></g>
+    </svg>
+    <svg class="hardpoint-map" data-aircraft="j16" viewBox="0 0 510 100" role="img" aria-label="挂点示意：1 和 8 为外翼，2 和 7 为内翼，3 和 6 在进气道下，4、5 为两发之间的前后串列挂点；翼尖为固定电子战吊舱" hidden>
+     <path d="m255 3 8 22 14 8 150 38 12 2v8l-14 1-132-14 4 22 24 8v4h-38l-10-8h-36l-10 8h-38v-4l24-8 4-22-132 14-14-1v-8l12-2 150-38 14-8Z" fill="#8caaa522" stroke="#8caaa570"/>
+     <g fill="#e8c591" font-size="12" text-anchor="middle"><text x="42" y="91">1</text><text x="96" y="86">2</text><text x="210" y="62">3</text><text x="255" y="47">4</text><text x="255" y="95">5</text><text x="300" y="62">6</text><text x="414" y="86">7</text><text x="468" y="91">8</text></g>
     </svg>
     <div id="hardpointGrid" class="hardpoint-grid"></div>
     <dl class="loadout-totals"><div><dt>外挂重量</dt><dd id="loadoutMass"></dd></div><div><dt>起飞重量</dt><dd id="loadoutTakeoff"></dd></div></dl>
     <p id="loadoutInventory" class="loadout-inventory"></p><p id="loadoutWarning" class="loadout-warning" role="status"></p>
-    <p class="workshop-note">翼尖仅挂 AIM-9；AIM-120 可在翼下双联；鱼叉仅挂翼下，副油箱占用内翼或中心线。重载与不对称挂载会降低机动响应。</p>
+    <p class="workshop-note" id="loadoutNote">翼尖仅挂 AIM-9；AIM-120 可在翼下双联；鱼叉仅挂翼下，副油箱占用内翼或中心线。重载与不对称挂载会降低机动响应。</p>
    </section>
    <section class="upgrade-editor" aria-labelledby="upgradeTitle"><div class="workshop-section-title"><h3 id="upgradeTitle">航空技术升级</h3><span>全机型通用</span></div><div id="upgradeTracks" class="upgrade-tracks"></div>
-    <p class="workshop-note">各项 5 级。实战击落、击沉与完成任务可获得改装点和 XP；训练不发奖励。升级按机型基础性能计算，所有飞机共享技术等级，当前拥有 1 架。</p>
+    <p class="workshop-note">各项 5 级。实战击落、击沉与完成任务可获得改装点和 XP；训练不发奖励。升级按机型基础性能计算，所有飞机共享技术等级，当前拥有 2 架。</p>
    </section>
   </div>
   <footer class="workshop-footer"><p id="workshopStatus" role="status"></p><button class="close-panel workshop-done">完成配置 ↗</button></footer>
-  <p class="workshop-note">兼容性与公开重量参考现实 F/A-18C；单挂点重量上限、飞行响应、升级增益和射程采用游戏参数。<a href="./docs/aircraft-systems.md" target="_blank" rel="noopener">参数与来源</a></p>
+  <p class="workshop-note"><span id="workshopSourceNote">兼容性与公开重量参考现实 F/A-18C；单挂点重量上限、飞行响应、升级增益和射程采用游戏参数。</span><a href="./docs/aircraft-systems.md" target="_blank" rel="noopener">参数与来源</a></p>
  </section>
  <section id="guidePanel" class="panel" hidden><div class="panel-top"><span class="eyebrow">PILOT HANDBOOK</span><button class="close-panel" aria-label="关闭">×</button></div><h2>掌握你的载具</h2><p class="panel-intro">先倾斜机翼，再带杆转弯。保持速度，才能保持优势。</p><div class="guide-grid"><div><h3>PC 键鼠</h3><dl><dt>W / S · ↑ / ↓</dt><dd>压杆 / 拉杆</dd><dt>A / D · ← / →</dt><dd>向左 / 向右滚转</dd><dt>Q / E</dt><dd>方向舵微调</dd><dt>空格 / 鼠标左键</dt><dd>持续机炮射击</dd><dt>F / R / X / Tab</dt><dd>空空 / 反舰 / 诱饵 / 切换目标</dd><dt>Shift / Ctrl</dt><dd>加力 / 减速板</dd><dt>鼠标滚轮</dt><dd>拉近 / 拉远追尾镜头</dd><dt>− / + · C · Esc</dt><dd>油门 / 视角 / 暂停</dd></dl></div><div><h3>手机触控</h3><p>建议横屏。左下摇杆控制滚转与俯仰；右下持续按住机炮，同时操纵飞机。</p><p>拖动油门条改变推力，按住「加力」迅速增速。</p><h3>交战技巧</h3><p>把敌机带入瞄准圈，保持约 1 秒获得导弹锁定。机炮要瞄准敌机前方的提前量圆点。</p><p>导弹来袭时，释放热焰弹并转向。低速会失速，俯冲或加力恢复速度。</p></div></div><div class="ship-guide"><h3>驱逐舰 · D-21 霜卫</h3><p>先推油门起航；A/D 或 ←/→ 转舵，−/+ 调整油门，Ctrl 紧急减速。J/L 左右转炮，W/S 抬炮/压炮，空格或鼠标左键开炮。舰外视角中，舰炮跟随屏幕中央准星瞄准。鼠标右键拖动转动视角，准星对准敌舰后按空格或鼠标左键开炮；J/L、W/S 可微调视角，滚轮缩放，V 回正到舰艉。</p><p>手机在画面空白处滑动瞄准，中央准星对准敌舰后按住「开火」；双指捏合缩放，点击「回正」返回舰艉。左摇杆转舵，油门条控制航速，可以同时转舵、拖动视角和持续开火。舰桥视角保留右摇杆与 J/L、W/S 手动瞄炮。点击「换目标」切换雷达目标；空中目标锁定后按 F 或「防空」发射防空导弹；敌舰持续锁定 1.5 秒后按 R 或「反舰」发射反舰导弹。两类导弹有独立库存和冷却。X /「诱饵」干扰来袭导弹。C /「舰桥」切换舰桥与自由跟随视角，返回时保留观察角度。避开岛屿，油门归零会缓慢停船。</p><p>海战选择「海峡歼敌」或「舰炮训练」。转动视角，将中央准星对准敌舰或提前量圆点；等待「舰炮就绪」后开炮。舰炮会逐渐转向，转炮期间的小圈显示实际落点方向；Tab /「换目标」可选择下一艘。敌舰会机动并用舰炮反击，转舵规避来袭炮弹。防空导弹用于空中目标；海上目标可用舰炮或反舰导弹。反舰雷达范围为 5.5 公里，岛屿会阻挡锁定与导弹飞行。</p></div><button id="guideTrain" class="primary">进入飞行训练 <span>↗</span></button></section>
  <section id="settingsPanel" class="panel narrow" hidden><div class="panel-top"><span class="eyebrow">FLIGHT CONFIGURATION</span><button class="close-panel" aria-label="关闭">×</button></div><h2>作战设置</h2><label class="setting-row"><span>作战难度<small>影响敌机进攻频率与伤害</small></span><select id="difficultySetting"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">王牌</option></select></label><label class="setting-row"><span>画面质量<small>低画质适合低功耗手机</small></span><select id="qualitySetting"><option value="auto">自动</option><option value="high">精细</option><option value="low">流畅</option></select></label><label class="setting-row"><span>跟随镜头距离<small>左侧拉近 · 右侧拉远，作战中也可滚轮或舰船双指缩放</small></span><input id="cameraDistanceSetting" aria-label="跟随镜头距离" type="range" min="78" max="140" value="100"></label><label class="setting-row"><span>音效<small>引擎、舰炮与锁定提示</small></span><input id="soundSetting" type="checkbox" checked></label><label class="setting-row"><span>触控俯仰反转<small>开启后向上推杆变为抬头</small></span><input id="invertSetting" type="checkbox"></label><p class="save-note">设置自动保存在这台设备。难度在下一次出击生效。</p></section>

@@ -5,6 +5,9 @@ import { Simulation } from '../simulation.js';
 import { terrainHeight } from '../world-math.js';
 import { NAVAL_MODELS, makeNavalAssets, makeNavalShip } from '../naval-models.js';
 import { AmbientFleet, createDefaultFleet, updateDefaultFleet, sampleFleetRoute, FLEET_ROUTES } from '../ambient-fleet.js';
+import { fujianAssets } from './fujian-fixture.mjs';
+
+const imported = { fujian: fujianAssets };
 
 test('every mission and vehicle starts exactly two scene-only carrier groups without changing combat targets', () => {
   const sim = new Simulation();
@@ -55,7 +58,7 @@ test('leader route is continuous at all joins including loop closure and follows
 });
 
 test('pause freezes fleet telemetry and waves; restarting restores the initial six ships without duplication', () => {
-  const sim = new Simulation(), scene = new THREE.Scene(), fleet = new AmbientFleet(scene);
+  const sim = new Simulation(), scene = new THREE.Scene(), fleet = new AmbientFleet(scene, { imported });
   sim.start('naval-training'); const initial = JSON.stringify(sim.ambientShips);
   for (let i = 0; i < 120; i++) sim.update(1 / 60);
   assert.notEqual(JSON.stringify(sim.ambientShips), initial);
@@ -69,9 +72,10 @@ test('pause freezes fleet telemetry and waves; restarting restores the initial s
   fleet.dispose(); fleet.dispose(); assert.equal(scene.children.length, 0);
 });
 
-test('four distinct textured ship classes have finite outward geometry, appropriate scale and cheaper distant silhouettes', () => {
+test('three procedural textured ship classes have finite outward geometry, appropriate scale and cheaper distant silhouettes', () => {
   const assets = makeNavalAssets();
-  for (const [type, def] of Object.entries(NAVAL_MODELS)) {
+  assert.deepEqual(Object.keys(assets.classes), ['forrestal', 'burke', 'type052d']);
+  for (const [type, def] of Object.entries(NAVAL_MODELS).filter(([, def]) => !def.asset)) {
     const ship = makeNavalShip(assets, type), counts = [];
     for (const level of ship.userData.lod.levels) {
       let triangles = 0, meshes = 0;
@@ -99,15 +103,44 @@ test('four distinct textured ship classes have finite outward geometry, appropri
   assets.dispose();
 });
 
+test('the Fujian is the imported Blender model, sized from its metadata and shared between instances', () => {
+  const assets = makeNavalAssets();
+  assert.throws(() => makeNavalShip(assets, 'fujian'), /not loaded/);
+  Object.assign(assets.imported, imported);
+  const def = NAVAL_MODELS.fujian, ship = makeNavalShip(assets, 'fujian'), again = makeNavalShip(assets, 'fujian');
+  assert.equal(def.asset, 'fujian'); assert.equal(def.length, fujianAssets.metadata.length_overall);
+  assert.equal(def.deckY, fujianAssets.metadata.flight_deck_height);
+  const counts = ship.userData.lod.levels.map(level => {
+    let triangles = 0, meshes = 0;
+    level.object.traverse(o => {
+      if (!o.isMesh) return; meshes++;
+      assert.ok(o.geometry.attributes.position.array.every(Number.isFinite)); triangles += o.geometry.index.count / 3;
+    });
+    assert.ok(meshes <= 15); return triangles;
+  });
+  assert.equal(counts[0], fujianAssets.metadata.triangles); assert.ok(counts[1] < counts[0] * .15);
+  const size = new THREE.Box3().setFromObject(ship.userData.lod.levels[0].object).getSize(new THREE.Vector3());
+  assert.ok(Math.abs(size.z - def.length) < .5 && Math.abs(size.y - 68.05) < .5, size.toArray().join());
+  // Bow -Z, island to starboard (+X), waterline at y = 0.
+  const island = ship.getObjectByName('naval-fujian-PLAN island grey').geometry.boundingBox;
+  assert.ok(island.min.x > 15); assert.ok(ship.getObjectByName('naval-fujian-Antifouling red').geometry.boundingBox.max.y < .5);
+  assert.ok(ship.getObjectByName('naval-fujian-Flight deck non-skid').material.map);
+  assert.equal(ship.getObjectByName('naval-fujian-Hull number white').geometry, again.getObjectByName('naval-fujian-Hull number white').geometry);
+  assert.equal(ship.getObjectByName('hull-and-deck-number'), undefined);
+  assets.dispose();
+});
+
 test('fleet disposal releases shared GPU resources exactly once and mobile quality shortens detail distance', () => {
-  const scene = new THREE.Scene(), fleet = new AmbientFleet(scene), resources = new Set();
-  fleet.group.traverse(o => { if (o.geometry) resources.add(o.geometry); if (o.material) resources.add(o.material); });
+  const scene = new THREE.Scene(), fleet = new AmbientFleet(scene, { imported }), resources = new Set(), external = new Set();
+  for (const level of fujianAssets.levels) for (const { geometry, material } of level) external.add(geometry).add(material);
+  fleet.group.traverse(o => { for (const r of [o.geometry, o.material]) if (r && !external.has(r)) resources.add(r); });
   for (const maps of Object.values(fleet.assets.textures)) Object.values(maps).forEach(t => resources.add(t));
   Object.values(fleet.assets.classes).forEach(c => c.levels.flat().forEach(a => resources.add(a.geometry)));
   resources.add(fleet.map);
-  const disposed = new Map(); resources.forEach(r => r.addEventListener('dispose', () => disposed.set(r, (disposed.get(r) || 0) + 1)));
+  const disposed = new Map(); [...resources, ...external].forEach(r => r.addEventListener('dispose', () => disposed.set(r, (disposed.get(r) || 0) + 1)));
   fleet.setQuality('low'); assert.ok(fleet.ships.every(s => s.model.userData.lod.levels[1].distance === 1800));
   fleet.setQuality('high'); assert.ok(fleet.ships.every(s => s.model.userData.lod.levels[1].distance === 2600));
   fleet.dispose(); fleet.dispose();
   resources.forEach(r => assert.equal(disposed.get(r), 1));
+  external.forEach(r => assert.equal(disposed.get(r), undefined, 'the imported Fujian stays owned by the renderer'));
 });

@@ -144,3 +144,87 @@ test('fuel exhaustion stops engine thrust and boost while pause freezes fuel and
   sim.update(1/60,{boost:true});assert.equal(sim.player.boost,false);assert.ok(sim.player.speed<speed);
   sim.state='paused';const snapshot=JSON.stringify(sim.player);run(sim,2,{boost:true,fire:true});assert.equal(JSON.stringify(sim.player),snapshot);
 });
+
+const j16Profile = preset => { const p = normalizeWorkshop(null); if (preset) p.loadouts.j16 = presetLoadout(preset, 'j16'); return p; };
+const j16Sim = (preset, mode = 'training') => { const sim = new Simulation(); sim.configureAircraft(j16Profile(preset), 'j16'); sim.start(mode, 'normal', 'j16'); return sim; };
+
+test('J-16 registers its own base values, real references and eight symmetric stations', () => {
+  const j16 = AIRCRAFT.j16;
+  assert.deepEqual(j16.real, { emptyKg: 17700, internalFuelKg: 9400, maxTakeoffKg: 35000, maxPayloadKg: 8000, cannonRounds: 150, engineThrustKN: 270 });
+  assert.equal(j16.stations.length, 8); assert.deepEqual(Object.keys(j16.presets), Object.keys(LOADOUT_PRESETS));
+  for (const s of j16.stations) {
+    const mirror = j16.stations.find(o => o.id === 9 - s.id);
+    assert.ok(mirror.x === -s.x); assert.deepEqual(mirror.allowed, s.allowed); assert.equal(mirror.limitKg, s.limitKg);
+    for (const [store, count] of Object.entries(s.allowed)) { assert.equal(count, 1); assert.ok(STORES[store].massKg <= s.limitKg); }
+  }
+  for (const name of Object.keys(j16.presets)) {
+    const slots = presetLoadout(name, 'j16'), summary = loadoutSummary(slots, 'j16');
+    assert.equal(validateLoadout(slots, 'j16').valid, true, name);
+    assert.ok(summary.takeoffKg <= 35000); assert.ok(Math.abs(summary.moment) < 1e-7);
+  }
+  assert.deepEqual([presetLoadout('multirole', 'j16'), presetLoadout('air', 'j16'), presetLoadout('sea', 'j16')].map(s => {
+    const x = loadoutSummary(s, 'j16'); return [x.air, x.sea]; }), [[6, 2], [8, 0], [4, 2]]);
+  // Hornet stores never fit the J-16 and vice versa.
+  for (const [station, store] of [[1, 'aim9'], [2, 'harpoon'], [3, 'yj83k'], [4, 'tank'], [1, 'pl15'], [8, 'yj83k']]) {
+    const slots = presetLoadout('multirole', 'j16'); Object.assign(slots[station - 1], { store, count: 1 });
+    assert.equal(validateLoadout(slots, 'j16').valid, false, `${station} ${store}`);
+  }
+  const hornet = presetLoadout(); hornet[0] = { station: 1, store: 'pl10', count: 1 }; assert.equal(validateLoadout(hornet).valid, false);
+  assert.deepEqual(normalizeWorkshop(null).loadouts.j16, presetLoadout('multirole', 'j16'));
+  assert.deepEqual(normalizeWorkshop({ loadouts: { j16: presetLoadout() } }).loadouts.j16, presetLoadout('multirole', 'j16'));
+});
+
+test('shared technology levels apply to the J-16 base values without changing its loadout or gun', () => {
+  const p = j16Profile(), upgraded = { ...p, levels: { engine: 5, firepower: 5, defense: 5, maneuver: 5 } };
+  const base = effectiveAircraft('j16', p), advanced = effectiveAircraft('j16', upgraded), hornet = effectiveAircraft('fa18c', p);
+  assert.equal(base.maxHealth, 125); assert.equal(advanced.maxHealth, 175); assert.equal(base.maxAmmo, 150); assert.equal(advanced.maxAmmo, 150);
+  assert.equal(base.maxFlares, 8); assert.ok(base.gunDamage > hornet.gunDamage); assert.ok(base.rollRate < hornet.rollRate);
+  assert.equal(base.fuelCapacity, 9400); assert.ok(advanced.thrust > base.thrust);
+  assert.equal(advanced.air, base.air); assert.equal(advanced.sea, base.sea); assert.equal(advanced.payloadKg, base.payloadKg);
+});
+
+test('a configured J-16 sortie flies its own airframe, PL-15 range and station launch points', () => {
+  const sim = j16Sim('air'); assert.equal(sim.vehicle, 'aircraft'); assert.equal(sim.player.aircraftId, 'j16');
+  assert.equal(sim.player.ammo, 150); assert.equal(sim.player.health, 125); assert.equal(sim.player.missiles, 8);
+  assert.equal(sim.player.selectedAirWeapon, 'pl10');
+  fixedAirTarget(sim, 7000); run(sim, 1.5); assert.equal(sim.lockProgress, 0);
+  assert.equal(sim.cycleAirWeapon(), true); assert.equal(sim.player.selectedAirWeapon, 'pl15'); run(sim, 1.3); assert.equal(sim.lockProgress, 1);
+  assert.equal(sim.launchMissile(), true); const missile = sim.missiles[0];
+  assert.equal(missile.store, 'pl15'); assert.equal(missile.maxSpeed, STORES.pl15.speed); assert.ok([2, 3, 4, 5, 6, 7].includes(missile.station));
+  const station = AIRCRAFT.j16.stations.find(s => s.id === missile.station);
+  assert.ok(missile.pos.distanceTo(sim.player.pos.clone().add(new THREE.Vector3(...station.position))) < 1e-6);
+  sim._fireGun(); assert.equal(sim.tracers.at(-1).damage, 40); assert.equal(sim.player.ammo, 149);
+});
+
+test('J-16 YJ-83K uses its own range, speed and damage and sinks a real target', () => {
+  const sim = j16Sim('sea', 'naval-training'); assert.equal(sim.player.antiShipMissiles, 2);
+  assert.ok(sim.drainEvents().some(e => e.text?.includes('歼-16对海出击')));
+  sim._updatePlayer = () => {}; sim._updateEnemies = () => {};
+  const target = sim.enemies.find(e => e.id === sim.targetId) || sim.enemies[0]; sim.targetId = target.id;
+  target.pos.copy(sim.player.pos).add(new THREE.Vector3(0, -sim.player.pos.y + .5, -7300));
+  run(sim, 1.6); assert.equal(sim.antiShipLockProgress, 1, 'YJ-83K locks beyond the 7 km Harpoon range');
+  assert.equal(sim.launchAntiShipMissile(), true); const missile = sim.missiles[0];
+  assert.equal(missile.store, 'yj83k'); assert.equal(missile.maxSpeed, 290); assert.equal(missile.damage, 250); assert.ok([2, 7].includes(missile.station));
+  run(sim, 40); assert.ok(sim.kills >= 1); assert.equal(sim.player.antiShipMissiles, 1);
+});
+
+test('J-16 wave supply only restores configured stores and its own cannon capacity', () => {
+  const sim = j16Sim('multirole', 'intercept');
+  for (const slot of sim.player.stores) slot.count = 0; sim._refreshAircraftStores(); sim.player.ammo = 0;
+  sim.enemies.forEach(e => e.health = 0); sim.update(1 / 60);
+  assert.equal(sim.player.missiles, 3); assert.equal(sim.player.antiShipMissiles, 2); assert.equal(sim.player.ammo, 150);
+  for (const slot of sim.player.stores) assert.ok(slot.count <= sim.player.configuredStores.find(s => s.station === slot.station).count);
+});
+
+test('campaign chapters fly whichever aircraft the player configured', () => {
+  const sim = new Simulation(); sim.configureAircraft(j16Profile('clean'), 'j16'); sim.startCampaign('dawn');
+  assert.equal(sim.player.aircraftId, 'j16'); assert.equal(sim.player.missiles, 2); assert.equal(sim.player.ammo, 150);
+  sim.configureAircraft(profile('clean')); sim.startCampaign('dawn'); assert.equal(sim.player.aircraftId, 'fa18c'); assert.equal(sim.player.ammo, 578);
+});
+
+test('an empty J-16 air-to-air inventory still reports a J-16 weapon, not the Hornet AIM-9M', () => {
+  const sim = j16Sim('air'); for (const slot of sim.player.stores) if (STORES[slot.store]?.kind === 'anti-air') slot.count = 0;
+  sim._refreshAircraftStores(); assert.equal(sim.player.missiles, 0); assert.equal(sim.player.selectedAirWeapon, 'pl10');
+  const hornet = new Simulation(); hornet.configureAircraft(profile('clean')); hornet.start('training');
+  for (const slot of hornet.player.stores) slot.count = 0; hornet._refreshAircraftStores(); assert.equal(hornet.player.selectedAirWeapon, 'aim9');
+});

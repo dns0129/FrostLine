@@ -34,9 +34,9 @@ async function bounds(page) { return page.evaluate(() => {
 try {
   const { page, context } = await open({ width: 1440, height: 900 });
   await check('Desktop owned fleet and aircraft specifications match the loaded game', async () => {
-    assert.equal(await page.locator('[data-vehicle]').count(), 2);
+    assert.equal(await page.locator('[data-vehicle]').count(), 3);
     assert.equal(await page.locator('#ownedVehicleName').innerText(), '大黄蜂');
-    assert.ok((await page.locator('#ownedVehicleWeapons').innerText()).includes('机炮 900 发'));
+    assert.ok((await page.locator('#ownedVehicleWeapons').innerText()).includes('M61A1 578 发'));
     const s = await snapshot(page); assert.equal(s.state, 'menu'); assert.equal(s.glError, 0);
   });
   await page.screenshot({ path: resolve(output, 'desktop-hangar.png') });
@@ -61,7 +61,7 @@ try {
   });
   await page.screenshot({ path: resolve(output, 'desktop-naval.png') });
   await check('Ship selection persists across reload and does not consume equipment', async () => {
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'networkidle' }); await page.waitForFunction(() => !!window.__baseQA && !document.getElementById('menu').hidden);
     assert.equal(await page.locator('#ownedVehicleName').innerText(), '霜卫');
     assert.equal((await snapshot(page)).state, 'menu');
   });
@@ -72,12 +72,13 @@ try {
     await page.locator('#pauseBtn').click(); await page.locator('#exitBtn').click();
     assert.equal(await page.locator('#menu').isVisible(), true); assert.equal((await snapshot(page)).vehicle, 'destroyer');
   });
-  await check('Owned aircraft card clears sea-only modes and launches real flight', async () => {
+  // Since 1.13 aircraft keep the sea missions (Harpoon / YJ-83K) and the Hornet carries 578 rounds.
+  await check('Owned aircraft card keeps sea missions and launches real flight', async () => {
     await page.locator('[data-vehicle="aircraft"]').click();
-    assert.equal(await page.locator('[data-mode="naval"]').isVisible(), false);
-    assert.equal(await page.locator('[data-mode="intercept"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-mode="naval"]').isVisible(), true);
+    assert.equal(await page.locator('[data-mode="naval-training"]').getAttribute('aria-pressed'), 'true');
     await page.locator('[data-mode="training"]').click(); await page.locator('#startBtn').click();
-    let s = await snapshot(page); assert.equal(s.simVehicle, 'aircraft'); assert.equal(s.ammo, 900);
+    let s = await snapshot(page); assert.equal(s.simVehicle, 'aircraft'); assert.equal(s.ammo, 578);
     await page.locator('#pauseBtn').click(); await page.locator('#exitBtn').click();
   });
   await check('Repeated base switching retains a fixed scene and reports no WebGL errors', async () => {

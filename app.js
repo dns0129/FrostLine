@@ -5,8 +5,8 @@ import { WorldRenderer } from './renderer.js';
 import { FlightInput } from './input.js';
 import { FlightAudio } from './audio.js';
 import { BaseScene } from './base-scene.js';
-import { vehicleById } from './vehicle-catalog.js';
-import { normalizeWorkshop, sortieReward } from './aircraft-systems.js';
+import { vehicleById, aircraftIdFor } from './vehicle-catalog.js';
+import { AIRCRAFT, STORES, normalizeWorkshop, sortieReward } from './aircraft-systems.js';
 import { HangarWorkshop } from './hangar-workshop.js';
 import { CAMPAIGN_LEVELS, CAMPAIGN_TITLE, campaignLevel, normalizeCampaignProgress, campaignUnlocked, recordCampaignWin, recommendedCampaignLevel, campaignObjectiveText } from './campaign.js';
 
@@ -17,12 +17,19 @@ const save=(key,v)=>{try{localStorage.setItem(key,JSON.stringify(v));return true
 let workshopProfile=normalizeWorkshop(safeRead('frostline-workshop-v1',null));
 const settings={difficulty:'normal',quality:'auto',sound:true,invert:false,cameraZoom:100,vehicle:'aircraft',...safeRead('frostline-settings',{})};
 settings.cameraZoom=clamp(Number(settings.cameraZoom)||100,78,140);
-let selectedVehicle=settings.vehicle==='destroyer'?'destroyer':'aircraft';
+const VEHICLES=['aircraft','j16','destroyer'];
+let selectedVehicle=VEHICLES.includes(settings.vehicle)?settings.vehicle:'aircraft';
+// The hangar tab returns to whichever jet was last chosen.
+let hangarVehicle=selectedVehicle!=='destroyer'?selectedVehicle:settings.hangarVehicle==='j16'?'j16':'aircraft';
 let cannonAim=null;
 const isShip=()=>selectedVehicle==='destroyer';
 const isNaval=(mode=selectedMode)=>mode==='naval'||mode==='naval-training';
 const isTraining=(mode=selectedMode)=>mode==='training'||mode==='naval-training';
-const recordKey=()=>selectedMode==='campaign'?`campaign-${selectedCampaignId}`:isShip()?`destroyer-${selectedMode}`:selectedMode;
+const aircraftId=()=>aircraftIdFor(selectedVehicle)||'fa18c',aircraft=()=>AIRCRAFT[aircraftId()];
+const hasAntiShip=()=>workshopProfile.loadouts[aircraftId()].some(s=>STORES[s.store]?.kind==='anti-ship'&&s.count>0);
+const antiShipNames=()=>[...new Set(aircraft().stations.flatMap(s=>Object.keys(s.allowed)).filter(id=>STORES[id].kind==='anti-ship').map(id=>STORES[id].short))].join(' / ');
+// Hornet records keep their original keys; other airframes and the destroyer are separate.
+const recordKey=()=>selectedMode==='campaign'?`campaign-${selectedCampaignId}`:isShip()?`destroyer-${selectedMode}`:aircraftId()==='fa18c'?selectedMode:`${aircraftId()}-${selectedMode}`;
 let campaignProgress=normalizeCampaignProgress(safeRead('frostline-campaign-v1',null));
 let selectedCampaignId=recommendedCampaignLevel(campaignProgress).id,playMode='quick';
 let records=safeRead('frostline-records',{}),selectedMode='intercept',cockpit=false,returnPanel=null,toastUntil=0,frameTime=performance.now(),accumulator=0,lastUi=0,endingShown=false;
@@ -32,7 +39,7 @@ if(debugMode){diagnostics=document.createElement('output');diagnostics.id='rende
 const sim=new Simulation();const presentation=new FlightPresentation();presentation.reset(sim);const sound=new FlightAudio();sound.enabled=settings.sound;
 let world;
 try{world=new WorldRenderer($('world'),{quality:settings.quality});}catch(e){$('bootText').textContent='无法启动 3D 画面：请开启浏览器硬件加速后重试。';throw e;}
-try{await world.modelReady;}catch(e){$('bootText').textContent='F/A-18 模型加载失败，请刷新页面重试。';world.dispose();throw e;}
+try{await world.modelReady;}catch(e){$('bootText').textContent='飞机或舰船模型加载失败，请刷新页面重试。';world.dispose();throw e;}
 const baseScene = new BaseScene(world, $('baseViewport'));
 const workshop=new HangarWorkshop(workshopProfile,profile=>{workshopProfile=profile;const saved=save('frostline-workshop-v1',profile);syncBaseVehicle();selectMode(selectedMode);return saved;});
 world.cameraZoom=settings.cameraZoom/100;
@@ -41,14 +48,14 @@ const input=new FlightInput({onAction:action,onThrottle:v=>{sim.player.throttle=
 const hud=$('hudCanvas'),ctx=hud.getContext('2d');let width=innerWidth,height=innerHeight;
 const modeNames={intercept:'破晓拦截',free:'无尽巡猎',training:'初次升空',naval:'海峡歼敌','naval-training':'舰炮训练',campaign:'北境航线'};
 const modeCodes={intercept:'INTERCEPT',free:'ENDLESS',training:'TRAINING',naval:'NAVAL','naval-training':'GUNNERY',campaign:'CAMPAIGN'};
-const notes={intercept:'驾驶 F/A-18C「大黄蜂」，清除三波入侵机群。波次间补给弹药与机体。',free:'不断迎击更密集的敌机编队。守住机体，打破自己的生存纪录。',training:'敌机不会攻击。练习倾侧转弯、提前量射击和导弹锁定。',naval:'驾驶大黄蜂对海打击。挂载鱼叉后，机头指向目标舰，持续锁定并按 R 发射。','naval-training':'两艘靶舰不会攻击。挂载鱼叉，机头指向敌舰后按 R 发射；Tab 换目标。'};
+const notes=()=>{const a=aircraft(),weapon=antiShipNames();return{intercept:`驾驶 ${a.name}，清除三波入侵机群。波次间补给弹药与机体。`,free:'不断迎击更密集的敌机编队。守住机体，打破自己的生存纪录。',training:'敌机不会攻击。练习倾侧转弯、提前量射击和导弹锁定。',naval:`驾驶${a.shortName}对海打击。挂载 ${weapon} 后，机头指向目标舰，持续锁定并按 R 发射。`,'naval-training':`两艘靶舰不会攻击。挂载 ${weapon}，机头指向敌舰后按 R 发射；Tab 换目标。`};};
 
 const shipNotes={intercept:'驾驶 D-21「霜卫」守住海域，击退三波敌机。波次间补给舰体与弹药。',free:'航行、转炮并迎击来袭机群，守住舰体，刷新防空纪录。',training:'推油门起航，练习转舵、舰炮瞄准与全向雷达锁定。靶机不会攻击。',naval:'清除三波敌舰。用舰炮或 R 反舰导弹攻击，机动规避炮火；波次间补给两类导弹与舰体。','naval-training':'两艘靶舰不会攻击。练习舰炮射击，或持续雷达锁定后按 R 发射反舰导弹。'};
-function selectVehicle(vehicle){if(vehicle==='destroyer'&&playMode==='campaign')setPlayMode('quick');selectedVehicle=vehicle==='destroyer'?'destroyer':'aircraft';settings.vehicle=selectedVehicle;save('frostline-settings',settings);document.body.classList.toggle('destroyer-ui',isShip());document.querySelectorAll('[data-vehicle]').forEach(e=>{const active=e.dataset.vehicle===selectedVehicle;e.classList.toggle('selected',active);e.setAttribute('aria-pressed',active);});$('startBtn').innerHTML=(isShip()?'开始航行':'开始飞行')+' <span>↗</span>';$('trainingName').textContent=isShip()?'初次出航':'初次升空';$('trainingDetail').textContent=isShip()?'安全训练 · 航行与舰炮':'安全训练 · 熟悉飞行';$('seaTrainingName').textContent=isShip()?'舰炮训练':'反舰训练';$('seaTrainingDetail').textContent=isShip()?'静止靶舰 · 熟悉射击':'鱼叉导弹 · 对海训练';syncBaseVehicle();$('speedLabel').textContent=isShip()?'航速 KTS':'空速 KTS';$('altLabel').textContent=isShip()?'炮仰角 °':'高度 M';$('healthLabel').textContent=isShip()?'舰体':'机体';$('heatLabel').textContent=isShip()?'舰炮温度':'机炮温度';$('gunLabel').textContent=isShip()?'舰炮':'机炮';$('missileLabel').textContent=isShip()?'防空 F':'导弹';$('flareLabel').textContent=isShip()?'诱饵':'热焰弹';$('touchFlare').innerHTML=(isShip()?'诱饵':'热焰弹')+'<span>X</span>';$('touchMissile').firstChild.textContent=isShip()?'防空':'导弹';$('touchBoost').textContent=isShip()?'全速':'加力';$('throttle').min=isShip()?'0':'12';$('joystick').setAttribute('aria-label',isShip()?'舰船转舵摇杆':'飞行摇杆');$('joystick').querySelector('span').textContent=isShip()?'舰船转舵':'飞行控制';$('desktopHints').innerHTML=isShip()?'<span>A/D 转舵</span><span>J/L 视角左右</span><span>W/S 视角上下</span><span>空格 开炮</span><span>F 防空</span><span>R 反舰</span><span>Tab 换目标</span><span>右键拖动 瞄准</span><span>滚轮 缩放</span><span>V 回正</span><span>C 舰桥</span>':'<span>W/S 俯仰</span><span>A/D 滚转</span><span>空格 机炮</span><span>F 空空</span><span>R 反舰</span><span>B 弹种</span><span>X 诱饵</span><span>C 视角</span><span>ESC 暂停</span>';$('guideTrain').innerHTML=(isShip()?'进入舰船训练':'进入飞行训练')+' <span>↗</span>';selectMode(selectedMode);syncCameraControls();}
+function selectVehicle(vehicle){if(vehicle==='destroyer'&&playMode==='campaign')setPlayMode('quick');selectedVehicle=VEHICLES.includes(vehicle)?vehicle:'aircraft';if(!isShip())hangarVehicle=selectedVehicle;settings.vehicle=selectedVehicle;settings.hangarVehicle=hangarVehicle;workshop.setAircraft(aircraftId());save('frostline-settings',settings);document.body.classList.toggle('destroyer-ui',isShip());document.querySelectorAll('[data-vehicle]').forEach(e=>{const active=e.dataset.vehicle===selectedVehicle;e.classList.toggle('selected',active);e.setAttribute('aria-pressed',active);});$('startBtn').innerHTML=(isShip()?'开始航行':'开始飞行')+' <span>↗</span>';$('trainingName').textContent=isShip()?'初次出航':'初次升空';$('trainingDetail').textContent=isShip()?'安全训练 · 航行与舰炮':'安全训练 · 熟悉飞行';$('seaTrainingName').textContent=isShip()?'舰炮训练':'反舰训练';$('seaTrainingDetail').textContent=isShip()?'静止靶舰 · 熟悉射击':`${antiShipNames()} · 对海训练`;syncBaseVehicle();$('speedLabel').textContent=isShip()?'航速 KTS':'空速 KTS';$('altLabel').textContent=isShip()?'炮仰角 °':'高度 M';$('healthLabel').textContent=isShip()?'舰体':'机体';$('heatLabel').textContent=isShip()?'舰炮温度':'机炮温度';$('gunLabel').textContent=isShip()?'舰炮':'机炮';$('missileLabel').textContent=isShip()?'防空 F':'导弹';$('flareLabel').textContent=isShip()?'诱饵':'热焰弹';$('touchFlare').innerHTML=(isShip()?'诱饵':'热焰弹')+'<span>X</span>';$('touchMissile').firstChild.textContent=isShip()?'防空':'导弹';$('touchBoost').textContent=isShip()?'全速':'加力';$('throttle').min=isShip()?'0':'12';$('joystick').setAttribute('aria-label',isShip()?'舰船转舵摇杆':'飞行摇杆');$('joystick').querySelector('span').textContent=isShip()?'舰船转舵':'飞行控制';$('desktopHints').innerHTML=isShip()?'<span>A/D 转舵</span><span>J/L 视角左右</span><span>W/S 视角上下</span><span>空格 开炮</span><span>F 防空</span><span>R 反舰</span><span>Tab 换目标</span><span>右键拖动 瞄准</span><span>滚轮 缩放</span><span>V 回正</span><span>C 舰桥</span>':'<span>W/S 俯仰</span><span>A/D 滚转</span><span>空格 机炮</span><span>F 空空</span><span>R 反舰</span><span>B 弹种</span><span>X 诱饵</span><span>C 视角</span><span>ESC 暂停</span>';$('guideTrain').innerHTML=(isShip()?'进入舰船训练':'进入飞行训练')+' <span>↗</span>';selectMode(selectedMode);syncCameraControls();}
 function syncBaseVehicle(){
  const vehicle=vehicleById(selectedVehicle,workshopProfile);baseScene.setVehicle(selectedVehicle);
- if(!isShip())baseScene.jet.userData.setLoadout(workshopProfile.loadouts.fa18c);
- document.body.classList.toggle('aircraft-anti-ship',!isShip()&&workshopProfile.loadouts.fa18c.some(s=>s.store==='harpoon'&&s.count>0));
+ if(!isShip())baseScene.jet.userData.setLoadout(workshopProfile.loadouts[aircraftId()]);
+ document.body.classList.toggle('aircraft-anti-ship',!isShip()&&hasAntiShip());
  $('ownedVehicleName').textContent=vehicle.name;
  $('ownedVehicleCode').innerHTML=`${vehicle.code} <span>${vehicle.english}</span>`;
  $('ownedVehicleType').textContent=vehicle.type;
@@ -58,12 +65,12 @@ function syncBaseVehicle(){
  $('ownedVehicleWeapons').textContent=vehicle.weapons;
  $('ownedVehicleStats').replaceChildren(...vehicle.stats.map(([label,value,unit])=>{const row=document.createElement('div');const dt=document.createElement('dt');dt.textContent=label;const dd=document.createElement('dd');dd.append(document.createTextNode(value+' '));const small=document.createElement('small');small.textContent=unit;dd.append(small);row.append(dt,dd);return row;}));
  $('baseViewLabel').textContent=isShip()?'海军基地 / BERTH 02':'机库 / HANGAR 01';
- document.querySelectorAll('[data-base]').forEach(button=>{const active=button.dataset.base===selectedVehicle;button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active);});
+ document.querySelectorAll('[data-base]').forEach(button=>{const active=button.dataset.base===(isShip()?'destroyer':'aircraft');button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active);});
  $('baseViewport').setAttribute('aria-label',`${vehicle.code} ${vehicle.name} 3D 展示：拖动旋转，滚轮或双指缩放，方向键旋转，Home 回正`);
 }
 function syncCameraControls(){document.body.classList.toggle('ship-bridge',isShip()&&cockpit);const button=$('touchCamera');button.textContent=isShip()?(cockpit?'跟随':'舰桥'):'视角';button.setAttribute('aria-label',isShip()?(cockpit?'切回镜头瞄准视角':'切换舰桥视角'):'切换视角');}
 function setPlayMode(mode,sync=true){
- const next=mode==='campaign'?'campaign':'quick';if(next==='campaign'&&isShip())selectVehicle('aircraft');playMode=next;
+ const next=mode==='campaign'?'campaign':'quick';if(next==='campaign'&&isShip())selectVehicle(hangarVehicle);playMode=next;
  $('menu').classList.toggle('campaign-menu',playMode==='campaign');$('quickBriefing').hidden=playMode==='campaign';$('campaignPanel').hidden=playMode!=='campaign';
  document.querySelectorAll('[data-play-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.playMode===playMode)));
  if(playMode==='campaign'){if(sync)selectMode('campaign');renderCampaignMenu();}
@@ -85,7 +92,7 @@ function renderCampaignMenu(){
  $('campaignTitle').textContent=selected.title;$('campaignSubtitle').textContent=selected.subtitle;$('campaignStory').textContent=selected.story;$('campaignRules').textContent=selected.rules;
  $('campaignObjectives').replaceChildren(...selected.objectives.map(text=>{const li=document.createElement('li');li.textContent=text;return li;}));
  const unlocked=campaignUnlocked(campaignProgress,selected.id),complete=campaignProgress.completed[selected.id];
- $('campaignStatus').textContent=complete?`已通关 · 最佳得分 ${complete.bestScore} · 可重复挑战` : unlocked?'关卡已开放 · 驾驶 F/A-18C 大黄蜂出击':`完成“${CAMPAIGN_LEVELS[selected.number-2].title}”后解锁；可以先阅读剧情。`;
+ $('campaignStatus').textContent=complete?`已通关 · 最佳得分 ${complete.bestScore} · 可重复挑战` : unlocked?`关卡已开放 · 驾驶 ${aircraft().name}出击`:`完成“${CAMPAIGN_LEVELS[selected.number-2].title}”后解锁；可以先阅读剧情。`;
  $('campaignStartBtn').disabled=!unlocked;$('campaignStartBtn').textContent=unlocked?`${complete?'重玩':'进入'}第${['一','二','三'][selected.number-1]}关 ↗`:'关卡尚未解锁';
  $('bestScore').innerHTML=`${String(complete?.bestScore||0).padStart(5,'0')} <small>PTS</small>`;
 }
@@ -96,14 +103,14 @@ function showCampaignBriefing(){
  $('chapterBriefingStart').disabled=!campaignUnlocked(campaignProgress,level.id);$('chapterBriefingStart').textContent=campaignUnlocked(campaignProgress,level.id)?'立即出击 ↗':'完成前关后可出击';
  returnPanel=null;panel('campaignBriefingPanel');
 }
-function selectMode(mode){if(mode!=='campaign'&&playMode==='campaign')setPlayMode('quick',false);selectedMode=Object.hasOwn(modeNames,mode)?mode:'intercept';mode=selectedMode;document.body.classList.toggle('naval-ui',isNaval());$('killsLabel').textContent=isNaval()?'击沉':'击落';$('resultKillsLabel').textContent=isNaval()?'击沉 / 舰炮命中率':'击落 / 机炮命中率';$('guideTrain').innerHTML=(isNaval()?'进入舰炮训练':isShip()?'进入舰船训练':'进入飞行训练')+' <span>↗</span>';document.querySelectorAll('[data-mode]').forEach(e=>{const a=e.dataset.mode===mode;e.classList.toggle('selected',a);e.setAttribute('aria-pressed',a);});const missingSeaWeapon=!isShip()&&isNaval(mode)&&!workshopProfile.loadouts.fa18c.some(s=>s.store==='harpoon'&&s.count>0);$('startBtn').disabled=missingSeaWeapon;$('missionNote').textContent=missingSeaWeapon?'对海任务需要反舰导弹，请先在挂载 / 升级中配置鱼叉。':(isShip()?shipNotes:notes)[mode]||'';$('bestScore').innerHTML=`${String(records[recordKey()]||0).padStart(5,'0')} <small>PTS</small>`;}
+function selectMode(mode){if(mode!=='campaign'&&playMode==='campaign')setPlayMode('quick',false);selectedMode=Object.hasOwn(modeNames,mode)?mode:'intercept';mode=selectedMode;document.body.classList.toggle('naval-ui',isNaval());$('killsLabel').textContent=isNaval()?'击沉':'击落';$('resultKillsLabel').textContent=isNaval()?'击沉 / 舰炮命中率':'击落 / 机炮命中率';$('guideTrain').innerHTML=(isNaval()?'进入舰炮训练':isShip()?'进入舰船训练':'进入飞行训练')+' <span>↗</span>';document.querySelectorAll('[data-mode]').forEach(e=>{const a=e.dataset.mode===mode;e.classList.toggle('selected',a);e.setAttribute('aria-pressed',a);});const missingSeaWeapon=!isShip()&&isNaval(mode)&&!hasAntiShip();$('startBtn').disabled=missingSeaWeapon;$('missionNote').textContent=missingSeaWeapon?`对海任务需要反舰导弹，请先在挂载 / 升级中配置 ${antiShipNames()}。`:(isShip()?shipNotes:notes())[mode]||'';$('bestScore').innerHTML=`${String(records[recordKey()]||0).padStart(5,'0')} <small>PTS</small>`;}
 function resize(){width=innerWidth;height=innerHeight;const ratio=Math.min(devicePixelRatio,1.5);hud.width=width*ratio;hud.height=height*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);world.resize();baseScene.resize();}
 window.addEventListener('resize',resize);resize();
 function closePanels(){ const wasWorkshop=!$('workshopPanel').hidden;if(wasWorkshop)$('workshopBtn').focus(); $('modalBackdrop').hidden=true;for(const id of ['guidePanel','settingsPanel','pausePanel','resultPanel','campaignBriefingPanel','workshopPanel'])$(id).hidden=true; }
 function panel(id){closePanels();$(id).hidden=false;$('modalBackdrop').hidden=false;requestAnimationFrame(()=>$(id).querySelector('button,select')?.focus());}
 function start(mode=selectedMode){
-  if(mode==='campaign'){if(!campaignUnlocked(campaignProgress,selectedCampaignId)){toast('完成前一关后才能出击。');return;}if(isShip())selectVehicle('aircraft');}
-  if(!isShip()&&isNaval(mode)&&!workshopProfile.loadouts.fa18c.some(s=>s.store==='harpoon'&&s.count>0)){$('missionNote').textContent='对海任务需要反舰导弹，请先在挂载 / 升级中配置鱼叉。';return;}selectMode(mode);mode=selectedMode;closePanels();baseScene.cancelPointers();input.reset();sim.configureAircraft(workshopProfile);if(mode==='campaign')sim.startCampaign(selectedCampaignId,settings.difficulty);else sim.start(mode,settings.difficulty,selectedVehicle);presentation.reset(sim);world.shipChase.recenter(sim.player.heading);world.cameraReady=false;sound.init();endingShown=false;cockpit=false;syncCameraControls();input.active=true;accumulator=0;frameTime=performance.now();
+  if(mode==='campaign'){if(!campaignUnlocked(campaignProgress,selectedCampaignId)){toast('完成前一关后才能出击。');return;}if(isShip())selectVehicle(hangarVehicle);}
+  if(!isShip()&&isNaval(mode)&&!hasAntiShip()){$('missionNote').textContent=`对海任务需要反舰导弹，请先在挂载 / 升级中配置 ${antiShipNames()}。`;return;}selectMode(mode);mode=selectedMode;closePanels();baseScene.cancelPointers();input.reset();sim.configureAircraft(workshopProfile,aircraftId());if(mode==='campaign')sim.startCampaign(selectedCampaignId,settings.difficulty);else sim.start(mode,settings.difficulty,selectedVehicle);presentation.reset(sim);world.shipChase.recenter(sim.player.heading);world.cameraReady=false;sound.init();endingShown=false;cockpit=false;syncCameraControls();input.active=true;accumulator=0;frameTime=performance.now();
   document.body.classList.toggle('campaign-flight',mode==='campaign');$('menu').hidden=true;$('flightUI').hidden=false;$('modeLabel').textContent=(isShip()?'DESTROYER / ':'')+modeCodes[mode];$('throttle').value=sim.player.throttle*100;cannonAim=null;
   if(isShip())world.render(presentation.sample(sim,1),0,{cockpit:false});
   toast(mode==='campaign'?campaignLevel(selectedCampaignId).radio[0].text:isShip()?(input.touch?'滑动画面瞄准 · 准星对准敌舰后开火 · 双指缩放':'右键拖动瞄准 · 空格或左键开炮 · 滚轮缩放 · V 回正'):'先滚转倾斜机翼，再拉杆转弯。',6000);$('touchHint').hidden=true;readouts(performance.now());
@@ -137,7 +144,7 @@ function result(){
 $('workshopBtn').addEventListener('click',()=>{returnPanel=null;workshop.render();panel('workshopPanel');});
 $('airWeaponBtn').addEventListener('click',()=>{if(sim.state==='playing'){sim.cycleAirWeapon();readouts(performance.now());}});
 for(const b of document.querySelectorAll('[data-vehicle]'))b.addEventListener('click',()=>selectVehicle(b.dataset.vehicle));
-for(const b of document.querySelectorAll('[data-base]'))b.addEventListener('click',()=>selectVehicle(b.dataset.base));
+for(const b of document.querySelectorAll('[data-base]'))b.addEventListener('click',()=>selectVehicle(b.dataset.base==='destroyer'?'destroyer':hangarVehicle));
 $('baseReset').addEventListener('click',()=>baseScene.reset());
 $('baseRotateLeft').addEventListener('click',()=>baseScene.orbit(-.3));
 $('baseRotateRight').addEventListener('click',()=>baseScene.orbit(.3));

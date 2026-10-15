@@ -2,6 +2,8 @@ import * as THREE from './vendor/three.module.js';
 import { makeTerrain } from './terrain.js';
 import { makeJetAssets, makeJet } from './aircraft.js';
 import { loadFA18Assets, makeFA18 } from './fa18.js';
+import { loadJ16Assets, makeJ16 } from './j16.js';
+import { loadFujianAssets } from './fujian.js';
 import { makeDestroyer, makeDestroyerWake, makeEnemyShip, ENEMY_SHIP_MODELS } from './destroyer.js';
 import { makeSky, makeOcean, SUN_DIRECTION } from './atmosphere.js';
 import { WaterReflection } from './water-reflection.js';
@@ -102,15 +104,20 @@ export class WorldRenderer {
     this.sky = makeSky(); this.scene.add(this.sky); this.ocean = makeOcean(); this.scene.add(this.ocean); this.terrain = makeTerrain(this.effectiveQuality);this.scene.add(this.terrain);
     this.sky.userData.ready.then(()=>{if(!this.disposed){this._createEnvironment();this.refreshReflection=true;}});
     this.jetAssets = makeJetAssets(); this.playerJet = new THREE.Group(); this.scene.add(this.playerJet);
-    this.modelReady = loadFA18Assets().then(assets => {
-      if (this.disposed) { assets.dispose(); return; }
-      this.fa18Assets = assets; this.scene.remove(this.playerJet);
-      this.playerJet = makeFA18(assets, this.jetAssets); this.scene.add(this.playerJet);
-      return assets;
+    // Imported Blender models: both flyable jets and the Fujian for the ambient fleet.
+    this.modelReady = Promise.allSettled([loadFA18Assets(), loadJ16Assets(), loadFujianAssets()]).then(results => {
+      const loaded = results.filter(r => r.status === 'fulfilled').map(r => r.value), failed = results.find(r => r.status === 'rejected');
+      if (this.disposed || failed) { loaded.forEach(assets => assets.dispose()); if (failed) throw failed.reason; return; }
+      const [fa18, j16, fujian] = loaded;
+      this.fa18Assets = fa18; this.j16Assets = j16; this.fujianAssets = fujian; this.scene.remove(this.playerJet);
+      this.playerJets = { fa18c: makeFA18(fa18, this.jetAssets), j16: makeJ16(j16, this.jetAssets) };
+      this.playerJets.j16.visible = false; this.scene.add(this.playerJets.fa18c, this.playerJets.j16);
+      this.playerJet = this.playerJets.fa18c;
+      this.ambientFleet = new AmbientFleet(this.scene, { imported: { fujian } }); this.ambientFleet.setQuality(this.effectiveQuality);
+      return fa18;
     });
     this.playerShip = makeDestroyer(); this.playerShip.visible = false; this.scene.add(this.playerShip);
     this.shipWake = makeDestroyerWake(); this.scene.add(this.shipWake);
-    this.ambientFleet = new AmbientFleet(this.scene);
     this.playerJet.traverse(o=>{if(o.isMesh&&!o.material.transparent){o.castShadow=true;o.receiveShadow=true;}});
     this.enemies = new Map(); this.enemyWakes = new Map(); this.missileMeshes = [];
     this.reflection = new WaterReflection(this.renderer, this.scene, this.ocean, { quality: this.effectiveQuality });
@@ -176,6 +183,7 @@ export class WorldRenderer {
       this.playerShip.rotation.set(this.playerShip.userData.wavePitch,p.heading||0,this.playerShip.userData.waveRoll,'YXZ');
       this.playerShip.visible=sim.state!=='lost'||p.health>0;
     }else {
+      this._selectPlayerAircraft(p.aircraftId);
       this.playerJet.position.copy(p.pos);this.playerJet.rotation.set(p.pitch||0,p.heading||0,p.bank||0,'YXZ');
       if(menu){this.playerJet.rotation.set(.035+Math.sin(this.elapsed*.35)*.01,-.16,-.07);this.playerJet.position.y+=Math.sin(this.elapsed*.7)*.8;}
       if(this.playerJet.userData.update)this.playerJet.userData.update(dt,p);
@@ -234,6 +242,12 @@ export class WorldRenderer {
       wake.position.set(enemy.pos.x+Math.sin(wake.rotation.y)*local,.065,enemy.pos.z+Math.cos(wake.rotation.y)*local);
       wake.material.opacity=clamp(speed/14,0,1)*.48;
     }
+  }
+  // Both imported jets stay loaded; only the configured airframe is shown.
+  _selectPlayerAircraft(id) {
+    const next=this.playerJets?.[id];
+    if(!next||next===this.playerJet)return;
+    this.playerJet.visible=false;this.playerJet=next;this.cameraReady=false;
   }
   _removeEnemy(id,model) {
     this.scene.remove(model);model.userData.dispose?.();this.enemies.delete(id);
@@ -307,10 +321,10 @@ export class WorldRenderer {
   dispose() {
     if(this.disposed)return;
     this.speedEffects?.dispose();
-    this.ambientFleet?.dispose();
+    this.ambientFleet?.dispose();this.fujianAssets?.dispose();
     this.disposed=true;this.terrain.userData.dispose();this.scene.remove(this.terrain);
-    this.playerJet?.userData.dispose?.();
-    this.scene.remove(this.playerJet);this.fa18Assets?.dispose();
+    for(const jet of this.playerJets?Object.values(this.playerJets):[this.playerJet]){jet?.userData.dispose?.();this.scene.remove(jet);}
+    this.fa18Assets?.dispose();this.j16Assets?.dispose();
     // Enemy class caches own shared resources. Release their instances before
     // traversing other scene resources, avoiding double disposal or stale refs.
     for(const[id,model]of this.enemies)if(model.userData.kind==='ship')this._removeEnemy(id,model);

@@ -2,7 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { terrainHeight } from './world-math.js';
 import { createDefaultFleet, updateDefaultFleet } from './ambient-fleet.js';
 import { campaignLevel } from './campaign.js';
-import { aircraftById, STORES, normalizeWorkshop, normalizeLoadout, effectiveAircraft } from './aircraft-systems.js';
+import { aircraftById, STORES, normalizeWorkshop, normalizeLoadout, effectiveAircraft, storeRange, primaryAirWeapon } from './aircraft-systems.js';
 
 const TAU = Math.PI * 2;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -297,7 +297,7 @@ export class Simulation {
     const stats = effectiveAircraft(this.aircraftId, this.workshop, remaining);
     p.systems = stats; p.missiles = stats.air; p.antiShipMissiles = stats.sea;
     if (!p.stores.some(s => s.store === p.selectedAirWeapon && s.count > 0)) {
-      p.selectedAirWeapon = p.stores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || 'aim9';
+      p.selectedAirWeapon = p.stores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || primaryAirWeapon(this.aircraftId);
       this.lockProgress = 0; this.lockTarget = null;
     }
   }
@@ -357,7 +357,7 @@ export class Simulation {
       const stores = normalizeLoadout(this.workshop.loadouts[this.aircraftId], this.aircraftId);
       const stats = effectiveAircraft(this.aircraftId, this.workshop, stores);
       Object.assign(this.player, { aircraftId: this.aircraftId, systems: stats, stores,
-        configuredStores: stores.map(s => ({ ...s })), selectedAirWeapon: stores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || 'aim9',
+        configuredStores: stores.map(s => ({ ...s })), selectedAirWeapon: stores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || primaryAirWeapon(this.aircraftId),
         maxHealth: stats.maxHealth, health: stats.maxHealth, ammo: stats.maxAmmo,
         missiles: stats.air, antiShipMissiles: stats.sea, flares: stats.maxFlares, fuelKg: stats.fuelCapacity });
     }
@@ -424,7 +424,7 @@ export class Simulation {
     if (this.difficulty === 'easy') this.player.flares += 2;
     this._spawnWave();
     this._emit('toast', { text: level ? `${level.number} / 03 · ${level.title}` : isNavalMode(this.mode)
-      ? this.vehicle === 'aircraft' ? '大黄蜂对海出击 · 机头指向敌舰，R 鱼叉，Tab 换目标'
+      ? this.vehicle === 'aircraft' ? `${aircraftById(this.aircraftId).shortName}对海出击 · 机头指向敌舰，R 反舰导弹，Tab 换目标`
         : this.mode === 'naval-training' ? '转动视角瞄准 · 开火舰炮 · R 反舰导弹'
         : '敌舰来袭 · 舰炮与反舰导弹协同作战'
       : this.vehicle === 'destroyer'
@@ -992,7 +992,7 @@ export class Simulation {
     const aircraft = this.vehicle !== 'destroyer';
     if ((aircraft && this.player.antiShipMissiles <= 0) || !target || target.kind !== 'ship' || target.health <= 0
       || !this.enemies.includes(target) || target.id !== this.targetId
-      || !(target.pos.distanceTo(this.player.pos) <= (aircraft ? STORES.harpoon.range : DESTROYER.antiShipRadarRange))) return false;
+      || !(target.pos.distanceTo(this.player.pos) <= (aircraft ? storeRange(this.player.stores, 'anti-ship') : DESTROYER.antiShipRadarRange))) return false;
     if (aircraft && forward(this.player.heading, this.player.pitch).dot(target.pos.clone().sub(this.player.pos).normalize()) < Math.cos(Math.PI / 4)) return false;
     const radar = this.player.pos.clone().add(new THREE.Vector3(0, aircraft ? 0 : 16, 0));
     const contact = target.pos.clone().add(new THREE.Vector3(0, Number.isFinite(target.aimHeight) ? target.aimHeight : 5, 0));
@@ -1219,8 +1219,8 @@ export class Simulation {
     });
     if (slot) Object.assign(this.missiles[this.missiles.length - 1], { store: slot.store, station: slot.station,
       dir: forward(this.player.heading, this.player.pitch), pitch: this.player.pitch, speed: this.player.speed,
-      verticalLaunch: 0, shipLaunched: false, life: STORES.harpoon.life, maxLife: STORES.harpoon.life,
-      damage: STORES.harpoon.damage * this.player.systems.damageMultiplier });
+      verticalLaunch: 0, shipLaunched: false, life: STORES[slot.store].life, maxLife: STORES[slot.store].life,
+      maxSpeed: STORES[slot.store].speed, damage: STORES[slot.store].damage * this.player.systems.damageMultiplier });
   }
 
   _updateAntiShipMissile(m, dt) {
@@ -1241,7 +1241,7 @@ export class Simulation {
       const turn = new THREE.Quaternion().rotateTowards(rotation, 2.4 * dt);
       m.dir.applyQuaternion(turn).normalize();
     }
-    m.speed = Math.min(280, m.speed + 100 * dt);
+    m.speed = Math.min(m.maxSpeed || 280, m.speed + 100 * dt);
     m.pos.addScaledVector(m.dir, m.speed * dt);
     const attitude = angles(m.dir); m.heading = attitude.heading; m.pitch = attitude.pitch;
     if (m.smokeTimer <= 0) {
