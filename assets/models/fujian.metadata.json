@@ -1,0 +1,23 @@
+{
+  "asset": "fujian.glb",
+  "blend": "assets/models/fujian-source/Fujian-CV18.blend",
+  "blend_sha256": "e28ed1842ace0b9482cacf9ede18da5c0eda46bf2dd504dc4a277c08ce4515fd",
+  "units": "metres",
+  "blender_axes": "+Z up (waterline 0), bow -Y, +X port",
+  "glb_axes": "+Y up, bow -Z",
+  "length_overall": 315.5,
+  "flight_deck_width": 76.47,
+  "beam_overall_incl_sponsons": 91.66,
+  "waterline_beam": 40.0,
+  "draft": 11.051294326782227,
+  "flight_deck_height": 17.5,
+  "mast_top_above_waterline": 57.0,
+  "angled_deck_deg": 7.93,
+  "triangles": 26353,
+  "license": "CC BY-SA 4.0",
+  "references": [
+    "https://commons.wikimedia.org/wiki/File:Type_003_Aircraft_Carrier_Fujian_(18).svg",
+    "https://commons.wikimedia.org/wiki/File:PLAN_CV-18_Fujian_20250911.jpg",
+    "https://commons.wikimedia.org/wiki/File:Chinese_aircraft_carrier_Fujian_flight_deck.jpg"
+  ]
+}
