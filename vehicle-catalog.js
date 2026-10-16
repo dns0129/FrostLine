@@ -1,8 +1,9 @@
+import {SHIPS,effectiveShip} from './ship-systems.js';
 import { Simulation, DESTROYER } from './simulation.js';
 import { AIRCRAFT, effectiveAircraft, normalizeWorkshop } from './aircraft-systems.js';
 
 // The player vehicles available in this single-player game. Hostile patrol
-// boats, frigates and the scene-only fleets are never part of the owned list.
+// boats, frigates and carriers are not owned. The two existing destroyer models are now playable.
 const aircraft = new Simulation().player, j16 = effectiveAircraft('j16', normalizeWorkshop(null));
 const knots = speed => Math.round(speed * 1.94384);
 export const OWNED_VEHICLES = Object.freeze([
@@ -45,10 +46,21 @@ export const OWNED_VEHICLES = Object.freeze([
     weapons: `舰炮 ${DESTROYER.maxAmmo} 发 · 防空导弹 ${DESTROYER.maxMissiles} 枚 · 反舰导弹 ${DESTROYER.maxAntiShipMissiles} 枚`,
     cardDetail: '舰炮 / 防空导弹 / 反舰导弹',
   }),
+  ...['burke','type052d'].map(id=>{
+    const s=SHIPS[id];return Object.freeze({id,code:s.code,name:s.name,english:s.english,base:'海军基地',
+      type:'多用途驱逐舰',role:s.role,location:'北境海军基地 · '+(id==='burke'?'03':'04')+' 号泊位',description:s.description,
+      stats:[['舰体强度',String(s.maxHealth),'HP'],['装甲减伤',String(Math.round(s.armor*100)),'%'],['防空通道',String(s.samChannels),'个'],['反舰伤害',String(s.antiShipDamage),'HP']],
+      weapons:`${s.gunName} · ${s.samName} · ${s.antiShipName} · 自动近防炮`,cardDetail:s.role});
+  }),
 ]);
 // Aircraft show the saved loadout and upgrades; vehicles without one are static.
-export function vehicleById(id, profile) {
+export function vehicleById(id, profile, readiness) {
   const vehicle = OWNED_VEHICLES.find(vehicle => vehicle.id === id) || OWNED_VEHICLES[0];
+  if (vehicle.id==='burke'||vehicle.id==='type052d') {
+    const s=effectiveShip(vehicle.id,readiness?.[vehicle.id]);return {...vehicle,stats:[
+      ['舰体 / 护甲',`${s.maxHealth} / ${Math.round(s.armor*100)}%`,'HP'],['防空导弹',String(s.maxMissiles),'枚'],['反舰导弹',String(s.maxAntiShipMissiles),'枚'],['炮击 / 反舰伤害',`${s.gunDamage} / ${s.antiShipDamage}`,'HP']],
+      weapons:`${s.gunName} ${s.maxAmmo} 发 · 防空 ${s.maxMissiles} 枚 · 反舰 ${s.maxAntiShipMissiles} 枚 · 诱饵 ${s.maxFlares} 组`};
+  }
   if (!vehicle.aircraftId) return vehicle;
   const stats = effectiveAircraft(vehicle.aircraftId, normalizeWorkshop(profile));
   return { ...vehicle, stats: [

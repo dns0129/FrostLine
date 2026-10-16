@@ -1,3 +1,4 @@
+import {isShipVehicle} from '../ship-systems.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
@@ -51,7 +52,7 @@ for (const map of MAPS) for (const requestedVehicle of OWNED_VEHICLES) for (cons
       const sim = new Simulation(7331);
       if (requestedVehicle.aircraftId) sim.configureAircraft(null, requestedVehicle.aircraftId);
       sim.start(mode, 'normal', requestedVehicle.id);
-      const vehicle = requestedVehicle.id === 'destroyer' ? 'destroyer' : 'aircraft';
+      const vehicle = isShipVehicle(requestedVehicle.id) ? 'destroyer' : 'aircraft';
       assert.equal(sim.vehicle, vehicle);
       if (requestedVehicle.aircraftId) {
         assert.equal(sim.player.aircraftId, requestedVehicle.aircraftId);

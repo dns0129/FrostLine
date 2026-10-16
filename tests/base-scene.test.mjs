@@ -8,10 +8,11 @@ import { normalizeWorkshop, effectiveAircraft } from '../aircraft-systems.js';
 import { Simulation, DESTROYER } from '../simulation.js';
 import { fa18Assets } from './fa18-fixture.mjs';
 import { j16Assets } from './j16-fixture.mjs';
+import { navalAssets } from './naval-fixture.mjs';
 
 test('owned inventory contains only playable vehicles and takes loadouts from simulation', () => {
-  assert.deepEqual(OWNED_VEHICLES.map(v => v.id), ['aircraft', 'j16', 'destroyer']);
-  assert.deepEqual(OWNED_VEHICLES.map(v => aircraftIdFor(v.id)), ['fa18c', 'j16', null]);
+  assert.deepEqual(OWNED_VEHICLES.map(v => v.id), ['aircraft', 'j16', 'destroyer', 'burke', 'type052d']);
+  assert.deepEqual(OWNED_VEHICLES.map(v => aircraftIdFor(v.id)), ['fa18c', 'j16', null, null, null]);
   assert.equal(OWNED_VEHICLES[0].code,'F/A-18C'); assert.equal(OWNED_VEHICLES[1].code,'J-16');
   const player = new Simulation().player;
   assert.equal(Number(OWNED_VEHICLES[0].stats[2][1]), player.ammo);
@@ -26,7 +27,7 @@ test('owned inventory contains only playable vehicles and takes loadouts from si
 });
 
 test('display camera scales for portrait and keeps the entire vehicle above the ground', () => {
-  for (const id of ['aircraft', 'j16', 'destroyer']) {
+  for (const id of ['aircraft', 'j16', 'destroyer', 'burke', 'type052d']) {
     for (const yaw of [-10, -2.36, 0, .82, 10]) {
       for (const aspect of [.45, 1, 1.78, 2.2]) {
         for (const zoom of [.2, 1, 10]) {
@@ -51,7 +52,7 @@ test('base switching and inspection keep simulation and shared aircraft material
     const assets = makeJetAssets(), jet = makeJet(assets);
     const simulation = new Simulation(); const before = JSON.stringify(simulation);
     const viewport = { addEventListener() {}, getBoundingClientRect: () => ({ left: 285, top: 100, width: 670, height: 378 }) };
-    const base = new BaseScene({ jetAssets: assets, fa18Assets, j16Assets, width: 1280, height: 720, renderer: { info: { reset() {} }, render() {} } }, viewport);
+    const base = new BaseScene({ jetAssets: assets, fa18Assets, j16Assets, navalAssets:{assets:navalAssets}, width: 1280, height: 720, renderer: { info: { reset() {} }, render() {} } }, viewport);
     assert.notEqual(base.jet, jet);
     assert.notEqual(base.jet.userData.exhaust.material, jet.userData.exhaust.material);
     assert.equal(base.jet.userData.exhaust.visible, false);
