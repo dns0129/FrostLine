@@ -207,7 +207,7 @@ for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraft
       settings: { map: DEFAULT_MAP_ID, difficulty: 'normal', vehicle: selectedAircraft.id },
       navalReadiness:{},workshopProfile: normalizeWorkshop(null), hangarVehicle: selectedAircraft.id,
       campaignProgress: normalizeCampaignProgress(null), selectedCampaignId: 'dawn',
-      selectedMode: 'training', selectedVehicle: selectedAircraft.id, playMode: 'quick',
+      selectedMode: 'training', selectedVehicle: selectedAircraft.id, resumeBriefing: false, sortie: {hide() {}},
       endingShown: false, cockpit: false, accumulator: 0, frameTime: 0, cannonAim: null,
       modeCodes: { training: 'TRAINING', campaign: 'CAMPAIGN' },
       $: field, document: { body: { classList: { toggle() {} } }, querySelectorAll: () => buttons, documentElement: {} },
@@ -225,7 +225,7 @@ for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraft
       hasAntiShip: () => context.workshopProfile.loadouts[aircraftIdFor(context.selectedVehicle)]
         .some(store => store.count > 0 && STORES[store.store]?.kind === 'anti-ship'),
     });
-    vm.runInContext(['syncMapSelection', 'selectMap', 'start', 'base'].map(functionSource).join('\n'), context);
+    vm.runInContext(['selectMap', 'start', 'base'].map(functionSource).join('\n'), context);
     context.selectMap('city-bay');
     assert.equal(context.settings.map, 'city-bay');
     assert.equal(writes.length, 1); assert.equal(writes[0].key, 'frostline-settings');
@@ -239,9 +239,7 @@ for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraft
     context.selectMap('ice-ocean');
     assert.equal(context.settings.map, 'city-bay', 'playing must not change the saved or active map');
     assert.equal(writes.length, 1);
-    context.base(); context.playMode = 'campaign'; context.syncMapSelection();
-    assert.equal(field('mapSelectBtn').disabled, true);
-    assert.ok(buttons.every(button => button.disabled));
+    context.base(); context.selectedMode = 'campaign';
     context.selectMap('ice-ocean');
     assert.equal(context.settings.map, 'city-bay', 'campaign selection must preserve the quick-map preference');
     context.start('campaign');
@@ -249,8 +247,7 @@ for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraft
     assert.equal(sim.player.aircraftId, selectedAircraft.aircraftId);
     assert.equal(getActiveMap().id, DEFAULT_MAP_ID); assert.equal(context.settings.map, 'city-bay');
     assert.equal(field('flightMapName').textContent, getMap(DEFAULT_MAP_ID).name);
-    context.base(); context.playMode = 'quick'; context.syncMapSelection();
-    assert.equal(field('mapSelectBtn').disabled, false); assert.ok(buttons.every(button => !button.disabled));
+    context.base(); context.selectedMode = 'training';
     context.start('training');
     assert.equal(world.mapId, 'city-bay'); assert.equal(getActiveMap().id, 'city-bay');
     assert.equal(sim.mode, 'training'); assert.equal(writes.length, 1);

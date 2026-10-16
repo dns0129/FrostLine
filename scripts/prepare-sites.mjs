@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const site = join(root, 'sites/frostline');
 const dist = join(site, 'dist');
-const files = ['ship-systems.js','playable-ships.js','naval-workshop.js',
+const files = ['sortie-flow.js','mission-briefing.js','sortie-flow.css','ship-systems.js','playable-ships.js','naval-workshop.js',
   'maps.js', 'quality.js', 'map-scenery.js', 'fa18-armament.js',
   'index.html', 'style.css', 'app.js', 'input.js', 'audio.js',
   'campaign.js', 'base-scene.js', 'vehicle-catalog.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md', 'destroyer.js', 'naval-models.js', 'ambient-fleet.js', 'ship-camera.js', 'simulation.js', 'flight-presentation.js', 'chase-camera.js', 'speed-effects.js', 'renderer.js', 'terrain.js',
@@ -15,7 +15,7 @@ const files = ['ship-systems.js','playable-ships.js','naval-workshop.js',
   'assets/models/enterprise.glb', 'assets/models/enterprise.metadata.json', 'assets/models/burke.glb', 'assets/models/burke.metadata.json',
   'assets/models/type052d.glb', 'assets/models/type052d.metadata.json', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js', 'atmosphere.js', 'water-reflection.js', 'world-math.js',
   'sw.js', 'manifest.webmanifest', 'vendor/three.module.js', 'vendor/LICENSE.txt',
-  'assets/briefing.jpg', 'assets/sky-panorama.jpg', 'assets/rock-albedo.jpg', 'assets/icon.svg',
+  'assets/three-views/raw/burke_hero_a.png', 'assets/briefing.jpg', 'assets/sky-panorama.jpg', 'assets/rock-albedo.jpg', 'assets/icon.svg',
 ];
 for (const file of files) {
   if (!statSync(join(root, file)).isFile()) throw new Error(`Missing runtime file: ${file}`);
