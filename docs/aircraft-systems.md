@@ -98,7 +98,17 @@
 | 对海打击 | PL-10 ×2 | 鹰击-83K ×2 | PL-15 ×2 | — | 4 / 2 |
 | 轻载训练 | PL-10 ×2 | — | — | — | 2 / 0 |
 
-模型内烘焙的 PL-15、PL-10 网格被提取为挂载模板，按当前挂载显示与发射后隐藏；挂架与发射导轨保留在机体上。鹰击-83K 使用程序生成的弹体。
+挂架上的 PL-15、PL-10、鹰击-83K 使用真实比例导弹模型（`missile-models.js` 加载 `assets/models/missiles/missiles-game.glb`），按当前挂载显示，发射后从挂架隐藏。玩家发射的这三型导弹在飞行中也显示同一模型；敌方导弹和舰射导弹仍用通用外形。挂架与发射导轨保留在机体上。模型内烘焙的旧 PL-15、PL-10 网格只用于确定挂点位置；真实比例模型加载失败时，退回用它们作挂载模板（鹰击-83K 则退回程序生成弹体）。
+
+#### 导弹外形：现实参考与游戏近似
+
+| 导弹 | 模型尺寸 | 依据 | 近似部分 |
+| --- | --- | --- | --- |
+| PL-15 | 长 3.996 m，弹径 0.203 m | PL-15E 公开数据（Wikipedia、Air Recognition） | 中段小翼与尾舵的弦长、展长按照片估计 |
+| PL-10 | 长 3.0 m，弹径 0.16 m | Wikipedia 的 PL-10 数据（新华网报道的 PL-10E 展示数据约 3.05 m） | 边条与尾舵尺寸按照片估计 |
+| 鹰击-83K | 长 5.2 m，弹径 0.36 m，翼展 1.22 m | 弹径、翼展取 YJ-83 家族公开数据 | 长度为舰射型 6.38 m 减去约 1.2 m 助推器的估计；尾锥外形为示意 |
+
+游戏模型为低面数版本，每型约 580 个三角形，长度与弹径同详细模型一致。鹰击-83K 比 PL-15 粗，挂在内翼时整体下移 0.08 m（`STORES.yj83k.visual.hang`）。弹体外形只影响显示，不改变质量、阻力、射程等游戏数值。
 
 ### 进度与记录
 
@@ -122,4 +132,5 @@
 - F/A-18C：`assets/models/fa18c.glb`，GPL-2.0，源自 [FGMEMBERS/F-18C](https://github.com/FGMEMBERS/F-18C)，可编辑源文件随附 `assets/models/f18-source/`。
 - 歼-16：`assets/models/j16.glb`，GPL-2.0，由 [FGMEMBERS/SU-27](https://github.com/FGMEMBERS/SU-27) 网格改制（双座座舱、加高垂尾、翼尖吊舱、PL-15/PL-10 挂载与涂装），可编辑源文件 `assets/models/j16-source/J-16.blend` 与许可证 `COPYING` 随游戏发布。
 - 企业号、阿利·伯克级、052D：`assets/models/enterprise.glb`、`burke.glb`、`type052d.glb`，本项目 Blender 程序建模（`scripts/build-*.py`），来源与尺寸见 `assets/NAVAL-ART.md`。
+- 导弹：`assets/models/missiles/missiles-game.glb`（游戏用 PL-15、PL-10、鹰击-83K），以及详细模型 `pl15.glb`、`pl10.glb`、`hq10.glb`、`yj83.glb`、`yj83k.glb`，均由 `scripts/build-missiles.py` 程序建模。尺寸来源与估计项见 `assets/MISSILES-ART.md`。
 - 福建舰：`assets/models/fujian.glb`，Blender 程序建模；甲板布局依据 Gryfia 的 Wikimedia Commons 线图 [Type 003 Aircraft Carrier Fujian (18)](https://commons.wikimedia.org/wiki/File:Type_003_Aircraft_Carrier_Fujian_(18).svg)，按 CC BY-SA 4.0 署名并以相同许可发布。

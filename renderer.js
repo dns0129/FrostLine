@@ -62,7 +62,18 @@ function makeMissileMesh(assets, kind) {
   fire.name = `${kind}-missile-exhaust`; fire.position.z = kind === 'anti-ship' ? 3.15 : 2.6;
   fire.scale.setScalar(kind === 'anti-ship' ? 5 : 4); group.add(fire);
   group.userData.visualKind = kind; group.userData.kind = kind; group.userData.weapon = kind;
-  group.userData.exhaust = fire; return group;
+  group.userData.visual = kind; group.userData.exhaust = fire; return group;
+}
+// A launched store keeps its real-scale model (missile-models.js). The clone
+// shares the template's geometry and materials, which the J-16 assets own.
+function makeStoreMissileMesh(assets, template, kind) {
+  const group = new THREE.Group(); group.name = `${template.userData.missile} in flight`;
+  const model = template.clone(true); model.position.set(0, 0, 0); group.add(model);
+  const fire = new THREE.Sprite(kind === 'anti-ship' ? assets.materials.antiShipFlame : assets.materials.samFlame);
+  fire.name = `${template.userData.storeId}-missile-exhaust`; fire.position.z = template.userData.length / 2 + .35;
+  fire.scale.setScalar(kind === 'anti-ship' ? 4.5 : 3.5); group.add(fire);
+  Object.assign(group.userData, { visualKind: kind, kind, weapon: kind, visual: `store:${template.userData.storeId}`, exhaust: fire });
+  return group;
 }
 
 // Integrate exponential following over a linearly moving target. Treating the
@@ -114,6 +125,7 @@ export class WorldRenderer {
       if (this.disposed || failed) { loaded.forEach(assets => assets.dispose()); if (failed) throw failed.reason; return; }
       const [fa18, j16, naval] = loaded;
       this.fa18Assets = fa18; this.j16Assets = j16; this.navalAssets = naval; this.scene.remove(this.playerJet);
+      this.storeTemplates = j16.missiles?.templates || {};
       this.playerJets = { fa18c: makeFA18(fa18, this.jetAssets), j16: makeJ16(j16, this.jetAssets) };
       this.playerJets.j16.visible = false; this.scene.add(this.playerJets.fa18c, this.playerJets.j16);
       this.playerJet = this.playerJets.fa18c;
@@ -247,12 +259,14 @@ export class WorldRenderer {
       const missile=i<count?missiles[i]:null;let mesh=this.missileMeshes[i];
       if(missile){
         const kind=missileVisualKind(missile);
-        if(mesh&&mesh.userData.visualKind!==kind){
-          // The retired group owns no GPU resources: both weapon types reuse
-          // this renderer's geometry/materials until the renderer is disposed.
+        const template=!missile.enemy&&missile.store?this.storeTemplates?.[missile.store]:null;
+        const visual=template?`store:${missile.store}`:kind;
+        if(mesh&&mesh.userData.visual!==visual){
+          // The retired group owns no GPU resources: generic missiles reuse this
+          // renderer's geometry/materials and store models share asset templates.
           this.scene.remove(mesh);mesh.clear();mesh=null;
         }
-        if(!mesh){mesh=makeMissileMesh(this.missileAssets,kind);this.missileMeshes[i]=mesh;this.scene.add(mesh);}
+        if(!mesh){mesh=template?makeStoreMissileMesh(this.missileAssets,template,kind):makeMissileMesh(this.missileAssets,kind);this.missileMeshes[i]=mesh;this.scene.add(mesh);}
         mesh.position.copy(missile.pos);mesh.rotation.set(missile.pitch||0,missile.heading||0,0,'YXZ');
         mesh.userData.enemy=!!missile.enemy;
         mesh.userData.exhaust.material=missile.enemy?this.missileAssets.materials.enemyFlame

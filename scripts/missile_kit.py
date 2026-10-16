@@ -120,29 +120,52 @@ SPECS = {
         'estimated': ['wing 0.90 m root chord, mid-body', 'booster 1.20 m long with four fins', 'ventral intake 1.3 m'],
         'mass_kg': 800,
     },
+    'YJ-83K': {
+        'title': '鹰击-83K 空射反舰导弹（无助推器）', 'role': '机载发射，涡喷巡航，末段主动雷达制导',
+        'length': 5.2, 'diameter': 0.36,
+        'published': ['diameter 0.36 m (YJ-83 family)', 'wingspan 1.22 m (YJ-83 family)'],
+        'estimated': ['length ~5.2 m: ship-launched 6.38 m minus the ~1.2 m booster',
+                      'turbojet tail cone in place of the booster joint'],
+        'mass_kg': None,
+    },
+}
+
+DETAIL = {
+    # lathe segments, nose rings, small-part segments, section bands, stencil
+    'high': {'seg': 48, 'nose': 18, 'small': 32, 'bands': True, 'stencil': True},
+    'game': {'seg': 14, 'nose': 6, 'small': 10, 'bands': False, 'stencil': False},
 }
 
 
-def build(kind, coll, matrix=Matrix.Identity(4), prefix=None, stencil=True):
-    """Create one missile; returns the created objects."""
+def build(kind, coll, matrix=Matrix.Identity(4), prefix=None, stencil=True, detail='high'):
+    """Create one missile; returns the created objects.
+
+    detail='game' keeps every published dimension but uses coarse lathes and
+    drops section bands and stencils, for the runtime GLB.
+    """
     m = mats()
     s = SPECS[kind]
     L, r = s['length'], s['diameter'] / 2
     name = prefix or kind
+    q = DETAIL[detail]
+    S, NOSE, SMALL = q['seg'], q['nose'], q['small']
+    stencil = stencil and q['stencil']
     # geometry is built nose at t=0 along +Y, then shifted so mid-length is the origin
     to_origin = matrix @ Matrix.Translation((0, -L / 2, 0))
     out = []
 
     def add(label, part, mat, smooth=False):
+        if label in ('section bands', 'warhead band') and not q['bands']:
+            return None
         ob = K.mesh_object(f'{name} {label}', *K.transform(part, to_origin), coll, mat, smooth=smooth)
         out.append(ob)
         return ob
 
     if kind == 'PL-15':
-        nose = ogive(0.62, r, tip=0.008, n=18)
-        add('AESA radome', K.lathe(nose, 48), m['radome'], True)
-        add('body', K.lathe([(0.62, r), (3.90, r), (3.975, r * 0.86), (3.996, r * 0.80), (3.996, 0)], 48), m['body'], True)
-        add('nozzle', K.lathe([(3.986, r * 0.70), (3.996, r * 0.70), (3.930, r * 0.42), (3.930, 0)], 32, cap=False), m['nozzle'], True)
+        nose = ogive(0.62, r, tip=0.008, n=NOSE)
+        add('AESA radome', K.lathe(nose, S), m['radome'], True)
+        add('body', K.lathe([(0.62, r), (3.90, r), (3.975, r * 0.86), (3.996, r * 0.80), (3.996, 0)], S), m['body'], True)
+        add('nozzle', K.lathe([(3.986, r * 0.70), (3.996, r * 0.70), (3.930, r * 0.42), (3.930, 0)], SMALL, cap=False), m['nozzle'], True)
         add('centre-body fins', cruciform([(0, 1.55), (0, 2.15), (0.07, 2.08), (0.07, 1.80)], r, 0.010, 0.004), m['body'])
         add('tail control fins', cruciform([(0, 3.60), (0, 3.96), (0.13, 3.94), (0.13, 3.82)], r, 0.012, 0.005), m['body'])
         details = [K.box(0, 2.10, r + 0.008, 0.032, 2.60, 0.016), lug(1.30, r), lug(2.85, r),
@@ -151,11 +174,11 @@ def build(kind, coll, matrix=Matrix.Identity(4), prefix=None, stencil=True):
         add('section bands', K.merge(ring(0.62, r, 0.012), ring(1.18, r, 0.008), ring(1.55, r, 0.008), ring(2.25, r, 0.03)), m['band'], True)
         add('warhead band', ring(1.36, r, 0.025, 0.0008), m['yellow'], True)
     elif kind == 'PL-10':
-        cone = [(0.0, 0.0)] + [(t + 0.0, rr) for t, rr in dome(0.058, 10)[1:]]
-        add('IR seeker dome', K.lathe(cone, 40), m['dome'], True)
-        add('body', K.lathe([(0.058, 0.058), (0.10, 0.064), (0.20, r), (2.93, r), (2.985, r * 0.85), (3.0, r * 0.82), (3.0, 0)], 48), m['white'], True)
+        cone = [(0.0, 0.0)] + [(t + 0.0, rr) for t, rr in dome(0.058, max(4, NOSE // 2 + 1))[1:]]
+        add('IR seeker dome', K.lathe(cone, S), m['dome'], True)
+        add('body', K.lathe([(0.058, 0.058), (0.10, 0.064), (0.20, r), (2.93, r), (2.985, r * 0.85), (3.0, r * 0.82), (3.0, 0)], S), m['white'], True)
         add('nozzle & jet vanes', K.merge(
-            K.lathe([(2.992, r * 0.66), (3.0, r * 0.66), (2.94, r * 0.4), (2.94, 0)], 32, cap=False),
+            K.lathe([(2.992, r * 0.66), (3.0, r * 0.66), (2.94, r * 0.4), (2.94, 0)], SMALL, cap=False),
             *[K.transform(K.box(0, 2.972, 0, 0.004, 0.05, r * 1.1), Matrix.Rotation(math.radians(45 + 90 * k), 4, 'Y'))
               for k in range(4)]), m['nozzle'], True)
         add('body strakes', cruciform([(0, 0.55), (0, 2.45), (0.035, 2.30), (0.035, 0.75)], r, 0.006, 0.002), m['white'])
@@ -164,31 +187,37 @@ def build(kind, coll, matrix=Matrix.Identity(4), prefix=None, stencil=True):
         add('section bands', K.merge(ring(0.20, r, 0.01), ring(0.62, r, 0.008), ring(1.05, r, 0.008)), m['band'], True)
         add('warhead band', ring(0.84, r, 0.02, 0.0008), m['yellow'], True)
     elif kind == 'HQ-10':
-        add('seeker dome', K.lathe(dome(0.05, 10), 40), m['dome'], True)
-        add('body', K.lathe([(0.05, 0.05), (0.09, 0.056), (0.17, r), (1.96, r), (2.0, r * 0.82), (2.0, 0)], 48), m['white'], True)
-        add('nozzle', K.lathe([(1.992, r * 0.62), (2.0, r * 0.62), (1.95, r * 0.35), (1.95, 0)], 28, cap=False), m['nozzle'], True)
+        add('seeker dome', K.lathe(dome(0.05, max(4, NOSE // 2 + 1)), S), m['dome'], True)
+        add('body', K.lathe([(0.05, 0.05), (0.09, 0.056), (0.17, r), (1.96, r), (2.0, r * 0.82), (2.0, 0)], S), m['white'], True)
+        add('nozzle', K.lathe([(1.992, r * 0.62), (2.0, r * 0.62), (1.95, r * 0.35), (1.95, 0)], SMALL, cap=False), m['nozzle'], True)
         add('rectangular canards', cruciform([(0, 0.18), (0, 0.30), (0.065, 0.30), (0.065, 0.18)], r, 0.006, 0.002, roll_deg=0), m['white'])
         add('tail fins', cruciform([(0, 1.78), (0, 1.97), (0.08, 1.96), (0.08, 1.86)], r, 0.007, 0.003), m['white'])
         add('RF antennas', K.merge(*[K.transform(K.box(0, 0.36, r + 0.006, 0.012, 0.05, 0.012), Matrix.Rotation(math.radians(45 + 90 * k), 4, 'Y'))
                                      for k in range(4)]), m['band'])
         add('section bands', K.merge(ring(0.17, r, 0.008), ring(0.55, r, 0.008)), m['band'], True)
-    elif kind == 'YJ-83':
-        nose = ogive(0.95, r, tip=0.02, n=18)
-        add('radar radome', K.lathe(nose, 48), m['grey_radome'], True)
-        add('body', K.lathe([(0.95, r), (5.12, r), (5.18, r * 0.97), (5.18, 0)], 48), m['body'], True)
-        add('booster', K.lathe([(5.18, 0), (5.18, r * 0.97), (5.22, r), (6.28, r), (6.36, r * 0.82), (6.38, r * 0.74), (6.38, 0)], 48), m['booster'], True)
-        add('booster nozzle', K.lathe([(6.37, r * 0.62), (6.38, r * 0.62), (6.30, r * 0.4), (6.30, 0)], 32, cap=False), m['nozzle'], True)
+    elif kind in ('YJ-83', 'YJ-83K'):
+        booster = kind == 'YJ-83'
+        nose = ogive(0.95, r, tip=0.02, n=NOSE)
+        add('radar radome', K.lathe(nose, S), m['grey_radome'], True)
+        if booster:
+            add('body', K.lathe([(0.95, r), (5.12, r), (5.18, r * 0.97), (5.18, 0)], S), m['body'], True)
+            add('booster', K.lathe([(5.18, 0), (5.18, r * 0.97), (5.22, r), (6.28, r), (6.36, r * 0.82), (6.38, r * 0.74), (6.38, 0)], S), m['booster'], True)
+            add('booster nozzle', K.lathe([(6.37, r * 0.62), (6.38, r * 0.62), (6.30, r * 0.4), (6.30, 0)], SMALL, cap=False), m['nozzle'], True)
+            add('booster fins', cruciform([(0, 5.80), (0, 6.30), (0.30, 6.30), (0.30, 6.05)], r, 0.014, 0.005, roll_deg=0), m['booster'])
+        else:   # air-launched: turbojet tail cone where the booster joint was
+            add('body', K.lathe([(0.95, r), (5.10, r), (5.17, r * 0.86), (5.2, r * 0.72), (5.2, 0)], S), m['body'], True)
+            add('turbojet exhaust', K.lathe([(5.19, r * 0.55), (5.2, r * 0.55), (5.12, r * 0.32), (5.12, 0)], SMALL, cap=False), m['nozzle'], True)
         span = 1.22 / 2 - r
         add('cruciform wings', cruciform([(0, 2.25), (0, 3.15), (span, 3.05), (span, 2.75)], r, 0.022, 0.009), m['body'])
         add('tail control fins', cruciform([(0, 4.62), (0, 5.08), (0.27, 5.04), (0.27, 4.84)], r, 0.016, 0.006), m['body'])
-        add('booster fins', cruciform([(0, 5.80), (0, 6.30), (0.30, 6.30), (0.30, 6.05)], r, 0.014, 0.005, roll_deg=0), m['booster'])
         intake = K.prism([(-0.11, 0.0), (0.11, 0.0), (0.085, -0.13), (-0.085, -0.13)], 3.55, 4.95, 'XZ')
         intake = K.transform(intake, Matrix.Translation((0, 0, -r + 0.03)))
         add('ventral air intake', intake, m['body'])
         add('intake mouth', K.box(0, 3.545, -r - 0.035, 0.16, 0.01, 0.09), m['intake'])
-        add('section bands', K.merge(ring(0.95, r, 0.015), ring(1.9, r, 0.01), ring(3.4, r, 0.01), ring(5.18, r, 0.02)), m['band'], True)
+        add('section bands', K.merge(ring(0.95, r, 0.015), ring(1.9, r, 0.01), ring(3.4, r, 0.01), ring(5.18 if booster else 4.4, r, 0.02)), m['band'], True)
         add('warhead band', ring(1.55, r, 0.04, 0.0008), m['yellow'], True)
-        add('booster lugs', K.merge(lug(5.5, r, 0.05), lug(1.6, r, 0.05), lug(3.9, r, 0.05)), m['steel'])
+        add('booster lugs' if booster else 'suspension lugs',
+            K.merge(*([lug(5.5, r, 0.05)] if booster else []), lug(1.6, r, 0.05), lug(3.9, r, 0.05)), m['steel'])
     if stencil:
         out.append(_stencil(kind, name, coll, to_origin, r, m['stencil']))
     for ob in out:
@@ -205,7 +234,7 @@ def _stencil(kind, name, coll, to_origin, r, mat):
     tmp = bpy.data.objects.new('tmp', cu); bpy.context.scene.collection.objects.link(tmp)
     me = bpy.data.meshes.new_from_object(tmp.evaluated_get(bpy.context.evaluated_depsgraph_get()))
     bpy.data.objects.remove(tmp); bpy.data.curves.remove(cu)
-    station = {'PL-15': 1.85, 'PL-10': 1.40, 'HQ-10': 0.95, 'YJ-83': 2.15}[kind]
+    station = {'PL-15': 1.85, 'PL-10': 1.40, 'HQ-10': 0.95, 'YJ-83': 2.15, 'YJ-83K': 2.15}[kind]
     # text in the YZ plane on the +X (port) side, reading nose -> tail
     place = Matrix(((0, 0, 1, r + 0.0015), (1, 0, 0, station), (0, 1, 0, 0), (0, 0, 0, 1)))
     bm = bmesh.new(); bm.from_mesh(me)

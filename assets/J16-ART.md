@@ -1,6 +1,6 @@
 # 歼-16 Blender 模型
 
-可编辑源文件 `assets/models/j16-source/J-16.blend`，导出件 `assets/models/j16.glb`（内嵌贴图，公制、Y 向上、机头朝 -Z，与 `fa18c.glb` 一致）。三视图与透视渲染见 `assets/three-views/J-16-three-view.png`。1.14 起作为可驾驶飞机接入游戏：`j16.js` 以喷口轴线（离地 2.0 m）为机体原点，起落架在空中隐藏，模型内的 PL-15 / PL-10 网格成为挂载模板；参数与挂点见 `docs/aircraft-systems.md`。
+可编辑源文件 `assets/models/j16-source/J-16.blend`，导出件 `assets/models/j16.glb`（内嵌贴图，公制、Y 向上、机头朝 -Z，与 `fa18c.glb` 一致）。三视图与透视渲染见 `assets/three-views/J-16-three-view.png`。1.14 起作为可驾驶飞机接入游戏：`j16.js` 以喷口轴线（离地 2.0 m）为机体原点，起落架在空中隐藏。挂架上显示的是 `missile-models.js` 加载的真实比例 PL-15 / PL-10 / 鹰击-83K（见 [MISSILES-ART.md](MISSILES-ART.md)）；模型内烘焙的导弹网格只用于确定挂点位置，并作加载失败时的后备模板。参数与挂点见 `docs/aircraft-systems.md`。
 
 ## 素材来源
 

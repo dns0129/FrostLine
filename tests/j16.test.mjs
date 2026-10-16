@@ -66,10 +66,14 @@ test('prepared J-16 asset is metres, nose -Z, gear tagged, and baked missiles be
     if (/pylon|launch_rail/.test(o.name)) pylons++;
   });
   assert.equal(gear, 18); assert.equal(baked, 0); assert.equal(pylons, 6, 'tunnel/intake pylons and outer rails; inner pylons are wing mesh'); assert.ok(triangles < 13000);
-  for (const [store, length] of [['pl15', 3.96], ['pl10', 2.97]]) {
-    const box = new THREE.Box3().setFromObject(j16Assets.templates[store]);
-    assert.equal(j16Assets.templates[store].children.length, 3);
-    assert.ok(Math.abs(box.getSize(new THREE.Vector3()).z - length) < .02); assert.ok(box.getCenter(new THREE.Vector3()).length() < 1e-6);
+  // Pylons carry the real-scale models (published length), centred on the baked
+  // station positions; the fatter YJ-83K keeps its pylon hang offset.
+  assert.equal(j16Assets.metadata.storeModels, 'real-scale');
+  for (const [store, length, hang] of [['pl15', 3.996, 0], ['pl10', 3, 0], ['yj83k', 5.2, .08]]) {
+    const template = j16Assets.templates[store], box = new THREE.Box3().setFromObject(template);
+    assert.equal(template, j16Assets.missiles.templates[store]); assert.equal(template.children.length, 4);
+    assert.ok(Math.abs(box.getSize(new THREE.Vector3()).z - length) < .002, `${store} length`);
+    assert.ok(box.getCenter(new THREE.Vector3()).distanceTo(new THREE.Vector3(0, -hang, 0)) < 1e-3, `${store} centre`);
   }
   for (const tip of j16Assets.metadata.wingtips) assert.ok(Math.abs(Math.abs(tip[0]) - 7.495) < .01);
 });
@@ -90,15 +94,16 @@ test('parked and airborne J-16 share resources, hide gear in flight and place pl
   assert.deepEqual(visible, ['1:pl10', '2:yj83k', '3:pl15', '4:pl15', '5:pl15', '6:pl15', '7:yj83k', '8:pl10']);
 });
 
-test('J-16 store templates are shared with the asset and only generated YJ-83K meshes are instance-owned', () => {
+test('every J-16 store, YJ-83K included, shares the asset-owned real-scale templates', () => {
   const jet = makeJ16(j16Assets, jetAssets), shared = new Set();
   for (const template of Object.values(j16Assets.templates)) template.traverse(o => { if (o.geometry) shared.add(o.geometry).add(o.material); });
-  const own = new Set(), used = new Set(); let owned = 0, sharedDisposed = 0;
+  const used = new Set(); let sharedDisposed = 0, meshes = 0;
   jet.userData.stores.traverse(o => {
     if (!o.isMesh) return;
-    if (shared.has(o.geometry)) used.add(o.geometry); else { assert.equal(o.parent.userData.store, 'yj83k'); own.add(o.geometry); }
+    meshes++; assert.ok(shared.has(o.geometry) && shared.has(o.material), `${o.name} is shared`); used.add(o.geometry);
   });
-  used.forEach(g => g.addEventListener('dispose', () => sharedDisposed++)); own.forEach(g => g.addEventListener('dispose', () => owned++));
+  assert.ok(meshes > 0);
+  used.forEach(g => g.addEventListener('dispose', () => sharedDisposed++));
   jet.userData.dispose(); jet.userData.dispose();
-  assert.equal(sharedDisposed, 0); assert.equal(owned, 1, 'one merged YJ-83K geometry, disposed once');
+  assert.equal(sharedDisposed, 0, 'an aircraft instance never disposes the shared store templates');
 });

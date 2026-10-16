@@ -85,9 +85,11 @@ F/A-18C 继续使用九挂点配置、独立武器库存与发射显示。四个
 
 参数来源、公开估计与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)；模型来源、改动与重建命令见 [FUJIAN-ART.md](assets/FUJIAN-ART.md) 和 [J16-ART.md](assets/J16-ART.md)。浏览器验证：`npm run test:j16-fujian`（需要 Playwright 与 Chromium）。
 
-## 导弹模型素材：真实比例（未接入游戏）
+## 真实比例导弹接入歼-16（本地开发）
 
-`assets/models/missiles/` 中有 PL-15、PL-10、HQ-10 和 YJ-83（舰射型，含助推器）四型导弹。全长和弹径按公开数据 1:1 建模，舵面尺寸为照片估计。四型同一比例尺的对比图为 `assets/three-views/Missiles-real-scale.png`。游戏内的歼-16 挂载暂未替换。来源、坐标约定与重建命令见 [MISSILES-ART.md](assets/MISSILES-ART.md)。
+歼-16 挂架上的 PL-15、PL-10、鹰击-83K 改用真实比例导弹模型（`missile-models.js` 加载 `assets/models/missiles/missiles-game.glb`）。玩家发射后，这三型导弹在飞行中也显示同一模型。PL-15、PL-10 的长度和弹径取公开数据（3.996 × 0.203 m、3.0 × 0.16 m）。鹰击-83K 的弹径与翼展取 YJ-83 家族数据，长度 5.2 m 为估计值。舵面尺寸按照片估计。弹体外形只改变显示，不影响游戏数值。模型加载失败时，退回模型内原有的导弹模板。敌方导弹与舰射导弹仍用通用外形。
+
+`assets/models/missiles/` 另有 PL-15、PL-10、HQ-10、YJ-83（舰射型）、YJ-83K 的详细模型，同一比例尺的对比图为 `assets/three-views/Missiles-real-scale.png`。来源、估计项与重建命令见 [MISSILES-ART.md](assets/MISSILES-ART.md)，现实参考与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)。
 
 ## 机库与海军基地（1.8.0）
 

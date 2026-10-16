@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / 'assets/three-views/raw'
 CJK = '/System/Library/Fonts/Hiragino Sans GB.ttc'
 INK, DIM, MUTED, PAPER = (34, 38, 44), (40, 92, 160), (96, 102, 110), (250, 250, 247)
-ORDER = [('YJ-83', 'yj83'), ('PL-15', 'pl15'), ('PL-10', 'pl10'), ('HQ-10', 'hq10')]
+ORDER = [('YJ-83', 'yj83'), ('YJ-83K', 'yj83k'), ('PL-15', 'pl15'), ('PL-10', 'pl10'), ('HQ-10', 'hq10')]
 F = lambda s: ImageFont.truetype(CJK, s)
 
 meta = json.loads((ROOT / 'assets/models/missiles/missiles.metadata.json').read_text())['missiles']
@@ -35,7 +35,7 @@ sheet = Image.new('RGB', (W, H), PAPER)
 d = ImageDraw.Draw(sheet)
 
 d.text((M, M), '导弹模型　真实比例对照（侧视 / 俯视 / 正视）', fill=INK, font=F(72))
-d.text((M, M + 96), 'PL-15 · PL-10 · HQ-10 · YJ-83 — all views at one scale (Blender models)', fill=MUTED, font=F(36))
+d.text((M, M + 96), 'PL-15 · PL-10 · HQ-10 · YJ-83 · YJ-83K — all views at one scale (Blender models)', fill=MUTED, font=F(36))
 for x, label in ((M + LABEL, '侧视图 SIDE（上）/ 俯视图 TOP（下）'), (M + LABEL + side_w + GAP, '正视图 FRONT')):
     d.text((x, M + HEAD - 70), label, fill=INK, font=F(34))
 
@@ -65,8 +65,8 @@ for (kind, mid), rh in zip(ORDER, rows_h):
     d.text((M, y), kind, fill=INK, font=F(56))
     d.text((M, y + 74), info['title'], fill=INK, font=F(30))
     d.text((M, y + 116), info['role'], fill=MUTED, font=F(24))
-    lines = [f'全长 {info["length_m"]:.3f} m　弹径 {info["body_diameter_m"]:.3f} m',
-             f'翼/舵尖圆直径 {info["fin_tip_diameter_m"]:.2f} m' + ('' if kind == 'YJ-83' else '（估）')]
+    lines = [f'全长 {info["length_m"]:.3f} m' + ('（估）' if kind == 'YJ-83K' else '') + f'　弹径 {info["body_diameter_m"]:.3f} m',
+             f'翼/舵尖圆直径 {info["fin_tip_diameter_m"]:.2f} m' + ('' if kind in ('YJ-83', 'YJ-83K') else '（估）')]
     if info['mass_kg']:
         lines.append(f'质量约 {info["mass_kg"]} kg（公开数据）')
     for i, s in enumerate(lines):
@@ -97,10 +97,10 @@ if hero.exists():
     sheet.paste(im, (W - M - im.width, fy))
     d.rectangle([W - M - im.width, fy, W - M, fy + im.height], outline=INK, width=2)
 notes = ['长度、弹径、YJ-83 翼展与质量取公开资料：PL-15E 3.996 m / 0.203 m / ≈210 kg；PL-10 3.0 m / 0.16 m / 89 kg；',
-         'HQ-10 ≈2.0 m / 0.127 m；YJ-83（舰射型含助推器）6.38 m / 0.36 m / 翼展 1.22 m / ≈800 kg。',
+         'HQ-10 ≈2.0 m / 0.127 m；YJ-83（舰射型含助推器）6.38 m / 0.36 m / 翼展 1.22 m / ≈800 kg；YJ-83K 长 5.2 m 为估计。',
          '舵面弦长、展长、安装位置、分段环与色带未公开，按公开照片估计；外形为示意，不是测绘图纸。',
          '模型：assets/models/missiles/*.glb（+Y 向上、弹头朝 -Z、原点在弹长中点）；源文件 Missiles.blend。',
-         '独立模型，尚未接入游戏；游戏内歼-16 仍用 j16.glb 原有挂载（见 MISSILES-ART.md）。']
+         '游戏内歼-16 的 PL-15 / PL-10 / 鹰击-83K 挂载与发射后的导弹使用 missiles-game.glb 的低面数版本（见 MISSILES-ART.md）。']
 for i, s in enumerate(notes):
     d.text((M, fy + i * 44), s, fill=MUTED, font=F(26))
 bx, by = M, fy + len(notes) * 44 + 50
