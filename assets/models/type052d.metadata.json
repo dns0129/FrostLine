@@ -1,0 +1,25 @@
+{
+  "asset": "type052d.glb",
+  "blend": "assets/models/type052d-source/Type-052D.blend",
+  "blend_sha256": "d58423c880cbe6acabf903293b1fd987090373479b07ba024f3d9188c3e893ee",
+  "units": "metres",
+  "blender_axes": "+Z up (waterline 0), bow -Y, +X port",
+  "glb_axes": "+Y up, bow -Z",
+  "length_overall": 157.0,
+  "beam_overall": 17.5,
+  "draft": 9.11,
+  "mast_top_above_waterline": 35.0,
+  "triangles": 11376,
+  "waterline_beam": 16.2,
+  "deck_height_bow": 10.4,
+  "deck_height_stern": 5.6,
+  "hull_numbers": [
+    "172",
+    "173"
+  ],
+  "license": "Original procedural model",
+  "references": [
+    "https://en.wikipedia.org/wiki/Type_052D_destroyer",
+    "https://www.naval-technology.com/projects/luyang-052d-destroyers/"
+  ]
+}

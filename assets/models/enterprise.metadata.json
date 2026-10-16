@@ -1,0 +1,26 @@
+{
+  "asset": "enterprise.glb",
+  "blend": "assets/models/enterprise-source/Enterprise-CVN65.blend",
+  "blend_sha256": "3534e7aa50d3c408904b47cc740cfceabcc4b86f691bfb7bf7b57c78d0d8a1b5",
+  "units": "metres",
+  "blender_axes": "+Z up (waterline 0), bow -Y, +X port",
+  "glb_axes": "+Y up, bow -Z",
+  "length_overall": 342.0,
+  "beam_overall": 85.04,
+  "draft": 11.3,
+  "mast_top_above_waterline": 62.6,
+  "triangles": 12879,
+  "flight_deck_width": 78.3,
+  "waterline_beam": 40.5,
+  "flight_deck_height": 18.6,
+  "angled_deck_deg": 8.97,
+  "hull_numbers": [
+    "65"
+  ],
+  "license": "Original procedural model",
+  "references": [
+    "https://www.globalsecurity.org/military/systems/ship/cvn-65-specs.htm",
+    "https://www.naval-technology.com/projects/uss-enterprise/",
+    "https://history.navy.mil/research/histories/ship-histories/danfs/e/enterprise-cvan-65-viii-1991-1995.html"
+  ]
+}

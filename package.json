@@ -1,13 +1,13 @@
 {
   "name": "frostline-air-combat",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "type": "module",
   "private": true,
   "description": "原创离线单机空战游戏，支持 PC 与手机",
   "scripts": {
     "start": "python3 server.py",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check aircraft-systems.js && node --check aircraft-stores.js && node --check hangar-workshop.js && node --check campaign.js && node --check naval-models.js && node --check ambient-fleet.js && node --check base-scene.js && node --check vehicle-catalog.js && node --check destroyer.js && node --check ship-camera.js && node --check app.js && node --check simulation.js && node --check flight-presentation.js && node --check chase-camera.js && node --check speed-effects.js && node --check renderer.js && node --check terrain.js && node --check fa18.js && node --check j16.js && node --check fujian.js && node --check imported-airframe.js && node --check vendor/GLTFLoader.js && node --check vendor/BufferGeometryUtils.js && node --check aircraft.js && node --check atmosphere.js && node --check water-reflection.js && node --check input.js && node --check audio.js",
+    "check": "node --check aircraft-systems.js && node --check aircraft-stores.js && node --check hangar-workshop.js && node --check campaign.js && node --check naval-models.js && node --check ambient-fleet.js && node --check base-scene.js && node --check vehicle-catalog.js && node --check destroyer.js && node --check ship-camera.js && node --check app.js && node --check simulation.js && node --check flight-presentation.js && node --check chase-camera.js && node --check speed-effects.js && node --check renderer.js && node --check terrain.js && node --check fa18.js && node --check j16.js && node --check naval-assets.js && node --check imported-airframe.js && node --check vendor/GLTFLoader.js && node --check vendor/BufferGeometryUtils.js && node --check aircraft.js && node --check atmosphere.js && node --check water-reflection.js && node --check input.js && node --check audio.js",
     "prepare": "node scripts/prepare-sites.mjs",
     "test:workshop": "node tests/browser-workshop.mjs",
     "test:j16-fujian": "node tests/browser-j16-fujian.mjs"

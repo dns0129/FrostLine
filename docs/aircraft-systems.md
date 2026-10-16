@@ -121,4 +121,5 @@
 
 - F/A-18C：`assets/models/fa18c.glb`，GPL-2.0，源自 [FGMEMBERS/F-18C](https://github.com/FGMEMBERS/F-18C)，可编辑源文件随附 `assets/models/f18-source/`。
 - 歼-16：`assets/models/j16.glb`，GPL-2.0，由 [FGMEMBERS/SU-27](https://github.com/FGMEMBERS/SU-27) 网格改制（双座座舱、加高垂尾、翼尖吊舱、PL-15/PL-10 挂载与涂装），可编辑源文件 `assets/models/j16-source/J-16.blend` 与许可证 `COPYING` 随游戏发布。
+- 企业号、阿利·伯克级、052D：`assets/models/enterprise.glb`、`burke.glb`、`type052d.glb`，本项目 Blender 程序建模（`scripts/build-*.py`），来源与尺寸见 `assets/NAVAL-ART.md`。
 - 福建舰：`assets/models/fujian.glb`，Blender 程序建模；甲板布局依据 Gryfia 的 Wikimedia Commons 线图 [Type 003 Aircraft Carrier Fujian (18)](https://commons.wikimedia.org/wiki/File:Type_003_Aircraft_Carrier_Fujian_(18).svg)，按 CC BY-SA 4.0 署名并以相同许可发布。

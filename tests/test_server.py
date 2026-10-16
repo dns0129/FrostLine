@@ -19,7 +19,9 @@ class PortDetectionTests(unittest.TestCase):
 class DestroyerServingTests(unittest.TestCase):
     def test_ship_runtime_modules_are_served(self):
         for name in ('destroyer.js', 'ship-camera.js', 'naval-models.js', 'ambient-fleet.js', 'campaign.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md',
-                     'imported-airframe.js', 'j16.js', 'fujian.js', 'assets/models/j16.glb', 'assets/models/j16.metadata.json', 'assets/models/fujian.glb', 'assets/models/fujian.metadata.json',
+                     'imported-airframe.js', 'j16.js', 'naval-assets.js', 'assets/models/j16.glb', 'assets/models/j16.metadata.json', 'assets/models/fujian.glb', 'assets/models/fujian.metadata.json',
+                     'assets/models/enterprise.glb', 'assets/models/enterprise.metadata.json', 'assets/models/burke.glb', 'assets/models/burke.metadata.json',
+                     'assets/models/type052d.glb', 'assets/models/type052d.metadata.json',
                      'assets/models/j16-source/J-16.blend', 'assets/models/j16-source/COPYING'):
             with self.subTest(name=name):
                 self.assertIsNotNone(server.game_path('/' + name))

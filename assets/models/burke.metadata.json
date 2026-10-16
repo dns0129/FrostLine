@@ -1,0 +1,25 @@
+{
+  "asset": "burke.glb",
+  "blend": "assets/models/burke-source/Arleigh-Burke-DDG.blend",
+  "blend_sha256": "682a3f761482db685651c1e8b99e5cd9e930406801277d34955a15ad8ddb42f1",
+  "units": "metres",
+  "blender_axes": "+Z up (waterline 0), bow -Y, +X port",
+  "glb_axes": "+Y up, bow -Z",
+  "length_overall": 153.8,
+  "beam_overall": 20.3,
+  "draft": 9.36,
+  "mast_top_above_waterline": 37.0,
+  "triangles": 12546,
+  "waterline_beam": 18.0,
+  "deck_height_bow": 10.6,
+  "deck_height_stern": 5.4,
+  "hull_numbers": [
+    "51",
+    "52"
+  ],
+  "license": "Original procedural model",
+  "references": [
+    "https://www.globalsecurity.org/military/systems/ship/ddg-51-flt1.htm",
+    "https://www.seaforces.org/usnships/ddg/Arleigh-Burke-class.htm"
+  ]
+}

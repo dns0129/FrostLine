@@ -416,7 +416,7 @@ export class Simulation {
     if (level) {
       this.campaignId = level.id;
       this.campaignState = { outsideFor: 0, guardElapsed: 0, nextReinforcement: level.reinforcementEvery || 0, radioIndex: 0,
-        protectedFleetId: 'US-CV-59', objectivePos: new THREE.Vector3(-980, 18, 1900), commanderDown: false };
+        protectedFleetId: 'US-CVN-65', objectivePos: new THREE.Vector3(-980, 18, 1900), commanderDown: false };
       this.player.pos.set(...level.spawn);
     }
     if (isNavalMode(this.mode) && this.vehicle === 'destroyer') this.player.turretPitch = 0.006;

@@ -1,6 +1,6 @@
 """Assemble rendered orthographic views into a dimensioned three-view sheet.
 
-    python3 scripts/compose-three-view.py j16|fujian
+    python3 scripts/compose-three-view.py j16|fujian|enterprise|burke|type052d
 
 Reads assets/three-views/raw/<name>_{side,top,front}.png and <name>_views.json
 (written by scripts/render-three-views.py) and writes
@@ -14,7 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / 'assets/three-views/raw'
-CJK = '/System/Library/Fonts/Hiragino Sans GB.ttc'
+CJK = next(f for f in ('/System/Library/Fonts/Hiragino Sans GB.ttc', '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+                       '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc') if Path(f).exists())
 INK, DIM, ACCENT, PAPER = (34, 38, 44), (40, 92, 160), (190, 60, 50), (250, 250, 247)
 
 MODELS = {
@@ -43,6 +44,52 @@ MODELS = {
                   '水下线型、吃水、螺旋桨与舵为常规航母的估计造型；武器为 HQ-10 与 H/PJ-11 的外形示意。'],
         'scale_bar': (50, 10),
         'span_label': None,
+        # flight-deck width dimension: port X, starboard X, and the Y where each is measured
+        'deck_dim': (39.17, -37.3, -70.7, -46.7),
+    },
+    'enterprise': {
+        'out': 'Enterprise-CVN65-three-view.png',
+        'title': '企业号（CVN-65）核动力航空母舰　三视图',
+        'subtitle': 'USS Enterprise (CVN-65), final configuration — three-view (Blender model)',
+        'meta': 'assets/models/enterprise.metadata.json',
+        'specs': ['全长 342 m（模型 342.0 m）', '飞行甲板宽 78.3 m · 水线宽 40.5 m · 吃水约 11.3 m', '飞行甲板距水线 18.6 m（估计）',
+                  '4 部蒸汽弹射器 · 4 道拦阻索 · 斜角甲板 9° · 4 部舷侧升降机（右舷 3 / 左舷 1）', '舰岛：SPS-48E / SPS-49 桅杆 · 海麻雀、RAM、密集阵为外形示意'],
+        'notes': ['全部几何由 scripts/build-enterprise.py 程序生成，甲板图案由 scripts/enterprise-deck-texture.py 绘制；',
+                  '尺寸取公开资料（GlobalSecurity、Naval Technology、美国海军历史与遗产司令部），布局按公开照片判读，',
+                  '不是测绘图纸；水下线型、螺旋桨与舵为估计造型，舷号 65 绘于舰岛两侧与甲板。'],
+        'scale_bar': (50, 10),
+        'span_label': None,
+        'deck_dim': (42.3, -36.0, 60.0, 60.0),
+        'renderer': 'Blender 5.0（bpy）· Cycles',
+    },
+    'burke': {
+        'out': 'Arleigh-Burke-DDG51-three-view.png',
+        'title': '阿利·伯克级（Flight I）驱逐舰　三视图',
+        'subtitle': 'Arleigh Burke-class destroyer, Flight I (DDG-51) — three-view (Blender model)',
+        'meta': 'assets/models/burke.metadata.json',
+        'specs': ['全长 153.8 m · 最大宽 20.3 m · 水线宽 18 m', '舰体吃水约 6.3 m（声呐罩处约 9.3 m）',
+                  'Mk 45 127 mm 舰炮 · Mk 41 垂发 29 + 61 单元 · 2 座密集阵', '4 面 SPY-1D 阵面 · 3 部 SPG-62 照射雷达 · 2 组鱼叉 · 无机库直升机甲板'],
+        'notes': ['全部几何由 scripts/build-burke.py 程序生成；尺寸取公开资料（GlobalSecurity、Seaforces），',
+                  '布局按美国海军公开照片判读，不是测绘图纸。舷号 51 / 52 为独立对象，游戏中各舰只显示自己的舷号；',
+                  '本图显示 51。水下线型、声呐罩、螺旋桨与舵为估计造型。'],
+        'scale_bar': (20, 5),
+        'span_label': None,
+        'renderer': 'Blender 5.0（bpy）· Cycles',
+    },
+    'type052d': {
+        'out': 'Type-052D-three-view.png',
+        'title': '052D 型驱逐舰　三视图',
+        'subtitle': 'PLAN Type 052D (Luyang III) destroyer — three-view (Blender model)',
+        'meta': 'assets/models/type052d.metadata.json',
+        'specs': ['全长 157 m · 最大宽 17.5 m · 水线宽 16.2 m', '吃水约 6.5 m（声呐罩处更深）',
+                  '130 mm 主炮 · 垂发 32 + 32 单元 · H/PJ-12 近防炮 · 机库顶 24 联 HHQ-10',
+                  '4 面 346A 阵面 · 518 型雷达 · 一体化桅杆 · 直升机机库与甲板'],
+        'notes': ['全部几何由 scripts/build-052d.py 程序生成；尺寸取公开资料（Naval Technology 等，宽度有 17 / 18 m 两说），',
+                  '布局按公开照片判读，不是测绘图纸。舷号 172 / 173 为独立对象，游戏中各舰只显示自己的舷号；',
+                  '本图显示 172。水下线型、声呐罩、螺旋桨与舵为估计造型。'],
+        'scale_bar': (20, 5),
+        'span_label': None,
+        'renderer': 'Blender 5.0（bpy）· Cycles',
     },
 }
 
@@ -141,21 +188,27 @@ else:
         for xx in range(int(x0), int(x1), 36):
             d.line([(xx, wl), (min(xx + 20, x1), wl)], fill=ACCENT, width=2)
         d.text((x0 - 10, wl), 'WL', fill=ACCENT, font=F(30), anchor='rm')
-    _, fd = to_px('side', Z=meta['flight_deck_height']); _, wl = to_px('side', Z=0.0)
+    carrier = 'flight_deck_height' in meta
+    deck_z = meta['flight_deck_height'] if carrier else meta['deck_height_bow']
+    _, fd = to_px('side', Z=deck_z); _, wl = to_px('side', Z=0.0)
     # short spans: plain dimension lines with horizontal labels beside them
-    for y0_, y1_, label in ((fd, wl, f'甲板距水线 {meta["flight_deck_height"]:.1f} m'), (wl, z_bot, f'吃水 {abs(Zmin):.1f} m')):
+    for y0_, y1_, label in ((fd, wl, f'{"甲板" if carrier else "艏部甲板"}距水线 {deck_z:.1f} m'), (wl, z_bot, f'吃水 {abs(Zmin):.1f} m')):
         d.line([(xb - 40, y0_), (xb + 90, y0_)], fill=DIM, width=2)
         d.line([(xb + 80, y0_), (xb + 80, y1_)], fill=DIM, width=3)
         arrow((xb + 80, y0_), (0, -1), 12); arrow((xb + 80, y1_), (0, 1), 12)
         d.text((xb + 100, (y0_ + y1_) / 2), label, fill=DIM, font=F(28), anchor='lm')
     d.line([(xb - 40, z_bot), (xb + 90, z_bot)], fill=DIM, width=2)
-    # flight-deck width on the top view at the angled-deck forward corner
-    deck_x = (39.17, -37.3)
+    # flight-deck (or hull) width on the top view
     ty, _ = to_px('top', Y=Ymin)
-    _, p0 = to_px('top', X=deck_x[0]); _, p1 = to_px('top', X=deck_x[1])
-    ex0, _ = to_px('top', Y=-70.7); ex1, _ = to_px('top', Y=-46.7)
-    d.line([(ex0, p0), (ty - 60, p0)], fill=DIM, width=2); d.line([(ex1, p1), (ty - 60, p1)], fill=DIM, width=2)
-    dim_v(p1, p0, ty - 70, f'甲板宽 {meta["flight_deck_width"]:.1f} m')
+    if carrier:
+        xp, xs, yp, ys = cfg['deck_dim']
+        _, p0 = to_px('top', X=xp); _, p1 = to_px('top', X=xs)
+        ex0, _ = to_px('top', Y=yp); ex1, _ = to_px('top', Y=ys)
+        d.line([(ex0, p0), (ty - 60, p0)], fill=DIM, width=2); d.line([(ex1, p1), (ty - 60, p1)], fill=DIM, width=2)
+        dim_v(p1, p0, ty - 70, f'甲板宽 {meta["flight_deck_width"]:.1f} m')
+    else:
+        _, p0 = to_px('top', X=Xmax); _, p1 = to_px('top', X=Xmin)
+        dim_v(p1, p0, ty - 70, f'宽 {meta["beam_overall"]:.1f} m', ext_from=(ty, ty))
     # waterline beam on the front view
     hb = meta['waterline_beam'] / 2
     w0, _ = to_px('front', X=-hb); w1, _ = to_px('front', X=hb); _, wly = to_px('front', Z=0.0)
@@ -188,7 +241,7 @@ for k in range(int(length_m / step)):
 for k in range(int(length_m / step) + 1):
     d.text((bx + k * step * ppm, by + 30), f'{k * step:g}', fill=INK, font=F(26), anchor='mt')
 d.text((bx + length_m * ppm + 30, by + 9), f'm　比例尺 1 m = {ppm:g} px', fill=INK, font=F(28), anchor='lm')
-d.text((W - M, H - 60), f'FROSTLINE 模型素材 · Blender 5.2 渲染 · {date.today().isoformat()}', fill=(120, 126, 132), font=F(26), anchor='rm')
+d.text((W - M, H - 60), f'FROSTLINE 模型素材 · {cfg.get("renderer", "Blender 5.2")} 渲染 · {date.today().isoformat()}', fill=(120, 126, 132), font=F(26), anchor='rm')
 d.rectangle([40, 40, W - 40, H - 40], outline=INK, width=4)
 out = ROOT / 'assets/three-views' / cfg['out']
 sheet.save(out, optimize=True)

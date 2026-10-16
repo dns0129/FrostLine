@@ -1,9 +1,9 @@
 import * as THREE from './vendor/three.module.js';
-import { NAVAL_MODELS, makeNavalAssets, makeNavalShip } from './naval-models.js';
+import { NAVAL_MODELS, makeNavalShip } from './naval-models.js';
 
 // Scene-only fleets. These IDs never enter combat targeting, scoring or waves.
 export const DEFAULT_FLEET = Object.freeze([
-  Object.freeze({ id: 'US-CV-59', type: 'forrestal', country: 'US', number: '59', right: 0, aft: 0 }),
+  Object.freeze({ id: 'US-CVN-65', type: 'enterprise', country: 'US', number: '65', right: 0, aft: 0 }),
   Object.freeze({ id: 'US-DDG-51', type: 'burke', country: 'US', number: '51', right: -300, aft: -320 }),
   Object.freeze({ id: 'US-DDG-52', type: 'burke', country: 'US', number: '52', right: 300, aft: 350 }),
   Object.freeze({ id: 'CN-CV-18', type: 'fujian', country: 'CN', number: '18', right: 0, aft: 0 }),
@@ -87,14 +87,13 @@ function foamMap() {
 }
 
 export class AmbientFleet {
-  // `imported` maps asset ids (NAVAL_MODELS[type].asset) to loaded models such as
-  // the Fujian GLB; the caller keeps ownership and disposes them.
+  // `imported` maps asset ids (NAVAL_MODELS[type].asset) to the prepared Blender
+  // models from naval-assets.js; the caller keeps ownership and disposes them.
   constructor(scene, { imported = {} } = {}) {
-    this.scene = scene; this.assets = makeNavalAssets(); this.group = new THREE.Group(); this.group.name = 'US and Chinese underway fleets';
-    Object.assign(this.assets.imported, imported);
+    this.scene = scene; this.imported = imported; this.group = new THREE.Group(); this.group.name = 'US and Chinese underway fleets';
     this.map = foamMap(); this.wakeAssets = Object.fromEntries(Object.entries(NAVAL_MODELS).map(([key, d]) => [key, wakeAssets(d, this.map)]));
     this.ships = DEFAULT_FLEET.map(def => {
-      const model = makeNavalShip(this.assets, def.type, def.number); model.userData.fleetId = def.id;
+      const model = makeNavalShip(this.imported, def.type, def.number); model.userData.fleetId = def.id;
       const a = this.wakeAssets[def.type], wake = new THREE.Mesh(a.geometry, a.material);
       wake.name = `${def.id}-underway-wake`; wake.userData.skipWaterReflection = true;
       this.group.add(model, wake); return { id: def.id, model, wake };
@@ -115,7 +114,7 @@ export class AmbientFleet {
     Object.values(this.wakeAssets).forEach(a => { a.time.value = time; });
   }
   dispose() {
-    if (this.disposed) return; this.disposed = true; this.scene.remove(this.group); this.assets.dispose(); this.map.dispose();
+    if (this.disposed) return; this.disposed = true; this.scene.remove(this.group); this.map.dispose();
     Object.values(this.wakeAssets).forEach(a => { a.geometry.dispose(); a.material.dispose(); });
   }
 }

@@ -34,3 +34,11 @@
 - `npm run test:workshop`：8 项中 7 项通过。“飞机对海训练发射鱼叉并击沉”在本容器中超时：云端 Chromium 使用 SwiftShader 软件渲染，游戏约 1.6–1.9 帧/秒，模拟时间只有实时的约 0.16–0.19 倍；未改动的基线提交在同一步同样超时。该流程由 Node 测试“aircraft Harpoon locks a sea target … scores a real sinking”覆盖。
 
 浏览器验证截图保存在云端 `verification/j16-fujian/`，按仓库规则不提交。手机测试为浏览器视口与触控模拟，并非实体手机帧率验证。
+
+## 1.15 企业号、伯克级与 052D 模型（2026-10-16）
+
+三个舰级在云端用 PyPI 的 `bpy` 5.0.1（Python 3.11）程序建模并导出；构建脚本 `scripts/build-enterprise.py`、`build-burke.py`、`build-052d.py` 与 `scripts/ship_kit.py` 随仓库提交。云端网络策略不允许访问 Blender 官网与 Wikimedia，因此未下载 Blender 发行包和参考照片；参考链接见各 `*-source/reference/SOURCES.md`。无 GPU 时 EEVEE 无法启动，三视图与透视图改用 Cycles CPU 渲染。
+
+- `npm run check`：通过。`npm test`：279 项全部通过（新增四个舰级的尺寸、朝向、水线、近远景预算、每舰只显示本舰舷号、几何共享、战役第二关护航目标与资源释放测试）。
+- `python3 -m unittest discover -s tests -p 'test_*.py'`：4 项通过，新模型与 `naval-assets.js` 已加入白名单。`npm run prepare`：生成 55 个文件。`git diff --check`：通过。
+- `tests/browser-fleet.mjs`：12 项通过，包括 8 种桌面出击组合下六舰航行与尾迹、暂停冻结、四个舰级检阅视角的真实 WebGL 渲染（无 WebGL 错误），以及 844×390、390×844 手机视口。该脚本改为可用 `PLAYWRIGHT_PATH`、`CHROMIUM_PATH`、`ANGLE_BACKEND` 指定环境。

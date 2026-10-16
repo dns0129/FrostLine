@@ -23,7 +23,8 @@ GAME_FILES = frozenset({
     "aircraft-systems.js", "aircraft-stores.js", "hangar-workshop.js", "docs/aircraft-systems.md",
     "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/f18-source/F-A-18C-rebuilt-v2.blend",
     "imported-airframe.js", "j16.js", "assets/models/j16.metadata.json", "assets/models/j16-source/J-16.blend", "assets/models/j16-source/COPYING",
-    "fujian.js", "assets/models/fujian.metadata.json", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
+    "naval-assets.js", "assets/models/fujian.metadata.json", "assets/models/enterprise.metadata.json",
+    "assets/models/burke.metadata.json", "assets/models/type052d.metadata.json", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
     "manifest.webmanifest",
 })
 ASSET_EXTENSIONS = frozenset({

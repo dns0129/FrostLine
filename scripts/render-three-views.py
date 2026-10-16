@@ -4,9 +4,12 @@
 
 Views share one pixel scale so scripts/compose-three-view.py can assemble a
 dimensioned drawing sheet; their framing is written to <out_dir>/<name>_views.json.
+Without a GPU (no EEVEE), set VIEW_ENGINE=CYCLES; VIEW_SAMPLES / HERO_SAMPLES
+override the Cycles sample counts.  With the bpy module, open the .blend first
+and pass the same arguments after '--' in sys.argv.
 Blender axes: +Z up, nose/bow toward -Y, +X = port.
 """
-import bpy, sys, json, math
+import bpy, sys, json, math, os
 from mathutils import Vector
 
 a = sys.argv[sys.argv.index('--') + 1:]
@@ -21,8 +24,11 @@ pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
 lo = Vector([min(p[i] for p in pts) for i in range(3)])
 hi = Vector([max(p[i] for p in pts) for i in range(3)])
 ctr, size = (lo + hi) / 2, hi - lo
-sc.render.engine = 'BLENDER_EEVEE'
-sc.eevee.taa_render_samples = 64
+sc.render.engine = os.environ.get('VIEW_ENGINE', 'BLENDER_EEVEE')
+if sc.render.engine == 'CYCLES':
+    sc.cycles.device = 'CPU'; sc.cycles.samples = int(os.environ.get('VIEW_SAMPLES', 24)); sc.cycles.use_denoising = True
+else:
+    sc.eevee.taa_render_samples = 64
 sc.render.resolution_percentage = 100
 world = sc.world or bpy.data.worlds.new('World'); sc.world = world; world.use_nodes = True
 bg = world.node_tree.nodes['Background']
@@ -91,7 +97,7 @@ if mode in ('hero', 'all'):
     # EEVEE drops sun shadows in background renders on this Mac, so hero
     # shots use Cycles on the CPU.
     sc.render.engine = 'CYCLES'
-    sc.cycles.device = 'CPU'; sc.cycles.samples = 96; sc.cycles.use_denoising = True
+    sc.cycles.device = 'CPU'; sc.cycles.samples = int(os.environ.get('HERO_SAMPLES', 96)); sc.cycles.use_denoising = True
     bg.inputs[0].default_value = (0.40, 0.55, 0.80, 1); bg.inputs[1].default_value = 0.55
     key = sun((50, 0, 40), 4.6, 1.5, (1.0, 0.95, 0.88))
     sc.render.resolution_x, sc.render.resolution_y = 2400, 1350

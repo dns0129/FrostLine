@@ -10,7 +10,9 @@ const files = [
   'campaign.js', 'base-scene.js', 'vehicle-catalog.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md', 'destroyer.js', 'naval-models.js', 'ambient-fleet.js', 'ship-camera.js', 'simulation.js', 'flight-presentation.js', 'chase-camera.js', 'speed-effects.js', 'renderer.js', 'terrain.js',
   'aircraft.js', 'fa18.js', 'assets/models/fa18c.glb', 'assets/models/fa18c.metadata.json', 'assets/models/f18-source/F-A-18C-rebuilt-v2.blend',
   'imported-airframe.js', 'j16.js', 'assets/models/j16.glb', 'assets/models/j16.metadata.json', 'assets/models/j16-source/J-16.blend', 'assets/models/j16-source/COPYING',
-  'fujian.js', 'assets/models/fujian.glb', 'assets/models/fujian.metadata.json', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js', 'atmosphere.js', 'water-reflection.js', 'world-math.js',
+  'naval-assets.js', 'assets/models/fujian.glb', 'assets/models/fujian.metadata.json',
+  'assets/models/enterprise.glb', 'assets/models/enterprise.metadata.json', 'assets/models/burke.glb', 'assets/models/burke.metadata.json',
+  'assets/models/type052d.glb', 'assets/models/type052d.metadata.json', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js', 'atmosphere.js', 'water-reflection.js', 'world-math.js',
   'sw.js', 'manifest.webmanifest', 'vendor/three.module.js', 'vendor/LICENSE.txt',
   'assets/briefing.jpg', 'assets/sky-panorama.jpg', 'assets/rock-albedo.jpg', 'assets/icon.svg',
 ];
