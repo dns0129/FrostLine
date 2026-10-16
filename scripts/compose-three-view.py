@@ -212,7 +212,7 @@ else:
     # waterline beam on the front view
     hb = meta['waterline_beam'] / 2
     w0, _ = to_px('front', X=-hb); w1, _ = to_px('front', X=hb); _, wly = to_px('front', Z=0.0)
-    dim_h(w0, w1, fz_bot + 70, f'水线宽 {meta["waterline_beam"]:.0f} m', ext_from=(wly, wly), size=30)
+    dim_h(w0, w1, fz_bot + 70, f'水线宽 {meta["waterline_beam"]:g} m', ext_from=(wly, wly), size=30)
 
 # --- perspective render in the free space beside the top view --------------
 hero = RAW / f'{name}_hero_a.png'
