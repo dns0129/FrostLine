@@ -16,12 +16,12 @@ export const NAVAL_MODELS = Object.freeze({
 // One ship instance from caller-owned prepared assets ({ [asset]: prepared }).
 // Geometry and materials are shared between instances; a model's hull-number
 // meshes are kept per number and only the instance's own number is added.
-export function makeNavalShip(imported, type, number = NAVAL_MODELS[type]?.number) {
+export function makeNavalShip(imported, type, number = NAVAL_MODELS[type]?.number, options = {}) {
   const def = NAVAL_MODELS[type], source = def && imported[def.asset];
   if (!source) throw new Error(def ? `Naval model not loaded: ${type}` : `Unknown naval model: ${type}`);
   const root = new THREE.Group(), lod = new THREE.LOD();
   root.name = `${def.name} ${number}`; root.userData = { modelType: type, country: def.country, kind: def.kind, number, definition: def, lod };
-  source.levels.forEach((list, index) => {
+  (options.playable&&source.playableLevels?source.playableLevels:source.levels).forEach((list, index) => {
     const group = new THREE.Group(); group.name = index ? 'distant-silhouette' : 'detailed-ship';
     for (const { key, geometry, material, number: painted } of list) {
       if (painted && painted !== number) continue;
