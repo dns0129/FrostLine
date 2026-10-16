@@ -10,7 +10,8 @@ import { WorldRenderer } from '../renderer.js';
 // Execute the production RAF callback, simulation, jet transforms and camera.
 // Only GPU submission, audio, DOM HUD and combat effects are replaced.
 const appSource = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-const frameSource = appSource.slice(appSource.indexOf('function frame(now)'), appSource.indexOf('\nselectVehicle(selectedVehicle);'));
+const frameStart = appSource.indexOf('function frame(now)');
+const frameSource = appSource.slice(frameStart, appSource.indexOf('\n}', frameStart) + 2);
 function replay(hz) {
   const sim = new Simulation(7331); sim.start('training'); sim.enemies = []; sim._updateMission = () => {};
   const world = Object.create(WorldRenderer.prototype);

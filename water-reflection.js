@@ -1,4 +1,5 @@
 import * as THREE from './vendor/three.module.js';
+import { getQualityPreset } from './quality.js';
 
 const textureBias = new THREE.Matrix4().set(
   .5, 0, 0, .5,
@@ -7,6 +8,7 @@ const textureBias = new THREE.Matrix4().set(
   0, 0, 0, 1,
 );
 const lookTarget = new THREE.Vector3();
+const cameraFields = ['fov', 'aspect', 'near', 'far', 'zoom', 'focus', 'filmGauge', 'filmOffset', 'coordinateSystem'];
 
 /** Reflect a perspective camera across the world sea plane y = 0.
  * The output camera must be unparented. Read the camera's actual world axes:
@@ -20,10 +22,11 @@ export function reflectCamera(camera, out = new THREE.PerspectiveCamera()) {
   lookTarget.set(-m[8], m[9], -m[10]).add(out.position);
   out.lookAt(lookTarget);
 
-  for (const field of ['fov', 'aspect', 'near', 'far', 'zoom', 'focus', 'filmGauge', 'filmOffset', 'coordinateSystem']) {
+  for (const field of cameraFields) {
     out[field] = camera[field];
   }
-  out.view = camera.view ? { ...camera.view } : null;
+  if (camera.view) Object.assign(out.view ||= {}, camera.view);
+  else out.view = null;
   out.layers.mask = camera.layers.mask;
   out.updateProjectionMatrix();
   out.updateMatrixWorld(true);
@@ -58,7 +61,8 @@ export class WaterReflection {
     this.scene = scene;
     this.ocean = ocean;
     this.exclude = exclude;
-    this.quality = quality;
+    this.profile = getQualityPreset(quality);
+    this.quality = this.profile.id;
     this.mirrorCamera = new THREE.PerspectiveCamera();
     this.reflectionMatrix = new THREE.Matrix4();
     this.target = this._createTarget();
@@ -74,12 +78,21 @@ export class WaterReflection {
     this._valid = false;
     this._capturing = false;
     this._disposed = false;
+    this._saved = { viewport: new THREE.Vector4(), scissor: new THREE.Vector4() };
+    this._hidden = [];
+    this._captureClipPlanes = [];
+    this._hideObject = object => {
+      if (object.visible && (object === this.ocean || object.userData.skipWaterReflection === true || this.exclude?.(object))) {
+        this._hidden.push(object);
+        object.visible = false;
+      }
+    };
     this._bindUniforms(0);
   }
 
   _createTarget() {
     // Keep HDR where renderable; the low preset uses less bandwidth on phones.
-    const hdr = this.quality !== 'low' && (
+    const hdr = this.profile.reflectionHDR && (
       this.renderer.extensions.has('EXT_color_buffer_float') ||
       this.renderer.extensions.has('EXT_color_buffer_half_float')
     );
@@ -105,8 +118,10 @@ export class WaterReflection {
   }
 
   setQuality(quality) {
-    if (quality === this.quality || this._disposed) return;
-    this.quality = quality;
+    const profile = getQualityPreset(quality);
+    if (profile.id === this.quality || this._disposed) return;
+    this.profile = profile;
+    this.quality = profile.id;
     this.target.dispose();
     this.target = this._createTarget();
     this._valid = false;
@@ -115,7 +130,7 @@ export class WaterReflection {
 
   resize(camera) {
     if (this._disposed) return;
-    const limit = this.quality === 'low' ? 256 : 512;
+    const limit = this.profile.reflectionResolution;
     const aspect = Math.max(.1, camera.aspect);
     // Cap both dimensions, including portrait phones; preserve the view shape.
     const width = Math.max(1, Math.round(limit * Math.min(1, aspect)));
@@ -139,7 +154,7 @@ export class WaterReflection {
       return false;
     }
 
-    const period = this.quality === 'low' ? 1 / 15 : 1 / 30;
+    const period = 1 / this.profile.reflectionHz;
     const moved = this._position.distanceToSquared(this._lastPosition) > 80 * 80;
     const turned = this._quaternion.angleTo(this._lastQuaternion) > .12;
     const projectionChanged = projectionNeedsRefresh(camera.projectionMatrix, this._lastProjection);
@@ -148,30 +163,27 @@ export class WaterReflection {
 
     reflectCamera(camera, this.mirrorCamera);
     const renderer = this.renderer;
-    const saved = {
-      target: renderer.getRenderTarget(),
-      face: renderer.getActiveCubeFace(),
-      mip: renderer.getActiveMipmapLevel(),
-      viewport: renderer.getViewport(new THREE.Vector4()),
-      scissor: renderer.getScissor(new THREE.Vector4()),
-      scissorTest: renderer.getScissorTest(),
-      toneMapping: renderer.toneMapping,
-      clippingPlanes: renderer.clippingPlanes,
-      xrEnabled: renderer.xr.enabled,
-      shadowAutoUpdate: renderer.shadowMap.autoUpdate,
-    };
-    const hidden = [];
+    const saved = this._saved, hidden = this._hidden, clipping = this._captureClipPlanes;
+    saved.target = renderer.getRenderTarget();
+    saved.face = renderer.getActiveCubeFace();
+    saved.mip = renderer.getActiveMipmapLevel();
+    renderer.getViewport(saved.viewport);
+    renderer.getScissor(saved.scissor);
+    saved.scissorTest = renderer.getScissorTest();
+    saved.toneMapping = renderer.toneMapping;
+    saved.clippingPlanes = renderer.clippingPlanes;
+    saved.xrEnabled = renderer.xr.enabled;
+    saved.shadowAutoUpdate = renderer.shadowMap.autoUpdate;
+    hidden.length = 0;
+    clipping.length = 0;
+    if (saved.clippingPlanes) for (const plane of saved.clippingPlanes) clipping.push(plane);
+    clipping.push(this.clipPlane);
     this._capturing = true;
     try {
-      this.scene.traverse(object => {
-        if (object.visible && (object === this.ocean || object.userData.skipWaterReflection === true || this.exclude?.(object))) {
-          hidden.push(object);
-          object.visible = false;
-        }
-      });
+      this.scene.traverse(this._hideObject);
       renderer.xr.enabled = false;
       renderer.shadowMap.autoUpdate = false;
-      renderer.clippingPlanes = [...(saved.clippingPlanes || []), this.clipPlane];
+      renderer.clippingPlanes = clipping;
       // The ocean shader will be tone-mapped once in the main pass. Capturing
       // an already tone-mapped image here would darken and flatten reflections.
       renderer.toneMapping = THREE.NoToneMapping;
@@ -192,6 +204,7 @@ export class WaterReflection {
       return true;
     } finally {
       for (const object of hidden) object.visible = true;
+      hidden.length = 0;
       renderer.toneMapping = saved.toneMapping;
       renderer.clippingPlanes = saved.clippingPlanes;
       renderer.xr.enabled = saved.xrEnabled;

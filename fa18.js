@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { makeJet } from './aircraft.js';
+import { makeFA18ArmamentAssets, makeFA18Armament } from './fa18-armament.js';
 
 export async function loadFA18Assets() {
   const url = new URL('./assets/models/fa18c.glb', import.meta.url);
@@ -18,9 +19,10 @@ export async function loadFA18Assets() {
     if (o.material.transparent) o.material.depthWrite = false;
     for (const v of Object.values(o.material)) if (v?.isTexture) v.anisotropy = 4;
   });
+  const armament = makeFA18ArmamentAssets();
   let disposed = false;
   return {
-    scene: gltf.scene, metadata,
+    scene: gltf.scene, metadata, armament,
     dispose() {
       if (disposed) return; disposed = true;
       const geometry = new Set(), materials = new Set(), textures = new Set();
@@ -32,6 +34,7 @@ export async function loadFA18Assets() {
       });
       geometry.forEach(v => v.dispose()); materials.forEach(v => v.dispose());
       textures.forEach(v => { v.dispose(); v.source?.data?.close?.(); });
+      armament.dispose();
     },
   };
 }
@@ -45,6 +48,11 @@ export function makeFA18(assets, jetAssets, { parked = false } = {}) {
   }
   jet.name = 'F/A-18C Hornet';
   const model = assets.scene.clone(true); model.name = 'F/A-18C Blender airframe'; jet.add(model);
+  // The imported asset contains the pylons and tip rails, but no missiles.
+  // Mount a complete shared loadout in this airframe's metre coordinates.
+  assets.armament ??= makeFA18ArmamentAssets();
+  const armament = makeFA18Armament(assets.armament, { parked });
+  jet.add(armament); jet.userData.armament = armament;
   const gear = [];
   model.traverse(o => { if (o.userData.role === 'gear') { o.visible = parked; gear.push(o); } });
   const nozzles = [...assets.metadata.nozzles].sort((a, b) => a[0] - b[0]);
@@ -69,12 +77,13 @@ export function makeFA18(assets, jetAssets, { parked = false } = {}) {
   const update = jet.userData.update;
   jet.userData.update = (dt, state = {}) => {
     update(dt, state);
+    armament.userData.update(state.missiles);
     if (parked) { jet.userData.exhaust.visible = false; jet.userData.exhaustCore.visible = false; }
   };
   const dispose = jet.userData.dispose; let disposed = false;
   jet.userData.dispose = () => {
     if (disposed) return; disposed = true;
-    dispose(); ownedGeometry.forEach(g => g.dispose());
+    dispose(); ownedGeometry.forEach(g => g.dispose()); armament.userData.dispose();
   };
   return jet;
 }

@@ -7,13 +7,17 @@ import { FlightAudio } from './audio.js';
 import { BaseScene } from './base-scene.js';
 import { vehicleById } from './vehicle-catalog.js';
 import { CAMPAIGN_LEVELS, CAMPAIGN_TITLE, campaignLevel, normalizeCampaignProgress, campaignUnlocked, recordCampaignWin, recommendedCampaignLevel, campaignObjectiveText } from './campaign.js';
+import { MAPS, DEFAULT_MAP_ID, getMap } from './maps.js';
+import { normalizeQuality } from './quality.js';
 
 const $=id=>document.getElementById(id);
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const safeRead=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
 const save=(key,v)=>{try{localStorage.setItem(key,JSON.stringify(v));}catch{}};
-const settings={difficulty:'normal',quality:'auto',sound:true,invert:false,cameraZoom:100,vehicle:'aircraft',...safeRead('frostline-settings',{})};
+const settings={difficulty:'normal',quality:'auto',sound:true,invert:false,cameraZoom:100,vehicle:'aircraft',map:DEFAULT_MAP_ID,...safeRead('frostline-settings',{})};
 settings.cameraZoom=clamp(Number(settings.cameraZoom)||100,78,140);
+settings.map=getMap(settings.map).id;
+settings.quality=normalizeQuality(settings.quality);
 let selectedVehicle=settings.vehicle==='destroyer'?'destroyer':'aircraft';
 let cannonAim=null;
 const isShip=()=>selectedVehicle==='destroyer';
@@ -28,7 +32,7 @@ let diagnostics=null,metricsFrames=0,metricsStart=performance.now(),metricsDelta
 if(debugMode){diagnostics=document.createElement('output');diagnostics.id='renderDiagnostics';diagnostics.style.cssText='position:fixed;z-index:50;left:12px;bottom:3px;font:10px monospace;color:#cff5df;background:#142c35cc;padding:4px 7px;pointer-events:none;max-width:calc(100vw - 24px)' ;document.body.append(diagnostics);}
 const sim=new Simulation();const presentation=new FlightPresentation();presentation.reset(sim);const sound=new FlightAudio();sound.enabled=settings.sound;
 let world;
-try{world=new WorldRenderer($('world'),{quality:settings.quality});}catch(e){$('bootText').textContent='无法启动 3D 画面：请开启浏览器硬件加速后重试。';throw e;}
+try{world=new WorldRenderer($('world'),{quality:settings.quality,mapId:settings.map});}catch(e){$('bootText').textContent='无法启动 3D 画面：请开启浏览器硬件加速后重试。';throw e;}
 try{await world.modelReady;}catch(e){$('bootText').textContent='F/A-18 模型加载失败，请刷新页面重试。';world.dispose();throw e;}
 const baseScene = new BaseScene(world, $('baseViewport'));
 world.cameraZoom=settings.cameraZoom/100;
@@ -56,12 +60,55 @@ function syncBaseVehicle(){
  $('baseViewport').setAttribute('aria-label',`${vehicle.code} ${vehicle.name} 3D 展示：拖动旋转，滚轮或双指缩放，方向键旋转，Home 回正`);
 }
 function syncCameraControls(){document.body.classList.toggle('ship-bridge',isShip()&&cockpit);const button=$('touchCamera');button.textContent=isShip()?(cockpit?'跟随':'舰桥'):'视角';button.setAttribute('aria-label',isShip()?(cockpit?'切回镜头瞄准视角':'切换舰桥视角'):'切换视角');}
+function mapChart(map){
+ const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 300 138');svg.setAttribute('aria-hidden','true');svg.classList.add('map-chart');
+ const path=(d,className)=>{const node=document.createElementNS(ns,'path');node.setAttribute('d',d);node.setAttribute('class',className);svg.append(node);return node;};
+ path('M0 34.5H300M0 69H300M0 103.5H300M60 0V138M120 0V138M180 0V138M240 0V138','chart-grid');
+ for(const island of map.islands){
+   const cx=150+island.x*.008,cy=103+island.z*.0047,rx=island.radius*.007,ry=island.radius*.0047;
+   for(const scale of [1,.72,.44]){
+     let d='';for(let i=0;i<=40;i++){const a=i/40*Math.PI*2,r=1+Math.sin(a*3+island.seed)*.13+Math.cos(a*5-island.seed)*.08;d+=`${i?'L':'M'}${(cx+Math.cos(a)*rx*r*scale).toFixed(2)} ${(cy+Math.sin(a)*ry*r*scale).toFixed(2)} `;}path(d+'Z',scale===1?'chart-land':'chart-contour');
+   }
+ }
+ if(map.id==='city-bay')path('M104 82h5v8h-5zM111 76h5v14h-5zM118 70h6v20h-6zM127 79h6v11h-6zM102 94h34','chart-city');
+ if(map.id==='ice-ocean')path('m45 97 9-5 8 5-6 7Z m168-68 12-7 11 6-5 9Z m-34 65 7-3 6 4-5 5Z','chart-ice');
+ path('M150 132V99Q150 78 143 65L157 30','chart-route');path('m150 97-4 9h8Z','chart-position');
+ const north=document.createElementNS(ns,'text');north.setAttribute('x','280');north.setAttribute('y','17');north.setAttribute('class','chart-north');north.textContent='N ↑';svg.append(north);return svg;
+}
+function createMapMenu(){
+ $('mapCards').replaceChildren(...MAPS.map((map,index)=>{
+   const button=document.createElement('button');button.type='button';button.className=`map-card map-${map.id}`;button.dataset.map=map.id;
+   const art=document.createElement('span');art.className='map-card-art';art.append(mapChart(map));
+   const number=document.createElement('span');number.className='map-card-number';number.textContent=String(index+1).padStart(2,'0');
+   const status=document.createElement('span');status.className='map-card-status';status.textContent='✓';status.setAttribute('aria-hidden','true');art.append(number,status);
+   const copy=document.createElement('span');copy.className='map-card-copy';const english=document.createElement('small');english.textContent=map.englishName;
+   const title=document.createElement('strong');title.textContent=map.name;const sub=document.createElement('span');sub.textContent=map.subtitle;copy.append(english,title,sub);button.append(art,copy);
+   button.addEventListener('click',()=>selectMap(map.id));return button;
+ }));syncMapSelection();
+}
+function syncMapSelection(){
+ const map=getMap(settings.map),campaignMap=getMap(DEFAULT_MAP_ID),locked=playMode==='campaign';
+ $('mapSelectionName').textContent=map.name;$('mapSelectBtn').disabled=locked;$('mapSelectBtn').setAttribute('aria-label',`作战区域：${map.name}，选择地图`);
+ $('campaignMapName').textContent=campaignMap.name;
+ for(const button of document.querySelectorAll('[data-map]')){const active=button.dataset.map===map.id;button.setAttribute('aria-pressed',String(active));button.disabled=locked;}
+ $('mapSelectedName').textContent=map.name;$('mapSelectedDescription').textContent=map.description;
+}
+function selectMap(id){
+ if(sim.state!=='menu'||playMode==='campaign')return;
+ settings.map=getMap(id).id;save('frostline-settings',settings);syncMapSelection();
+}
+function syncQualityDescription(){
+ const labels={low:'标清',high:'高清',ultra:'超清'},details={low:'适合手机与低功耗设备，保留完整地图和载具比例。',high:'精细地形、海面反射与柔和阴影。',ultra:'更高分辨率、精密地形与清晰反射，适合高性能设备。'};
+ const quality=settings.quality==='auto'?world.effectiveQuality:settings.quality;
+ $('qualityDescription').textContent=(settings.quality==='auto'?`自动适配 · 当前${labels[quality]||'高清'}。`:'')+(details[quality]||details.high);
+}
 function setPlayMode(mode,sync=true){
  const next=mode==='campaign'?'campaign':'quick';if(next==='campaign'&&isShip())selectVehicle('aircraft');playMode=next;
  $('menu').classList.toggle('campaign-menu',playMode==='campaign');$('quickBriefing').hidden=playMode==='campaign';$('campaignPanel').hidden=playMode!=='campaign';
  document.querySelectorAll('[data-play-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.playMode===playMode)));
  if(playMode==='campaign'){if(sync)selectMode('campaign');renderCampaignMenu();}
  else if(sync&&selectedMode==='campaign')selectMode('intercept');
+ syncMapSelection();
 }
 function renderCampaignMenu(){
  const selected=campaignLevel(selectedCampaignId)||CAMPAIGN_LEVELS[0];selectedCampaignId=selected.id;
@@ -93,12 +140,13 @@ function showCampaignBriefing(){
 function selectMode(mode){if(mode!=='campaign'&&playMode==='campaign')setPlayMode('quick',false);selectedMode=Object.hasOwn(modeNames,mode)&&(!isNaval(mode)||isShip())?mode:'intercept';mode=selectedMode;document.body.classList.toggle('naval-ui',isNaval());$('killsLabel').textContent=isNaval()?'击沉':'击落';$('resultKillsLabel').textContent=isNaval()?'击沉 / 舰炮命中率':'击落 / 机炮命中率';$('guideTrain').innerHTML=(isNaval()?'进入舰炮训练':isShip()?'进入舰船训练':'进入飞行训练')+' <span>↗</span>';document.querySelectorAll('[data-mode]').forEach(e=>{const a=e.dataset.mode===mode;e.classList.toggle('selected',a);e.setAttribute('aria-pressed',a);});$('missionNote').textContent=(isShip()?shipNotes:notes)[mode]||'';$('bestScore').innerHTML=`${String(records[recordKey()]||0).padStart(5,'0')} <small>PTS</small>`;}
 function resize(){width=innerWidth;height=innerHeight;const ratio=Math.min(devicePixelRatio,1.5);hud.width=width*ratio;hud.height=height*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);world.resize();baseScene.resize();}
 window.addEventListener('resize',resize);resize();
-function closePanels(){ $('modalBackdrop').hidden=true;for(const id of ['guidePanel','settingsPanel','pausePanel','resultPanel','campaignBriefingPanel'])$(id).hidden=true; }
+function closePanels(){ const wasMapOpen=!$('mapPanel').hidden;$('modalBackdrop').hidden=true;for(const id of ['guidePanel','settingsPanel','pausePanel','resultPanel','campaignBriefingPanel','mapPanel'])$(id).hidden=true;if(wasMapOpen&&sim.state==='menu')$('mapSelectBtn').focus({preventScroll:true}); }
 function panel(id){closePanels();$(id).hidden=false;$('modalBackdrop').hidden=false;requestAnimationFrame(()=>$(id).querySelector('button,select')?.focus());}
 function start(mode=selectedMode){
   if(mode==='campaign'){if(!campaignUnlocked(campaignProgress,selectedCampaignId)){toast('完成前一关后才能出击。');return;}if(isShip())selectVehicle('aircraft');}
-  if(isNaval(mode)&&!isShip())selectVehicle('destroyer');selectMode(mode);mode=selectedMode;closePanels();baseScene.cancelPointers();input.reset();if(mode==='campaign')sim.startCampaign(selectedCampaignId,settings.difficulty);else sim.start(mode,settings.difficulty,selectedVehicle);presentation.reset(sim);world.shipChase.recenter(sim.player.heading);world.cameraReady=false;sound.init();endingShown=false;cockpit=false;syncCameraControls();input.active=true;accumulator=0;frameTime=performance.now();
+  if(isNaval(mode)&&!isShip())selectVehicle('destroyer');selectMode(mode);mode=selectedMode;closePanels();baseScene.cancelPointers();input.reset();world.setMap(mode==='campaign'?DEFAULT_MAP_ID:settings.map);if(mode==='campaign')sim.startCampaign(selectedCampaignId,settings.difficulty);else sim.start(mode,settings.difficulty,selectedVehicle);presentation.reset(sim);world.shipChase.recenter(sim.player.heading);world.cameraReady=false;sound.init();endingShown=false;cockpit=false;syncCameraControls();input.active=true;accumulator=0;frameTime=performance.now();
   document.body.classList.toggle('campaign-flight',mode==='campaign');$('menu').hidden=true;$('flightUI').hidden=false;$('modeLabel').textContent=(isShip()?'DESTROYER / ':'')+modeCodes[mode];$('throttle').value=sim.player.throttle*100;cannonAim=null;
+  $('flightMapName').textContent=getMap(world.mapId).name;
   if(isShip())world.render(presentation.sample(sim,1),0,{cockpit:false});
   toast(mode==='campaign'?campaignLevel(selectedCampaignId).radio[0].text:isShip()?(input.touch?'滑动画面瞄准 · 准星对准敌舰后开火 · 双指缩放':'右键拖动瞄准 · 空格或左键开炮 · 滚轮缩放 · V 回正'):'先滚转倾斜机翼，再拉杆转弯。',6000);$('touchHint').hidden=true;readouts(performance.now());
   if(matchMedia('(pointer: coarse)').matches&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(()=>{if(screen.orientation?.lock)screen.orientation.lock('landscape').catch(()=>{});}).catch(()=>{});
@@ -135,15 +183,18 @@ for(const b of document.querySelectorAll('[data-play-mode]'))b.addEventListener(
 $('campaignBriefingBtn').addEventListener('click',showCampaignBriefing);$('campaignStartBtn').addEventListener('click',()=>start('campaign'));$('chapterBriefingStart').addEventListener('click',()=>start('campaign'));
 $('campaignNextBtn').addEventListener('click',()=>{const current=campaignLevel(sim.campaignId),next=CAMPAIGN_LEVELS[current?.number];if(next){selectedCampaignId=next.id;setPlayMode('campaign');start('campaign');}});
 $('startBtn').addEventListener('click',()=>start());$('guideBtn').addEventListener('click',()=>{returnPanel=null;panel('guidePanel');});$('settingsBtn').addEventListener('click',()=>{returnPanel=null;panel('settingsPanel');});
+$('mapSelectBtn').addEventListener('click',()=>{if(sim.state!=='menu'||playMode==='campaign')return;returnPanel=null;syncMapSelection();panel('mapPanel');});
+$('mapConfirmBtn').addEventListener('click',closePanels);
 $('guideTrain').addEventListener('click',()=>start(isNaval()?'naval-training':'training'));$('pauseBtn').addEventListener('click',pause);$('resumeBtn').addEventListener('click',resume);$('restartBtn').addEventListener('click',()=>start());$('againBtn').addEventListener('click',()=>start());$('exitBtn').addEventListener('click',base);$('resultExitBtn').addEventListener('click',base);
 $('pauseGuideBtn').addEventListener('click',()=>{returnPanel='pausePanel';panel('guidePanel');});
 for(const b of document.querySelectorAll('.close-panel'))b.addEventListener('click',()=>{if(returnPanel){const p=returnPanel;returnPanel=null;panel(p);}else closePanels();});
-$('modalBackdrop').addEventListener('click',e=>{if(e.target!==$('modalBackdrop'))return;if(!$('settingsPanel').hidden||!$('guidePanel').hidden||!$('campaignBriefingPanel').hidden){if(returnPanel){const p=returnPanel;returnPanel=null;panel(p);}else closePanels();}});
-for(const [id,key] of [['difficultySetting','difficulty'],['qualitySetting','quality'],['soundSetting','sound'],['invertSetting','invert']]){const e=$(id);if(e.type==='checkbox')e.checked=settings[key];else e.value=settings[key];e.addEventListener('change',()=>{settings[key]=e.type==='checkbox'?e.checked:e.value;save('frostline-settings',settings);if(key==='quality')world.setQuality(settings.quality);if(key==='sound')sound.setEnabled(settings.sound);});}
+$('modalBackdrop').addEventListener('click',e=>{if(e.target!==$('modalBackdrop'))return;if(!$('settingsPanel').hidden||!$('guidePanel').hidden||!$('campaignBriefingPanel').hidden||!$('mapPanel').hidden){if(returnPanel){const p=returnPanel;returnPanel=null;panel(p);}else closePanels();}});
+for(const [id,key] of [['difficultySetting','difficulty'],['qualitySetting','quality'],['soundSetting','sound'],['invertSetting','invert']]){const e=$(id);if(e.type==='checkbox')e.checked=settings[key];else e.value=settings[key];e.addEventListener('change',()=>{settings[key]=e.type==='checkbox'?e.checked:e.value;if(key==='quality')settings.quality=normalizeQuality(settings.quality);save('frostline-settings',settings);if(key==='quality'){world.setQuality(settings.quality);baseScene.dirty=true;syncQualityDescription();}if(key==='sound')sound.setEnabled(settings.sound);});}
 $('cameraDistanceSetting').value=settings.cameraZoom;
 $('cameraDistanceSetting').addEventListener('input',e=>setCameraZoom(e.target.value));
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&sim.state==='playing')pause();});
 window.addEventListener('keydown',e=>{if(e.code==='Escape'&&sim.state==='menu')closePanels();});
+document.addEventListener('keydown',e=>{if(e.key!=='Tab'||$('mapPanel').hidden)return;const buttons=[...$('mapPanel').querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
 
 function readouts(now){
  const p=sim.player,heading=(360-p.heading*180/Math.PI)%360;
@@ -204,6 +255,7 @@ function frame(now){
 
  requestAnimationFrame(frame);
 }
+createMapMenu();syncQualityDescription();
 selectVehicle(selectedVehicle);$('boot').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
 if('serviceWorker' in navigator&&window.isSecureContext)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 if(new URLSearchParams(location.search).has('debug'))window.frostlineDiagnostics=()=>({mode:sim.mode,targets:sim.enemies.map(e=>({id:e.id,kind:e.kind,shipType:e.shipType,health:e.health,pos:e.pos.toArray()})),state:sim.state,time:sim.time,score:sim.score,enemies:sim.enemies.length,missiles:sim.missiles.length,vehicle:sim.vehicle,lockProgress:sim.lockProgress,antiShipLockProgress:sim.antiShipLockProgress,antiShipTargetId:sim.antiShipTargetId,targetId:sim.targetId,player:{speed:sim.player.speed,health:sim.player.health,throttle:sim.player.throttle,ammo:sim.player.ammo,antiShipMissiles:sim.player.antiShipMissiles,missiles:sim.player.missiles,pos:sim.player.pos.toArray(),heading:sim.player.heading,bank:sim.player.bank,pitch:sim.player.pitch,turretHeading:sim.player.turretHeading,turretPitch:sim.player.turretPitch,rudder:sim.player.rudder},render:world.renderer.info.render,quality:world.effectiveQuality});

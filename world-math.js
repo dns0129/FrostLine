@@ -1,16 +1,16 @@
+import { getMap } from './maps.js';
+
 // Metres in a right-handed world; aircraft fly towards -Z at heading zero.
-// The central approach remains open water, while ridged coastal massifs sit on both flanks.
-export const ISLANDS = [
-  { x: -4800, z: -3700, radius: 2950, height: 1880, seed: 1.8 },
-  { x: 5100, z: -7300, radius: 3100, height: 2090, seed: 4.1 },
-  { x: -6900, z: 4800, radius: 2850, height: 1440, seed: 7.6 },
-  { x: 6700, z: 3600, radius: 2200, height: 1290, seed: 3.4 },
-  { x: 2800, z: -15500, radius: 4000, height: 2490, seed: 5.9 },
-  { x: -9300, z: -17500, radius: 3800, height: 2420, seed: 8.6, distant: true },
-  { x: 10400, z: -22400, radius: 4900, height: 2580, seed: 3.7, distant: true },
-  { x: -2900, z: -26400, radius: 4400, height: 2780, seed: 6.4, distant: true },
-  { x: -15100, z: -6700, radius: 3600, height: 2060, seed: 2.3, distant: true },
-];
+// Keep this array identity stable for existing renderer and simulation imports.
+let activeMap = getMap();
+export const ISLANDS = [...activeMap.islands];
+export function getActiveMap() { return activeMap; }
+export function setActiveMap(id) {
+  activeMap = getMap(id);
+  ISLANDS.splice(0, ISLANDS.length, ...activeMap.islands);
+  indexStructures(activeMap.structures);
+  return activeMap;
+}
 function hash(x, z) { const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return n - Math.floor(n); }
 function smooth(t) { return t * t * (3 - 2 * t); }
 export function noise2(x, z) {
@@ -28,7 +28,7 @@ const smoothRange = (a, b, value) => smooth(clamp01((value - a) / (b - a)));
 const shapes = new WeakMap();
 function shapeFor(island) {
   if (shapes.has(island)) return shapes.get(island);
-  const angle = island.seed * 1.73 + .35;
+  const angle = island.rotation ?? island.seed * 1.73 + .35;
   const shape = {
     cos: Math.cos(angle), sin: Math.sin(angle),
     bend: .085 + noise2(island.seed, 41) * .045,
@@ -43,6 +43,49 @@ function shapeFor(island) {
 }
 for (const island of ISLANDS) shapeFor(island);
 
+function channelDistance(points, u, v) {
+  let distance = Infinity;
+  for (let index = 1; index < points.length; index++) {
+    const [ax, az] = points[index - 1], [bx, bz] = points[index];
+    const dx = bx - ax, dz = bz - az;
+    const t = clamp01(((u - ax) * dx + (v - az) * dz) / Math.max(.000001, dx * dx + dz * dz));
+    distance = Math.min(distance, Math.hypot(u - ax - dx * t, v - az - dz * t));
+  }
+  return distance;
+}
+
+// Low ice shelves, urban bedrock and a branching alluvial delta use the same
+// bounded, continuous field as collision. There are no visual-only icebergs
+// or painted river ribbons hiding solid ground under the ocean.
+function lowlandHeight(island, dx, dz, shape) {
+  const u = (dx * shape.cos + dz * shape.sin) / (island.scaleX || 1);
+  const v = (-dx * shape.sin + dz * shape.cos) / (island.scaleZ || 1);
+  const ellipse = Math.hypot(u, v);
+  const shoreline = .865 + noise2(u * 3.2 + island.seed, v * 3.2 - 19) * .085
+    + noise2(u * 7.7 + 34, v * 7.7 + island.seed) * .018;
+  const edge = shoreline - ellipse;
+  if (edge <= 0) return SEABED;
+  const plateau = island.plateauHeight ?? island.height;
+  if (island.shape === 'ice-shelf') {
+    const coast = smoothRange(0, .048, edge);
+    const pressure = 1 - Math.abs(noise2(u * 5.3 + island.seed, v * 4.8 + 17) * 2 - 1);
+    const ridge = pressure * pressure * smoothRange(.055, .31, edge);
+    const relief = Math.max(0, island.height - plateau) * ridge;
+    return SEABED + coast * (32 + plateau) + relief;
+  }
+  const coast = smoothRange(0, .13, edge);
+  if (island.shape === 'plateau') return SEABED + coast * (32 + plateau);
+  const alluvium = plateau * (.82 + noise2(u * 3.1 + 12, v * 2.8 + island.seed) * .18);
+  let height = SEABED + coast * (32 + alluvium);
+  for (const channel of island.channels || []) {
+    const distance = channelDistance(channel.points, u, v) * island.radius;
+    const bank = smoothRange(channel.width, channel.width + channel.bank, distance);
+    const bed = -channel.depth;
+    height = Math.min(height, bed + (height - bed) * bank);
+  }
+  return Math.max(SEABED, height);
+}
+
 /** Height of one island, including its continuous -32 m seabed skirt.
  * Mesh generation can call this directly; terrainHeight remains the collision
  * source of truth and takes the maximum when island bounding areas overlap.
@@ -52,6 +95,7 @@ export function islandHeight(island, x, z) {
   // Do not evaluate noise for open ocean, projectiles, or distant islands.
   if (Math.abs(dx) >= SHORE_LIMIT || Math.abs(dz) >= SHORE_LIMIT || dx * dx + dz * dz >= SHORE_LIMIT * SHORE_LIMIT) return SEABED;
   const shape = shapeFor(island);
+  if (island.shape) return lowlandHeight(island, dx, dz, shape);
   const u = dx * shape.cos + dz * shape.sin, v = -dx * shape.sin + dz * shape.cos;
   const ellipse = Math.hypot(u, v * 1.13);
   // Two broad, smoothly varying coast scales produce bays and headlands; their
@@ -112,11 +156,57 @@ export function islandHeight(island, x, z) {
   return Math.max(SEABED, SEABED + shelf + mountain + rock);
 }
 
-export function terrainHeight(x, z) {
+// A small spatial index avoids scanning every city block for every projectile
+// and AI clearance sample. This index depends on map geometry, never quality.
+const structureCells = new Map();
+const structureBounds = new WeakMap();
+const CELL_SIZE = 500;
+function boundsFor(structure) {
+  if (!structureBounds.has(structure)) {
+    const cos = Math.cos(structure.rotation || 0), sin = Math.sin(structure.rotation || 0);
+    structureBounds.set(structure, { cos, sin,
+      x: Math.abs(cos) * structure.width / 2 + Math.abs(sin) * structure.depth / 2,
+      z: Math.abs(sin) * structure.width / 2 + Math.abs(cos) * structure.depth / 2 });
+  }
+  return structureBounds.get(structure);
+}
+function indexStructures(structures = []) {
+  structureCells.clear();
+  for (const structure of structures) {
+    const bounds = boundsFor(structure);
+    for (let ix = Math.floor((structure.x - bounds.x) / CELL_SIZE); ix <= Math.floor((structure.x + bounds.x) / CELL_SIZE); ix++) {
+      for (let iz = Math.floor((structure.z - bounds.z) / CELL_SIZE); iz <= Math.floor((structure.z + bounds.z) / CELL_SIZE); iz++) {
+        const key = `${ix},${iz}`;
+        if (!structureCells.has(key)) structureCells.set(key, []);
+        structureCells.get(key).push(structure);
+      }
+    }
+  }
+}
+indexStructures(activeMap.structures);
+
+export function structureHeight(structure, x, z) {
+  const bounds = boundsFor(structure), dx = x - structure.x, dz = z - structure.z;
+  if (Math.abs(dx) > bounds.x || Math.abs(dz) > bounds.z) return SEABED;
+  const localX = dx * bounds.cos - dz * bounds.sin;
+  const localZ = dx * bounds.sin + dz * bounds.cos;
+  return Math.abs(localX) <= structure.width / 2 && Math.abs(localZ) <= structure.depth / 2
+    ? (structure.y || 0) + structure.height : SEABED;
+}
+
+export function terrainGroundHeight(x, z) {
   let height = SEABED;
   for (const island of ISLANDS) {
     if (Math.abs(x - island.x) >= island.radius * SHORE_LIMIT || Math.abs(z - island.z) >= island.radius * SHORE_LIMIT) continue;
     height = Math.max(height, islandHeight(island, x, z));
   }
+  return height;
+}
+
+export function terrainHeight(x, z) {
+  let height = terrainGroundHeight(x, z);
+  if (structureCells.size === 0) return height;
+  const structures = structureCells.get(`${Math.floor(x / CELL_SIZE)},${Math.floor(z / CELL_SIZE)}`);
+  if (structures) for (const structure of structures) height = Math.max(height, structureHeight(structure, x, z));
   return height;
 }

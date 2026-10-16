@@ -21,7 +21,7 @@ GAME_FILES = frozenset({
     "index.html", "style.css", "app.js", "input.js", "audio.js",
     "campaign.js", "base-scene.js", "vehicle-catalog.js", "destroyer.js", "naval-models.js", "ambient-fleet.js", "ship-camera.js", "simulation.js", "renderer.js", "world-math.js", "sw.js",
     "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/fa18-source.zip", "assets/models/FA18-LICENSE.txt", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
-    "manifest.webmanifest",
+    "manifest.webmanifest", "maps.js", "quality.js", "map-scenery.js", "fa18-armament.js",
 })
 ASSET_EXTENSIONS = frozenset({
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".avif",
@@ -56,7 +56,7 @@ def game_path(request_target):
         return None
     allowed = relative in GAME_FILES
     if len(parts) >= 2 and parts[0] == "assets":
-        allowed = Path(relative).suffix.lower() in ASSET_EXTENSIONS
+        allowed = allowed or Path(relative).suffix.lower() in ASSET_EXTENSIONS
     if len(parts) == 2 and parts[0] == "vendor":
         allowed = parts[1] in {"three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js"}
     if not allowed:

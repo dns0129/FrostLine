@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { NAVAL_MODELS, makeNavalAssets, makeNavalShip } from './naval-models.js';
+import { getQualityPreset } from './quality.js';
 
 // Scene-only fleets. These IDs never enter combat targeting, scoring or waves.
 export const DEFAULT_FLEET = Object.freeze([
@@ -90,15 +91,26 @@ export class AmbientFleet {
   constructor(scene) {
     this.scene = scene; this.assets = makeNavalAssets(); this.group = new THREE.Group(); this.group.name = 'US and Chinese underway fleets';
     this.map = foamMap(); this.wakeAssets = Object.fromEntries(Object.entries(NAVAL_MODELS).map(([key, d]) => [key, wakeAssets(d, this.map)]));
+    this._wakeResources = Object.values(this.wakeAssets);
     this.ships = DEFAULT_FLEET.map(def => {
       const model = makeNavalShip(this.assets, def.type, def.number); model.userData.fleetId = def.id;
       const a = this.wakeAssets[def.type], wake = new THREE.Mesh(a.geometry, a.material);
       wake.name = `${def.id}-underway-wake`; wake.userData.skipWaterReflection = true;
       this.group.add(model, wake); return { id: def.id, model, wake };
     });
-    scene.add(this.group); this.update(createDefaultFleet(), 0);
+    scene.add(this.group); this.setQuality('high'); this.update(createDefaultFleet(), 0);
   }
-  setQuality(quality) { for (const { model } of this.ships) model.userData.lod.levels[1].distance = quality === 'low' ? 1800 : 2600; }
+  setQuality(quality) {
+    const profile = getQualityPreset(quality);
+    this.quality = profile.id;
+    for (const { model } of this.ships) model.userData.lod.levels[1].distance = profile.fleetLodDistance;
+    for (const maps of Object.values(this.assets.textures)) for (const texture of Object.values(maps)) {
+      if (texture.anisotropy !== profile.textureAnisotropy) {
+        texture.anisotropy = profile.textureAnisotropy;
+        texture.needsUpdate = true;
+      }
+    }
+  }
   update(fleet, time) {
     if (this.disposed || !fleet) return;
     time = Number.isFinite(time) ? time : 0;
@@ -109,10 +121,10 @@ export class AmbientFleet {
       model.rotation.set(Math.sin(phase * .9) * .0018, ship.heading, Math.sin(phase * 1.1) * .0025, 'YXZ');
       wake.position.copy(ship.pos); wake.position.y = .09; wake.rotation.y = ship.heading; wake.visible = ship.speed > .5;
     }
-    Object.values(this.wakeAssets).forEach(a => { a.time.value = time; });
+    for (const a of this._wakeResources) a.time.value = time;
   }
   dispose() {
     if (this.disposed) return; this.disposed = true; this.scene.remove(this.group); this.assets.dispose(); this.map.dispose();
-    Object.values(this.wakeAssets).forEach(a => { a.geometry.dispose(); a.material.dispose(); });
+    for (const a of this._wakeResources) { a.geometry.dispose(); a.material.dispose(); }
   }
 }
