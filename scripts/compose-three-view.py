@@ -192,7 +192,7 @@ else:
     deck_z = meta['flight_deck_height'] if carrier else meta['deck_height_bow']
     _, fd = to_px('side', Z=deck_z); _, wl = to_px('side', Z=0.0)
     # short spans: plain dimension lines with horizontal labels beside them
-    for y0_, y1_, label in ((fd, wl, f'{"甲板" if carrier else "艏部甲板"}距水线 {deck_z:.1f} m'), (wl, z_bot, f'吃水 {abs(Zmin):.1f} m')):
+    for y0_, y1_, label in ((fd, wl, (f'甲板距水线 {deck_z:.1f} m' if carrier else f'艏甲板 {deck_z:.1f} m')), (wl, z_bot, f'吃水 {abs(Zmin):.1f} m')):
         d.line([(xb - 40, y0_), (xb + 90, y0_)], fill=DIM, width=2)
         d.line([(xb + 80, y0_), (xb + 80, y1_)], fill=DIM, width=3)
         arrow((xb + 80, y0_), (0, -1), 12); arrow((xb + 80, y1_), (0, 1), 12)
