@@ -1,6 +1,6 @@
 {
   "blend": "assets/models/missiles-source/Missiles.blend",
-  "blend_sha256": "1ca3c5f948a3fee9a983c17090dd9c87aaa5768242e0f8aaf5f5e21d81b0a351",
+  "blend_sha256": "706a52b812ef21a6beae59af49cd0a0c5acbf483423bdf91baa1f672834d3d5a",
   "units": "metres",
   "glb_axes": "+Y up, nose -Z, origin at mid-length on the body axis",
   "note": "Length, body diameter, YJ-83 wingspan and masses are published figures; fin chords, spans and stations are estimates from photographs.",
@@ -26,6 +26,25 @@
       ],
       "triangles": 7047,
       "glb_bytes": 452156
+    },
+    "YJ-83K": {
+      "file": "yj83k.glb",
+      "title": "鹰击-83K 空射反舰导弹（无助推器）",
+      "role": "机载发射，涡喷巡航，末段主动雷达制导",
+      "length_m": 5.2,
+      "body_diameter_m": 0.36,
+      "fin_tip_diameter_m": 1.216,
+      "mass_kg": null,
+      "published": [
+        "diameter 0.36 m (YJ-83 family)",
+        "wingspan 1.22 m (YJ-83 family)"
+      ],
+      "estimated": [
+        "length ~5.2 m: ship-launched 6.38 m minus the ~1.2 m booster",
+        "turbojet tail cone in place of the booster joint"
+      ],
+      "triangles": 6640,
+      "glb_bytes": 442304
     },
     "PL-15": {
       "file": "pl15.glb",
@@ -64,8 +83,8 @@
         "body strakes 1.9 m long, 0.035 m high",
         "tail fin 0.28 m root chord, 0.12 m span"
       ],
-      "triangles": 3600,
-      "glb_bytes": 205324
+      "triangles": 3760,
+      "glb_bytes": 208400
     },
     "HQ-10": {
       "file": "hq10.glb",
@@ -83,8 +102,8 @@
         "rectangular canards 0.12 m chord, 0.065 m span",
         "tail fins 0.19 m root chord, 0.08 m span"
       ],
-      "triangles": 3931,
-      "glb_bytes": 263704
+      "triangles": 4111,
+      "glb_bytes": 267376
     }
   }
 }

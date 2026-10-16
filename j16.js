@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { prepareAirframeMaterials, disposeAirframeObjects, makeImportedJet } from './imported-airframe.js';
+import { loadMissileModels } from './missile-models.js';
 
 // j16.glb is exported with its wheels on y = 0. The game airframe origin is the
 // nozzle axis (measured from the GLB; tests/j16.test.mjs re-derives it), so the
@@ -8,11 +9,15 @@ import { prepareAirframeMaterials, disposeAirframeObjects, makeImportedJet } fro
 export const J16_ORIGIN_Y = 2;
 export const J16_NOZZLES = Object.freeze([Object.freeze([-1.254, 0, 8.08]), Object.freeze([1.254, 0, 8.08])]);
 const BAKED_STORE = /^PL-1[05]_.+_(body|fins|seeker)$/;
-// The baked missiles become loadout templates; pylons and launch rails stay on the airframe.
+// The baked missiles fix the station positions (AIRCRAFT.j16) and are the
+// fallback templates; pylons and launch rails stay on the airframe. When the
+// real-scale models (missile-models.js) load, their PL-15 / PL-10 / YJ-83K
+// templates replace the baked ones on the pylons and for launched missiles.
 const TEMPLATE_SOURCE = { pl15: 'PL-15_tunnel_front', pl10: 'PL-10_outer_wing_port' };
 
 // Pure scene preparation, shared by the browser loader and the Node fixture.
-export function prepareJ16Assets(gltfScene, sourceMetadata) {
+// `missiles` is an optional prepareMissileModels() result; this asset then owns it.
+export function prepareJ16Assets(gltfScene, sourceMetadata, missiles = null) {
   if (sourceMetadata.units !== 'metres' || sourceMetadata.glb_axes !== '+Y up, nose -Z') {
     throw new Error('J-16 asset has incompatible coordinate metadata');
   }
@@ -24,7 +29,7 @@ export function prepareJ16Assets(gltfScene, sourceMetadata) {
     if (o.name.startsWith('UC_')) o.userData.role = 'gear';
     if (BAKED_STORE.test(o.name)) baked.push(o);
   });
-  const templates = {}, center = new THREE.Vector3();
+  const bakedTemplates = {}, center = new THREE.Vector3();
   for (const [store, prefix] of Object.entries(TEMPLATE_SOURCE)) {
     const parts = baked.filter(o => o.name.startsWith(prefix + '_'));
     if (parts.length !== 3) throw new Error(`J-16 asset is missing the ${prefix} store meshes`);
@@ -35,26 +40,39 @@ export function prepareJ16Assets(gltfScene, sourceMetadata) {
       part.matrixWorld.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.position.sub(center);
       template.add(mesh);
     }
-    templates[store] = template;
+    bakedTemplates[store] = template;
   }
   for (const o of baked) o.removeFromParent();
   const box = new THREE.Box3().setFromObject(scene), pods = [];
   scene.traverse(o => { if (o.isMesh && /^Wingtip_ECM_pod_.+_body$/.test(o.name)) pods.push(new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3())); });
   pods.sort((a, b) => a.x - b.x);
-  prepareAirframeMaterials(scene); Object.values(templates).forEach(prepareAirframeMaterials);
+  prepareAirframeMaterials(scene); Object.values(bakedTemplates).forEach(prepareAirframeMaterials);
+  const templates = missiles ? { ...bakedTemplates, ...missiles.templates } : bakedTemplates;
   const metadata = { ...sourceMetadata, forward: '-Z', up: '+Y', span: box.max.x - box.min.x, length: box.max.z - box.min.z,
-    parkedGroundOffset: J16_ORIGIN_Y + .02, wingtips: pods.map(p => p.toArray()), nozzles: J16_NOZZLES.map(p => [...p]) };
+    parkedGroundOffset: J16_ORIGIN_Y + .02, wingtips: pods.map(p => p.toArray()), nozzles: J16_NOZZLES.map(p => [...p]),
+    storeModels: missiles ? 'real-scale' : 'baked' };
   let disposed = false;
-  return { scene, metadata, templates,
-    dispose() { if (disposed) return; disposed = true; disposeAirframeObjects(scene, ...Object.values(templates)); } };
+  return { scene, metadata, templates, missiles,
+    dispose() {
+      if (disposed) return; disposed = true;
+      disposeAirframeObjects(scene, ...Object.values(bakedTemplates)); missiles?.dispose();
+    } };
 }
 
 export async function loadJ16Assets() {
   const url = new URL('./assets/models/j16.glb', import.meta.url);
   const metadataURL = new URL('./assets/models/j16.metadata.json', import.meta.url);
-  const [gltf, response] = await Promise.all([new GLTFLoader().loadAsync(url.href), fetch(metadataURL)]);
-  if (!response.ok) throw new Error(`J-16 metadata: ${response.status}`);
-  return prepareJ16Assets(gltf.scene, await response.json());
+  // The real-scale stores are an upgrade: the airframe still flies with its
+  // baked missile templates if that optional asset fails to load.
+  const pending = loadMissileModels().catch(error => { console.warn('Real-scale missile models unavailable', error); return null; });
+  try {
+    const [gltf, response] = await Promise.all([new GLTFLoader().loadAsync(url.href), fetch(metadataURL)]);
+    if (!response.ok) throw new Error(`J-16 metadata: ${response.status}`);
+    const metadata = await response.json();
+    return prepareJ16Assets(gltf.scene, metadata, await pending);
+  } catch (error) {
+    (await pending)?.dispose(); throw error;
+  }
 }
 
 export function makeJ16(assets, jetAssets, { parked = false } = {}) {

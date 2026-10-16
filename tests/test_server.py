@@ -23,13 +23,16 @@ class DestroyerServingTests(unittest.TestCase):
                      'assets/models/enterprise.glb', 'assets/models/enterprise.metadata.json', 'assets/models/burke.glb', 'assets/models/burke.metadata.json',
                      'assets/models/type052d.glb', 'assets/models/type052d.metadata.json',
                      'assets/models/j16-source/J-16.blend', 'assets/models/j16-source/COPYING',
-                     'maps.js', 'quality.js', 'map-scenery.js', 'fa18.js', 'fa18-armament.js'):
+                     'maps.js', 'quality.js', 'map-scenery.js', 'fa18.js', 'fa18-armament.js',
+                     'missile-models.js', 'assets/models/missiles/missiles-game.glb', 'assets/models/missiles/missiles-game.metadata.json'):
             with self.subTest(name=name):
                 self.assertIsNotNone(server.game_path('/' + name))
 
     def test_required_aircraft_metadata_is_served_without_exposing_other_json(self):
         self.assertIsNotNone(server.game_path('/assets/models/fa18c.metadata.json'))
         self.assertIsNotNone(server.game_path('/assets/models/j16.metadata.json'))
+        self.assertIsNotNone(server.game_path('/assets/models/missiles/missiles-game.metadata.json'))
+        self.assertIsNone(server.game_path('/assets/models/missiles/missiles.metadata.json'))
         self.assertIsNone(server.game_path('/assets/models/unlisted.metadata.json'))
 
     def test_source_and_verification_stay_private(self):
