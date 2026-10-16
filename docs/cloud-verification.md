@@ -42,3 +42,5 @@
 - `npm run check`：通过。`npm test`：279 项全部通过（新增四个舰级的尺寸、朝向、水线、近远景预算、每舰只显示本舰舷号、几何共享、战役第二关护航目标与资源释放测试）。
 - `python3 -m unittest discover -s tests -p 'test_*.py'`：4 项通过，新模型与 `naval-assets.js` 已加入白名单。`npm run prepare`：生成 55 个文件。`git diff --check`：通过。
 - `tests/browser-fleet.mjs`：12 项通过，包括 8 种桌面出击组合下六舰航行与尾迹、暂停冻结、四个舰级检阅视角的真实 WebGL 渲染（无 WebGL 错误），以及 844×390、390×844 手机视口。该脚本改为可用 `PLAYWRIGHT_PATH`、`CHROMIUM_PATH`、`ANGLE_BACKEND` 指定环境。
+- `npm run test:j16-fujian`：10 项在新舰队下重新通过，无页面错误或失败请求。
+- 三视图：`assets/three-views/Enterprise-CVN65-three-view.png`、`Arleigh-Burke-DDG51-three-view.png`、`Type-052D-three-view.png`，由 `scripts/render-three-views.py`（`VIEW_ENGINE=CYCLES`）与 `scripts/compose-three-view.py` 生成；原始渲染在 `assets/three-views/raw/`。福建舰与歼-16 的旧图未重新生成。
