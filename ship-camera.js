@@ -46,7 +46,7 @@ export class ShipCamera {
     this.zoom = reset ? zoomTarget : this.zoom + (zoomTarget - this.zoom) * -Math.expm1(-7 * step);
     if (cockpit) {
       this.hullQ.setFromEuler(this.euler.set(0, heading, 0));
-      this.desired.fromArray(DESTROYER_MODEL.bridgeEye).applyQuaternion(this.hullQ);
+      this.desired.fromArray(player.shipSystems?.model?[0,22,-18]:DESTROYER_MODEL.bridgeEye).applyQuaternion(this.hullQ);
       this.q.setFromEuler(this.euler.set(pitch, aimHeading, 0));
       this.look.set(0, 0, -500).applyQuaternion(this.q).add(this.desired);
     } else {
@@ -59,7 +59,7 @@ export class ShipCamera {
         this.viewPitch += (this.pitch - this.viewPitch) * weight;
       }
       const portrait = Math.max(1, .86 / Math.max(.15, camera.aspect));
-      const radius = 200 * this.zoom * portrait, horizontal = Math.cos(this.viewPitch) * radius;
+      const radius = 200 * this.zoom * portrait * ((player.halfLength||55)/55), horizontal = Math.cos(this.viewPitch) * radius;
       this.desired.set(Math.sin(this.viewYaw) * horizontal, 18 + Math.sin(this.viewPitch) * radius,
         Math.cos(this.viewYaw) * horizontal);
       // Put the vessel below the aiming line while retaining the same safe

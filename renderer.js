@@ -1,3 +1,4 @@
+import {makePlayableShip} from './playable-ships.js';
 import * as THREE from './vendor/three.module.js';
 import { makeTerrain } from './terrain.js';
 import { makeJetAssets, makeJet } from './aircraft.js';
@@ -116,6 +117,8 @@ export class WorldRenderer {
       this.playerJets = { fa18c: makeFA18(fa18, this.jetAssets), j16: makeJ16(j16, this.jetAssets) };
       this.playerJets.j16.visible = false; this.scene.add(this.playerJets.fa18c, this.playerJets.j16);
       this.playerJet = this.playerJets.fa18c;
+      this.playerShips={destroyer:this.playerShip,burke:makePlayableShip(naval.assets,'burke'),type052d:makePlayableShip(naval.assets,'type052d')};
+      for(const [id,model] of Object.entries(this.playerShips)){model.visible=false;if(id!=='destroyer')this.scene.add(model);}
       this.ambientFleet = new AmbientFleet(this.scene, { imported: naval.assets }); this.ambientFleet.setQuality(this.effectiveQuality);
       return fa18;
     });
@@ -203,6 +206,8 @@ export class WorldRenderer {
       this.shadowVehicle=destroyer;
     }
     if(destroyer){
+      const selected=this.playerShips?.[p.shipId||'destroyer'];
+      if(selected&&selected!==this.playerShip){this.playerShip.visible=false;this.playerShip=selected;this.cameraReady=false;this.playerShip.userData.reset();}
       if(!this.playerShip){this.playerShip=makeDestroyer();this.scene.add(this.playerShip);}
       if(this.activeVehicle!=='destroyer')this.playerShip.userData.reset();
       this.playerShip.userData.update(dt,{...p,time:sim.time});

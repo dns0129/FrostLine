@@ -1,3 +1,5 @@
+import {makePlayableShip} from './playable-ships.js';
+import {isShipVehicle,SHIPS} from './ship-systems.js';
 import * as THREE from './vendor/three.module.js';
 import { makeFA18 } from './fa18.js';
 import { makeJ16 } from './j16.js';
@@ -5,7 +7,7 @@ import { makeDestroyer } from './destroyer.js';
 
 const clamp = THREE.MathUtils.clamp;
 export function baseCameraPose(vehicle, yaw, pitch, zoom, aspect = 1.7) {
-  const ship = vehicle === 'destroyer';
+  const ship = isShipVehicle(vehicle);
   // The J-16 is about 22 m long against the Hornet's 17 m; frame it equally.
   const radius = (ship ? 195 : vehicle === 'j16' ? 36 : 30) * clamp(zoom, .7, 1.65) * Math.max(1, 1.35 / aspect);
   const angle = clamp(pitch, .09, .75);
@@ -149,7 +151,9 @@ export class BaseScene {
     for (let x = -100; x < 60; x += 45) this.box(g, [35, 18, 27], [x, 10, 126], 'steel');
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(18, 4.5), new THREE.MeshBasicMaterial({ map: labelTexture('BERTH 02') }));
     sign.position.set(-37, 7, 98); sign.rotation.y = Math.PI; g.add(sign);
-    this.ship = makeDestroyer(); g.add(this.ship);
+    this.ship = makeDestroyer();g.add(this.ship);
+    this.ships={destroyer:this.ship,burke:makePlayableShip(this.world.navalAssets.assets,'burke'),type052d:makePlayableShip(this.world.navalAssets.assets,'type052d')};
+    for(const [id,model] of Object.entries(this.ships)){model.visible=id==='destroyer';if(id!=='destroyer')g.add(model);}
     this.ship.traverse(mesh => { if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; } });
     // Low islands beyond the harbor; no mission collision geometry is changed.
     const land = new THREE.MeshStandardMaterial({ color: '#414e50', roughness: 1 });
@@ -159,17 +163,18 @@ export class BaseScene {
     }
   }
   setVehicle(vehicle) {
-    const next = ['destroyer', 'j16'].includes(vehicle) ? vehicle : 'aircraft';
+    const next = (isShipVehicle(vehicle)||vehicle==='j16') ? vehicle : 'aircraft';
     if (next !== this.vehicle || !this.initialized) {
       this.vehicle = next; this.initialized = true; this.reset();
-      this.air.visible = next !== 'destroyer'; this.naval.visible = next === 'destroyer';
-      if (next !== 'destroyer') { this.jet = this.jets[next]; for (const jet of Object.values(this.jets)) jet.visible = jet === this.jet; }
-      const extent = next === 'destroyer' ? 100 : 36;
+      if(isShipVehicle(next)){this.ship=this.ships[next];for(const model of Object.values(this.ships))model.visible=model===this.ship;}
+      this.air.visible = !isShipVehicle(next); this.naval.visible = isShipVehicle(next);
+      if (!isShipVehicle(next)) { this.jet = this.jets[next]; for (const jet of Object.values(this.jets)) jet.visible = jet === this.jet; }
+      const extent = isShipVehicle(next) ? 100 : 36;
       Object.assign(this.sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: 1, far: 450 });
       this.sun.shadow.camera.updateProjectionMatrix(); this.dirty = true;
     }
   }
-  reset() { this.yaw = this.vehicle === 'destroyer' ? .82 : -2.36; this.pitch = this.vehicle === 'destroyer' ? .28 : .23; this.zoom = 1; this.dirty = true; }
+  reset() { this.yaw = isShipVehicle(this.vehicle) ? .82 : -2.36; this.pitch = isShipVehicle(this.vehicle) ? .28 : .23; this.zoom = 1; this.dirty = true; }
   orbit(yaw, pitch = 0) { this.yaw += yaw; this.pitch = clamp(this.pitch + pitch, .09, .75); this.dirty = true; }
   resize() { this.dirty = true; }
   cancelPointers() { this.points.clear(); this.viewport.classList.remove('dragging'); }
@@ -221,7 +226,7 @@ export class BaseScene {
     this.camera.setViewOffset(width, height, width / 2 - centerX, height / 2 - centerY, width, height);
     this.camera.updateProjectionMatrix();
     this.water.material.uniforms.time.value = now / 1000;
-    if (this.vehicle === 'destroyer') { this.ship.position.y = .5 + Math.sin(now * .00115) * .1; this.ship.rotation.z = Math.sin(now * .00094) * .002; }
+    if (isShipVehicle(this.vehicle)) { this.ship.position.y = .5 + Math.sin(now * .00115) * .1; this.ship.rotation.z = Math.sin(now * .00094) * .002; }
     renderer.info.reset(); renderer.render(this.scene, this.camera);
   }
 }
