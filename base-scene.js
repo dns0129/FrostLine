@@ -9,7 +9,7 @@ const clamp = THREE.MathUtils.clamp;
 export function baseCameraPose(vehicle, yaw, pitch, zoom, aspect = 1.7) {
   const ship = isShipVehicle(vehicle);
   // The J-16 is about 22 m long against the Hornet's 17 m; frame it equally.
-  const radius = (ship ? 195 : vehicle === 'j16' ? 36 : 30) * clamp(zoom, .7, 1.65) * Math.max(1, 1.35 / aspect);
+  const radius = (ship ? 195*(SHIPS[vehicle].halfLength/55) : vehicle === 'j16' ? 36 : 30) * clamp(zoom, .7, 1.65) * Math.max(1, 1.35 / aspect);
   const angle = clamp(pitch, .09, .75);
   return {
     position: [Math.sin(yaw) * radius * Math.cos(angle), Math.sin(angle) * radius + (ship ? 7 : 1.8), Math.cos(yaw) * radius * Math.cos(angle)],
