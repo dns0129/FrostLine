@@ -5,8 +5,9 @@ import { resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url)), out = resolve(root, 'verification/fleet');
 await mkdir(out, { recursive: true });
-const { chromium } = await import(pathToFileURL('/Users/yuanzichen/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core/index.mjs').href);
-const browser = await chromium.launch({ executablePath: '/Users/yuanzichen/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell', headless: true, args: ['--use-gl=angle', '--use-angle=metal', '--enable-unsafe-swiftshader'] });
+const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_PATH || '/Users/yuanzichen/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core/index.mjs').href);
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/Users/yuanzichen/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell', headless: true,
+  args: ['--use-gl=angle', `--use-angle=${process.env.ANGLE_BACKEND || 'metal'}`, '--enable-unsafe-swiftshader'] });
 const source = await readFile(resolve(root, 'app.js'), 'utf8'), baseURL = process.env.BASE_URL || 'http://127.0.0.1:8778';
 const report = { baseURL, checks: [], errors: [], metrics: {}, boundary: 'Mobile viewport emulation, not physical-device performance. Model inspection screenshots use a QA camera; gameplay screenshots use the original camera.' };
 async function check(name, fn) { await fn(); report.checks.push(name); console.log('PASS ' + name); }
@@ -52,14 +53,14 @@ try {
     assert.deepEqual((await state(page)).fleet, before.fleet);
     await page.locator('#restartBtn').click(); await page.waitForFunction(() => window.__fleetQA.sim.time > .1); assert.equal((await state(page)).objects, 12);
   });
-  await check('Four model inspection views compile textured shaders and reflection without WebGL errors', async () => {
+  await check('Four imported model inspection views compile textured shaders and reflection without WebGL errors', async () => {
     await page.evaluate(() => {
       const { sim, world } = window.__fleetQA; sim.state = 'paused'; world._savedCameraUpdate = world._updateCamera; world._updateCamera = () => {};
       document.getElementById('flightUI').hidden = true; document.getElementById('toast').hidden = true;
       for (const id of ['crosshair', 'radar', 'shipGunCue', 'shipAimStatus', 'targetLayer', 'shipGunReadout']) document.getElementById(id)?.setAttribute('data-qa-hide', 'true');
       const style = document.createElement('style'); style.id = 'qa-inspection-style'; style.textContent = '[data-qa-hide], #hudCanvas { display:none!important; }'; document.head.append(style);
     });
-    for (const type of ['forrestal', 'fujian', 'burke', 'type052d']) {
+    for (const type of ['enterprise', 'fujian', 'burke', 'type052d']) {
       await page.evaluate(type => {
         const { world } = window.__fleetQA, model = world.ambientFleet.ships.find(s => s.model.userData.modelType === type).model, d = model.userData.definition;
         world.camera.position.copy(model.position).add({ x: d.length * .9, y: d.length * .65, z: -d.length * .86 });

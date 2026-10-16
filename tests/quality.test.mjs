@@ -4,6 +4,7 @@ import { QUALITY_PRESETS, getQualityPreset, normalizeQuality, resolveQuality } f
 import { resolveQuality as rendererQuality } from '../renderer.js';
 import * as THREE from '../vendor/three.module.js';
 import { AmbientFleet } from '../ambient-fleet.js';
+import { navalAssets as imported } from './naval-fixture.mjs';
 
 test('wide landscape phones retain the mobile budget when auto quality is selected', () => {
   for (const width of [390, 844, 932, 1024, 1366]) assert.equal(resolveQuality('auto', width, 8, true), 'low');
@@ -44,7 +45,11 @@ test('three named quality profiles retain compatible settings and strictly bound
 });
 
 test('fleet tiers change detail distance and texture filtering while preserving ship count and dimensions', () => {
-  const scene = new THREE.Scene(), fleet = new AmbientFleet(scene);
+  const scene = new THREE.Scene(), fleet = new AmbientFleet(scene, { imported });
+  const textures = new Set();
+  for (const asset of Object.values(imported)) for (const level of asset.levels) for (const { material } of level) {
+    for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
+  }
   try {
     const models = fleet.ships.map(s => s.model), transforms = models.map(model => model.matrix.clone());
     for (const quality of ['low', 'high', 'ultra', 'low']) {
@@ -54,7 +59,8 @@ test('fleet tiers change detail distance and texture filtering while preserving 
       assert.deepEqual(fleet.ships.map(s => s.model), models);
       assert.ok(models.every((model, i) => model.matrix.equals(transforms[i]) && model.scale.equals(new THREE.Vector3(1, 1, 1))));
       assert.ok(models.every(model => model.userData.lod.levels[1].distance === preset.fleetLodDistance));
-      for (const maps of Object.values(fleet.assets.textures)) for (const texture of Object.values(maps)) assert.equal(texture.anisotropy, preset.textureAnisotropy);
+      assert.ok(textures.size > 0, 'exercise the actual imported model textures');
+      for (const texture of textures) assert.equal(texture.anisotropy, preset.textureAnisotropy);
     }
   } finally { fleet.dispose(); }
 });

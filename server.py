@@ -20,7 +20,11 @@ ROOT = Path(__file__).resolve().parent
 GAME_FILES = frozenset({
     "index.html", "style.css", "app.js", "input.js", "audio.js",
     "campaign.js", "base-scene.js", "vehicle-catalog.js", "destroyer.js", "naval-models.js", "ambient-fleet.js", "ship-camera.js", "simulation.js", "renderer.js", "world-math.js", "sw.js",
-    "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/fa18-source.zip", "assets/models/FA18-LICENSE.txt", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
+    "aircraft-systems.js", "aircraft-stores.js", "hangar-workshop.js", "docs/aircraft-systems.md",
+    "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/f18-source/F-A-18C-rebuilt-v2.blend",
+    "imported-airframe.js", "j16.js", "assets/models/j16.metadata.json", "assets/models/j16-source/J-16.blend", "assets/models/j16-source/COPYING",
+    "naval-assets.js", "assets/models/fujian.metadata.json", "assets/models/enterprise.metadata.json",
+    "assets/models/burke.metadata.json", "assets/models/type052d.metadata.json", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
     "manifest.webmanifest", "maps.js", "quality.js", "map-scenery.js", "fa18-armament.js",
 })
 ASSET_EXTENSIONS = frozenset({
@@ -34,6 +38,7 @@ MIME_TYPES = {
     ".css": "text/css; charset=utf-8",
     ".webmanifest": "application/manifest+json; charset=utf-8",
     ".svg": "image/svg+xml",
+    ".md": "text/plain; charset=utf-8",
 }
 
 

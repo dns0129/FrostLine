@@ -1,16 +1,21 @@
-# 航行舰队模型（1.10.0）
+# 航行舰队模型（1.15.0）
 
-四种程序模型由本项目原创构建，网格、甲板标线、泊机、舰号、涂层色图、粗糙度图、凹凸图与尾迹均由代码生成。运行时不请求互联网，不下载或复用第三方 3D 网格或照片纹理。
+默认编队的四个舰级全部为项目内的 Blender 模型，按同一套规则导出并接入：公制、+Y 向上、舰艏朝 -Z、水线 y = 0，元数据 `*.metadata.json` 记录尺寸、坐标约定、三角形数与 .blend SHA256。运行时不请求互联网，不下载第三方 3D 网格或照片纹理。
 
-公开照片仅用于参考可见轮廓和设备布局：
+| 舰级 | 编队 | 模型 | 说明 |
+| --- | --- | --- | --- |
+| 企业级航空母舰（最终构型） | US-CVN-65 | `assets/models/enterprise.glb` | [ENTERPRISE-ART.md](ENTERPRISE-ART.md)，1.15 起取代弗莱斯特级 |
+| 阿利·伯克级驱逐舰（Flight I） | US-DDG-51、US-DDG-52 | `assets/models/burke.glb` | [BURKE-ART.md](BURKE-ART.md) |
+| 福建舰 | CN-CV-18 | `assets/models/fujian.glb` | [FUJIAN-ART.md](FUJIAN-ART.md)，1.14 起 |
+| 052D 型驱逐舰 | CN-DDG-172、CN-DDG-173 | `assets/models/type052d.glb` | [TYPE052D-ART.md](TYPE052D-ART.md) |
 
-- 弗莱斯特级：美国海军历史与遗产司令部 [USS Forrestal，NH 97657-KN](https://www.history.navy.mil/our-collections/photography/numerical-list-of-images/nhhc-series/nh-series/NH-97000/nh-97657-kn.html)。参考斜角甲板、右舷舰岛、常规烟囱、桅杆与甲板泊机。
-- 阿利·伯克级：同机构 [USS Arleigh Burke，NH 106827-KN](https://www.history.navy.mil/our-collections/photography/numerical-list-of-images/nhhc-series/nh-series/NH-106000/nh-106827-kn-uss-arleigh-burke--ddg-51-.html)。参考前部舰炮、舰桥雷达阵列、双烟囱、直升机甲板；游戏版本采用带机库的伯克级外形概括。
-- 福建舰：中国国防部 [福建舰首次航行试验照片](https://www.mod.gov.cn/gfbw/qwfb/16306695.html)。参考平直舰艏、斜角回收区、三条弹射轨道、右舷升降机与紧凑舰岛。
-- 052D 型：中国国防部英文网 [Type 052D destroyers in training](https://eng.mod.gov.cn/xb/Home/Focus/16363435.html)。参考内倾舰桥、雷达阵面、一体式前桅、前后垂发区、舰尾机库与直升机甲板。
+企业号、伯克级与 052D 由 `scripts/build-*.py` 全部程序生成，共用 `scripts/blender_kit.py`（福建舰与歼-16 的几何工具）和 `scripts/ship_kit.py`（舰体放样、甲板、上层建筑、武器与传感器、舷号、导出）。尺寸取公开资料，设备布局按公开照片判读，是便于海空战识别的游戏外形近似，不是测绘图纸。
 
-模型为便于海空战识别的游戏外形近似，不是特定舰船、特定改装年代的精确数字复原。尺寸是项目建模尺度，不用于表达精确现实参数；舰号用于区分同型模型实例，不代表精确复刻该舷号的所有设备。
+## 游戏接入
 
-`naval-models.js` 提供四型网格与共享 PBR 材质；`ambient-fleet.js` 提供六舰默认编队、连续闭合航线与尾迹。涂层保持较低金属度和较高粗糙度，暴露的钢制轨道和栏杆使用不同材质。长条钢板焊缝、微粒防滑甲板、局部盐蚀和排水口氧化痕迹提供近景尺度；既有天空环境图提供统一反射。
+- `naval-assets.js` 载入四个 GLB：烘焙节点变换，按材质合并（每舰近景至多 15 个绘制对象），并从带 `silhouette` 标记的大体量部件生成远景轮廓（至多 5 个绘制对象）；福建舰导出时没有该标记，按 `NAVAL_MODELS.fujian.silhouette` 的名称表选取。
+- 舷号是名为 “Hull number <n> (…)” 的独立对象。一个 GLB 可以同时带 51 / 52 或 172 / 173，`makeNavalShip` 只给每艘舰加上自己的舷号，其余几何与材质在同型舰之间共享。
+- `naval-models.js` 只保留舰级定义（公开尺寸，用于尾迹与检阅镜头）和实例构造；原程序化网格、贴图与甲板泊机已删除。航母甲板上不再有停放的舰载机。
+- 远景切换距离不变：流畅画质 1.8 公里，精细画质 2.6 公里。模型由渲染器持有，编队只释放自己的尾迹资源。
 
-近景模型截图在 `verification/fleet/model-*.png`，使用测试中的检阅镜头。`desktop-gameplay-*.png` 与 `mobile-*.png` 使用原有驾驶镜头。手机证据来自浏览器尺寸模拟，不代表实体设备帧率验证。
+近景模型截图在 `verification/fleet/model-*.png`（检阅镜头），`desktop-gameplay-*.png` 与 `mobile-*.png` 使用原有驾驶镜头。手机证据来自浏览器尺寸模拟，不代表实体设备帧率验证。

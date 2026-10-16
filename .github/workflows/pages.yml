@@ -1,0 +1,49 @@
+# Build the static game with the same manifest as the Sites release
+# (scripts/prepare-sites.mjs) and publish it to GitHub Pages.
+# Pages must use "GitHub Actions" as its source (Settings -> Pages).
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: npm run check
+      - name: Unit tests
+        run: npm test
+      - name: Server tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Build static site
+        run: npm run prepare
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: sites/frostline/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

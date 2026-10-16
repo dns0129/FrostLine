@@ -4,6 +4,9 @@ import * as THREE from '../vendor/three.module.js';
 import { MAPS } from '../maps.js';
 import { Simulation, DESTROYER, shipCameraAimPoint } from '../simulation.js';
 import { getActiveMap, setActiveMap, terrainHeight } from '../world-math.js';
+import { OWNED_VEHICLES } from '../vehicle-catalog.js';
+import { NAVAL_MODELS } from '../naval-models.js';
+import { loadoutSummary } from '../aircraft-systems.js';
 
 const MODES = ['intercept', 'free', 'training', 'naval', 'naval-training'];
 const DT = 1 / 60;
@@ -23,9 +26,11 @@ function assertClearSurface(entity, context) {
       `${context}: aircraft has insufficient terrain clearance`);
     return;
   }
-  if (entity.kind !== 'destroyer' && entity.kind !== 'ship') return;
-  const halfLength = entity.halfLength ?? DESTROYER.halfLength;
-  const halfWidth = entity.halfWidth ?? DESTROYER.halfWidth;
+  if (!['destroyer', 'ship', 'ambient-ship'].includes(entity.kind)) return;
+  const definition = entity.kind === 'ambient-ship' ? NAVAL_MODELS[entity.type] : null;
+  const halfLength = definition ? definition.length / 2 : entity.halfLength ?? DESTROYER.halfLength;
+  const halfWidth = definition ? definition.beam / 2 : entity.halfWidth ?? DESTROYER.halfWidth;
+  const maximumGround = definition ? -10 : -3;
   const cos = Math.cos(entity.heading), sin = Math.sin(entity.heading);
   // Cover the full hull, including mid-edges: checking only the centre can
   // silently admit bows and sterns intersecting a riverbank or quay.
@@ -33,21 +38,27 @@ function assertClearSurface(entity, context) {
     for (const x of [-halfWidth, 0, halfWidth]) {
       const worldX = entity.pos.x + x * cos + z * sin;
       const worldZ = entity.pos.z - x * sin + z * cos;
-      assert.ok(terrainHeight(worldX, worldZ) <= -3, `${context}: hull intersects shallow land at ${worldX}, ${worldZ}`);
+      assert.ok(terrainHeight(worldX, worldZ) <= maximumGround, `${context}: hull intersects shallow land at ${worldX}, ${worldZ}`);
     }
   }
 }
 
-for (const map of MAPS) for (const requestedVehicle of ['aircraft', 'destroyer']) for (const mode of MODES) {
-  test(`${map.id}: ${requestedVehicle}/${mode} spawns safely and advances the simulation`, () => {
+for (const map of MAPS) for (const requestedVehicle of OWNED_VEHICLES) for (const mode of MODES) {
+  test(`${map.id}: ${requestedVehicle.id}/${mode} spawns safely and advances the simulation`, () => {
     const previous = getActiveMap();
     try {
       setActiveMap(map.id);
       const sim = new Simulation(7331);
-      sim.start(mode, 'normal', requestedVehicle);
-      const naval = mode === 'naval' || mode === 'naval-training';
-      const vehicle = naval ? 'destroyer' : requestedVehicle;
+      if (requestedVehicle.aircraftId) sim.configureAircraft(null, requestedVehicle.aircraftId);
+      sim.start(mode, 'normal', requestedVehicle.id);
+      const vehicle = requestedVehicle.id === 'destroyer' ? 'destroyer' : 'aircraft';
       assert.equal(sim.vehicle, vehicle);
+      if (requestedVehicle.aircraftId) {
+        assert.equal(sim.player.aircraftId, requestedVehicle.aircraftId);
+        const summary = loadoutSummary(sim.player.stores, requestedVehicle.aircraftId);
+        assert.equal(sim.player.missiles, summary.air);
+        assert.equal(sim.player.antiShipMissiles, summary.sea);
+      }
       assert.equal(sim.state, 'playing');
       assert.equal(sim._spawnIncomplete, false);
       assert.equal(sim.enemies.length, mode === 'training' ? 3 : 2);
@@ -60,7 +71,7 @@ for (const map of MAPS) for (const requestedVehicle of ['aircraft', 'destroyer']
           ? { throttleDelta: .2, yaw: .1 }
           : { throttleDelta: .15, roll: .08, pitch: .1 });
         for (const entity of [sim.player, ...sim.enemies]) assertClearSurface(entity, `${map.id}/${mode}/${entity.id ?? 'player'}`);
-        for (const ship of sim.ambientShips) assertFiniteEntity(ship, `${map.id}/${ship.id}`);
+        for (const ship of sim.ambientShips) assertClearSurface(ship, `${map.id}/${ship.id}`);
       }
       assert.equal(sim.state, 'playing');
       assert.ok(Math.abs(sim.time - 2) < 1e-9, 'fixed simulation time must advance independently of map detail');

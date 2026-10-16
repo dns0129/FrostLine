@@ -1,11 +1,13 @@
 import * as THREE from './vendor/three.module.js';
 import { makeFA18 } from './fa18.js';
+import { makeJ16 } from './j16.js';
 import { makeDestroyer } from './destroyer.js';
 
 const clamp = THREE.MathUtils.clamp;
 export function baseCameraPose(vehicle, yaw, pitch, zoom, aspect = 1.7) {
   const ship = vehicle === 'destroyer';
-  const radius = (ship ? 195 : 30) * clamp(zoom, .7, 1.65) * Math.max(1, 1.35 / aspect);
+  // The J-16 is about 22 m long against the Hornet's 17 m; frame it equally.
+  const radius = (ship ? 195 : vehicle === 'j16' ? 36 : 30) * clamp(zoom, .7, 1.65) * Math.max(1, 1.35 / aspect);
   const angle = clamp(pitch, .09, .75);
   return {
     position: [Math.sin(yaw) * radius * Math.cos(angle), Math.sin(angle) * radius + (ship ? 7 : 1.8), Math.cos(yaw) * radius * Math.cos(angle)],
@@ -94,11 +96,16 @@ export class BaseScene {
       this.box(g, [2.2, 1.6, 2], [-22 + i * 2.4, .7, 19], 'crate');
       this.box(g, [1.8, 2, 1.6], [24, .9, 15 - i * 2], i % 2 ? 'dark' : 'steel');
     }
-    this.jet = makeFA18(this.world.fa18Assets,this.world.jetAssets,{parked:true});
-    this.jet.position.y = this.jet.userData.groundOffset;
-    this.jet.userData.exhaust.visible = false; this.jet.userData.exhaustCore.visible = false;
-    this.jet.traverse(mesh => { if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; } });
-    g.add(this.jet);
+    // One parked airframe per owned aircraft; setVehicle shows the selected one.
+    this.jets = { aircraft: makeFA18(this.world.fa18Assets,this.world.jetAssets,{parked:true}),
+      j16: makeJ16(this.world.j16Assets,this.world.jetAssets,{parked:true}) };
+    for (const jet of Object.values(this.jets)) {
+      jet.position.y = jet.userData.groundOffset;
+      jet.userData.exhaust.visible = false; jet.userData.exhaustCore.visible = false;
+      jet.traverse(mesh => { if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; } });
+      g.add(jet);
+    }
+    this.jet = this.jets.aircraft;
     // The parked model uses its imported gear instead of synthetic K-7 wheels.
     // Distant runway and utility buildings retain the sense of a working base.
     this.box(g, [220, .08, 20], [0, -.1, -98], 'dark');
@@ -152,10 +159,11 @@ export class BaseScene {
     }
   }
   setVehicle(vehicle) {
-    const next = vehicle === 'destroyer' ? 'destroyer' : 'aircraft';
+    const next = ['destroyer', 'j16'].includes(vehicle) ? vehicle : 'aircraft';
     if (next !== this.vehicle || !this.initialized) {
       this.vehicle = next; this.initialized = true; this.reset();
-      this.air.visible = next === 'aircraft'; this.naval.visible = next === 'destroyer';
+      this.air.visible = next !== 'destroyer'; this.naval.visible = next === 'destroyer';
+      if (next !== 'destroyer') { this.jet = this.jets[next]; for (const jet of Object.values(this.jets)) jet.visible = jet === this.jet; }
       const extent = next === 'destroyer' ? 100 : 36;
       Object.assign(this.sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: 1, far: 450 });
       this.sun.shadow.camera.updateProjectionMatrix(); this.dirty = true;

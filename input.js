@@ -12,7 +12,7 @@ export class FlightInput {
       if(!this.active || (editing&&!throttleKey))return;
       if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab','ControlLeft','ControlRight'].includes(e.code))e.preventDefault();
       this.keys.add(e.code);
-      if(!e.repeat){const a={KeyF:'missile',KeyR:'antiShip',KeyV:'recenter',KeyX:'flare',Tab:'target',KeyC:'camera',Escape:'pause'}[e.code];if(a&&(!['antiShip','recenter'].includes(a)||this.vehicle()==='destroyer'))onAction(a);}
+      if(!e.repeat){const a={KeyF:'missile',KeyB:'airWeapon',KeyR:'antiShip',KeyV:'recenter',KeyX:'flare',Tab:'target',KeyC:'camera',Escape:'pause'}[e.code];if(a&&(a!=='recenter'||this.vehicle()==='destroyer'))onAction(a);}
     });
     window.addEventListener('keyup',e=>this.keys.delete(e.code));
     window.addEventListener('blur',()=>{this.reset();if(this.active)onAction('pause');});
@@ -95,7 +95,7 @@ export class FlightInput {
     hold('touchFire','fire');hold('touchBoost','boost');
     for(const [id,action] of [['touchMissile','missile'],['touchFlare','flare'],['touchCamera','camera']])document.getElementById(id).addEventListener('click',()=>{if(this.active)onAction(action);});
     document.getElementById('touchTarget')?.addEventListener('click',()=>{if(this.active)onAction('target');});
-    document.getElementById('touchAntiShip')?.addEventListener('click',()=>{if(this.active&&this.vehicle()==='destroyer')onAction('antiShip');});
+    document.getElementById('touchAntiShip')?.addEventListener('click',()=>{if(this.active)onAction('antiShip');});
     document.getElementById('touchRecenter')?.addEventListener('click',()=>{if(this.active&&this.vehicle()==='destroyer')onAction('recenter');});
     document.getElementById('throttle').addEventListener('input',e=>onThrottle(Number(e.target.value)/100));
   }

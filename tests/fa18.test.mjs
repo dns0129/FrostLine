@@ -4,6 +4,7 @@ import * as THREE from '../vendor/three.module.js';
 import { makeFA18 } from '../fa18.js';
 import { makeJetAssets } from '../aircraft.js';
 import { fa18Assets } from './fa18-fixture.mjs';
+import { AIRCRAFT, presetLoadout } from '../aircraft-systems.js';
 
 const context = new Proxy({}, { get: (t,k) => /create.*Gradient/.test(k) ? () => ({addColorStop(){}}) : () => {} });
 const prior = globalThis.document;
@@ -55,4 +56,26 @@ test('disposing an F/A-18 instance retains the other aircraft and all shared sou
   }
   first.userData.dispose();first.userData.dispose();assert.equal(owned,4);assert.equal(shared,0);
   assert.ok(second.userData.gear.every(o=>o.visible));
+});
+
+test('custom stores retain the configurable loadout, reuse measured templates and dispose only owned resources once',()=>{
+  const jet=makeFA18(fa18Assets,jetAssets),geometries=new Set(),materials=new Set();
+  jet.userData.stores.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material);});
+  const shared=new Set([...Object.values(fa18Assets.armament.geometries),fa18Assets.armament.material]);
+  const owned=[...geometries,...materials].filter(resource=>!shared.has(resource));
+  const storeTypes=new Set(AIRCRAFT.fa18c.stations.flatMap(station=>Object.keys(station.allowed)));
+  assert.equal([...geometries].filter(resource=>!shared.has(resource)).length,storeTypes.size);
+  assert.equal([...materials].filter(resource=>!shared.has(resource)).length,storeTypes.size);
+  assert.ok(Object.values(fa18Assets.armament.geometries).every(geometry=>geometries.has(geometry)));
+  assert.ok(materials.has(fa18Assets.armament.material));
+  assert.equal(jet.userData.stores.userData.slots.length,AIRCRAFT.fa18c.stations.length);
+  let visible=0;jet.userData.stores.traverse(o=>{if(o.userData.store&&o.visible){visible++;assert.equal(o.children.length,1);}});
+  assert.equal(visible,presetLoadout('multirole','fa18c').reduce((count,slot)=>count+slot.count,0));
+  jet.userData.setLoadout(AIRCRAFT.fa18c.stations.map(station=>({station:station.id,store:null,count:0})));
+  jet.userData.stores.traverse(o=>{if(o.userData.store)assert.equal(o.visible,false);});
+  const releases=new Map([...owned,...shared].map(resource=>[resource,0]));
+  for(const resource of releases.keys())resource.addEventListener('dispose',()=>releases.set(resource,releases.get(resource)+1));
+  jet.userData.dispose();jet.userData.dispose();
+  for(const resource of owned)assert.equal(releases.get(resource),1);
+  for(const resource of shared)assert.equal(releases.get(resource),0);
 });

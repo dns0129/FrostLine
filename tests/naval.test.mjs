@@ -8,7 +8,7 @@ import * as THREE from '../vendor/three.module.js';
 const DT = 1 / 60;
 function naval(mode = 'naval', difficulty = 'normal') {
   const sim = new Simulation(7331);
-  sim.start(mode, difficulty, 'aircraft');
+  sim.start(mode, difficulty, 'destroyer');
   return sim;
 }
 function run(sim, seconds, input = {}) {
@@ -51,7 +51,7 @@ function modelSegmentHits(entity, from, to) {
   return hits;
 }
 
-test('sea missions force the destroyer and expose both genuine ship types in safe water', () => {
+test('destroyer sea missions expose both genuine ship types in safe water', () => {
   for (const mode of ['naval', 'naval-training']) {
     const sim = naval(mode);
     assert.equal(sim.mode, mode);

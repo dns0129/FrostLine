@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { Simulation } from '../simulation.js';
 import { terrainHeight } from '../world-math.js';
-import { NAVAL_MODELS, makeNavalAssets, makeNavalShip } from '../naval-models.js';
+import { NAVAL_MODELS, makeNavalShip } from '../naval-models.js';
 import { AmbientFleet, createDefaultFleet, updateDefaultFleet, sampleFleetRoute, FLEET_ROUTES } from '../ambient-fleet.js';
+import { navalAssets as imported, loadNavalFixture } from './naval-fixture.mjs';
 
 test('every mission and vehicle starts exactly two scene-only carrier groups without changing combat targets', () => {
   const sim = new Simulation();
@@ -55,7 +56,7 @@ test('leader route is continuous at all joins including loop closure and follows
 });
 
 test('pause freezes fleet telemetry and waves; restarting restores the initial six ships without duplication', () => {
-  const sim = new Simulation(), scene = new THREE.Scene(), fleet = new AmbientFleet(scene);
+  const sim = new Simulation(), scene = new THREE.Scene(), fleet = new AmbientFleet(scene, { imported });
   sim.start('naval-training'); const initial = JSON.stringify(sim.ambientShips);
   for (let i = 0; i < 120; i++) sim.update(1 / 60);
   assert.notEqual(JSON.stringify(sim.ambientShips), initial);
@@ -69,45 +70,89 @@ test('pause freezes fleet telemetry and waves; restarting restores the initial s
   fleet.dispose(); fleet.dispose(); assert.equal(scene.children.length, 0);
 });
 
-test('four distinct textured ship classes have finite outward geometry, appropriate scale and cheaper distant silhouettes', () => {
-  const assets = makeNavalAssets();
+const tris = o => (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+const meshesOf = object => { const list = []; object.traverse(o => { if (o.isMesh) list.push(o); }); return list; };
+
+test('every fleet class is an imported Blender model matching its published size, bow -Z and waterline 0', () => {
+  assert.deepEqual(Object.keys(NAVAL_MODELS), ['enterprise', 'fujian', 'burke', 'type052d']);
   for (const [type, def] of Object.entries(NAVAL_MODELS)) {
-    const ship = makeNavalShip(assets, type), counts = [];
-    for (const level of ship.userData.lod.levels) {
-      let triangles = 0, meshes = 0;
-      level.object.traverse(o => {
-        if (!o.isMesh) return; meshes++;
-        for (const a of Object.values(o.geometry.attributes)) assert.ok(a.array.every(Number.isFinite));
-        assert.ok(o.geometry.boundingSphere.radius > 0); triangles += o.geometry.attributes.position.count / 3;
-      });
-      assert.ok(meshes <= 11); counts.push(triangles);
+    const prepared = imported[def.asset], meta = prepared.metadata;
+    assert.equal(meta.units, 'metres'); assert.equal(meta.glb_axes, '+Y up, bow -Z');
+    assert.ok(Math.abs(meta.length_overall - def.length) < .6, `${type} length ${meta.length_overall}`);
+    assert.ok(Math.abs(meta.waterline_beam - def.hullBeam) < .1, `${type} waterline beam`);
+    if (def.kind === 'carrier') {
+      assert.ok(Math.abs(meta.flight_deck_width - def.beam) < .1); assert.equal(meta.flight_deck_height, def.deckY);
+    } else {
+      assert.ok(Math.abs(meta.beam_overall - def.beam) < .1);
+      assert.ok(def.deckY > meta.deck_height_stern && def.deckY < meta.deck_height_bow);
     }
-    assert.ok(counts[0] < 11000 && counts[1] < counts[0] * .36);
-    const hull = ship.getObjectByName(`naval-${type}-hull`).geometry.boundingBox;
-    assert.equal(hull.max.z - hull.min.z, def.length);
-    const deck = ship.getObjectByName(`naval-${type}-deck`).geometry;
-    let upward = 0; for (let i = 0; i < deck.attributes.normal.count; i++) if (deck.attributes.normal.getY(i) > .9) upward++;
-    assert.ok(upward > 5);
-    const material = ship.getObjectByName(`naval-${type}-hull`).material;
-    assert.ok(material.map && material.roughnessMap && material.bumpMap);
-    assert.ok(material.roughness > .85 && material.metalness < .3);
-    assert.ok(assets.materials.deck.roughness === 1 && assets.materials.steel.metalness > .7);
+    const ship = makeNavalShip(imported, type), [near, far] = ship.userData.lod.levels.map(l => meshesOf(l.object));
+    for (const mesh of near) {
+      assert.ok(mesh.geometry.attributes.position.array.every(Number.isFinite)); assert.ok(mesh.geometry.boundingSphere.radius > 0);
+    }
+    const nearTris = near.reduce((n, m) => n + tris(m), 0), farTris = far.reduce((n, m) => n + tris(m), 0);
+    assert.ok(near.length <= 15, `${type} draws ${near.length}`); assert.ok(far.length <= 5);
+    assert.ok(nearTris <= meta.triangles && nearTris > meta.triangles * .9); assert.ok(farTris < nearTris * .33, `${type} far ${farTris}`);
+    const box = new THREE.Box3(); near.forEach(m => box.union(m.geometry.boundingBox));
+    assert.ok(Math.abs(box.max.z - box.min.z - def.length) < .6); assert.ok(Math.abs(box.min.z + box.max.z) < 2);
+    assert.ok(near.find(m => m.material.name === 'Antifouling red').geometry.boundingBox.max.y < .5, `${type} below waterline`);
+    if (def.kind === 'carrier') {
+      const island = near.find(m => /island grey/.test(m.material.name)).geometry.boundingBox;
+      assert.ok(island.min.x > 15, `${type} island to starboard`); assert.ok(near.some(m => m.material.map));
+    } else {
+      const numbers = near.filter(m => m.name.includes('Hull number white'));
+      assert.equal(numbers.length, 1); assert.ok(numbers[0].geometry.boundingBox.max.z < -def.length / 4, `${type} number on the bow`);
+    }
   }
-  const first = makeNavalShip(assets, 'burke', '51'), second = makeNavalShip(assets, 'burke', '52');
-  assert.equal(first.getObjectByName('naval-burke-hull').geometry, second.getObjectByName('naval-burke-hull').geometry);
-  assert.notEqual(first.getObjectByName('hull-and-deck-number').geometry, second.getObjectByName('hull-and-deck-number').geometry);
-  assets.dispose();
+  assert.throws(() => makeNavalShip({}, 'burke'), /not loaded/); assert.throws(() => makeNavalShip(imported, 'forrestal'), /Unknown/);
 });
 
-test('fleet disposal releases shared GPU resources exactly once and mobile quality shortens detail distance', () => {
-  const scene = new THREE.Scene(), fleet = new AmbientFleet(scene), resources = new Set();
-  fleet.group.traverse(o => { if (o.geometry) resources.add(o.geometry); if (o.material) resources.add(o.material); });
-  for (const maps of Object.values(fleet.assets.textures)) Object.values(maps).forEach(t => resources.add(t));
-  Object.values(fleet.assets.classes).forEach(c => c.levels.flat().forEach(a => resources.add(a.geometry)));
-  resources.add(fleet.map);
-  const disposed = new Map(); resources.forEach(r => r.addEventListener('dispose', () => disposed.set(r, (disposed.get(r) || 0) + 1)));
+test('one GLB per class serves every hull number in the fleet and shares its geometry', () => {
+  const expected = { enterprise: ['65'], fujian: ['18'], burke: ['51', '52'], type052d: ['172', '173'] };
+  for (const [type, numbers] of Object.entries(expected)) assert.deepEqual(imported[NAVAL_MODELS[type].asset].numbers, numbers);
+  for (const [type, a, b] of [['burke', '51', '52'], ['type052d', '172', '173']]) {
+    const first = makeNavalShip(imported, type, a), second = makeNavalShip(imported, type, b);
+    const names = ship => meshesOf(ship).filter(m => /Hull number/.test(m.name)).map(m => m.name);
+    assert.ok(names(first).every(n => n.endsWith(a))); assert.ok(names(second).every(n => n.endsWith(b)));
+    assert.equal(names(first).length, 2);
+    const hull = ship => meshesOf(ship).find(m => m.name === `naval-${type}-Antifouling red`).geometry;
+    assert.equal(hull(first), hull(second));
+  }
+  const fleet = new AmbientFleet(new THREE.Scene(), { imported });
+  for (const { id, model } of fleet.ships) {
+    const shown = meshesOf(model.userData.lod.levels[0].object).filter(m => /Hull number white/.test(m.name)).map(m => m.name.split(' ').pop());
+    assert.deepEqual(shown, [id.split('-').pop()], id);
+  }
+  assert.deepEqual(fleet.ships.map(s => s.model.userData.modelType), ['enterprise', 'burke', 'burke', 'fujian', 'type052d', 'type052d']);
+  fleet.dispose();
+});
+
+test('campaign chapter 2 protects the Enterprise group that is actually in the fleet', () => {
+  const sim = new Simulation(); sim.startCampaign('shield');
+  const carrier = sim.ambientShips.find(s => s.id === sim.campaignState.protectedFleetId);
+  assert.equal(carrier?.type, 'enterprise');
+  sim.update(1 / 60); assert.ok(Math.hypot(sim.campaignState.objectivePos.x - carrier.pos.x, sim.campaignState.objectivePos.z - carrier.pos.z) < 1);
+});
+
+test('fleet disposal releases its own resources exactly once and never the renderer-owned models', () => {
+  const scene = new THREE.Scene(), fleet = new AmbientFleet(scene, { imported }), resources = new Set(), external = new Set();
+  for (const prepared of Object.values(imported)) for (const level of prepared.levels) for (const { geometry, material } of level) external.add(geometry).add(material);
+  fleet.group.traverse(o => { for (const r of [o.geometry, o.material]) if (r && !external.has(r)) resources.add(r); });
+  Object.values(fleet.wakeAssets).forEach(a => resources.add(a.geometry).add(a.material)); resources.add(fleet.map);
+  const disposed = new Map(); [...resources, ...external].forEach(r => r.addEventListener('dispose', () => disposed.set(r, (disposed.get(r) || 0) + 1)));
   fleet.setQuality('low'); assert.ok(fleet.ships.every(s => s.model.userData.lod.levels[1].distance === 1800));
   fleet.setQuality('high'); assert.ok(fleet.ships.every(s => s.model.userData.lod.levels[1].distance === 2600));
   fleet.dispose(); fleet.dispose();
   resources.forEach(r => assert.equal(disposed.get(r), 1));
+  external.forEach(r => assert.equal(disposed.get(r), undefined, 'imported models stay owned by the renderer'));
+});
+
+test('a prepared ship asset releases every geometry, material and texture exactly once', async () => {
+  const prepared = await loadNavalFixture('enterprise'), counts = new Map(), add = r => r.addEventListener('dispose', () => counts.set(r, (counts.get(r) || 0) + 1));
+  const owned = new Set();
+  for (const level of prepared.levels) for (const { geometry, material } of level) {
+    owned.add(geometry).add(material); for (const v of Object.values(material)) if (v?.isTexture) owned.add(v);
+  }
+  owned.forEach(add); prepared.dispose(); prepared.dispose();
+  owned.forEach(r => assert.equal(counts.get(r), 1));
 });

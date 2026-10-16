@@ -1,6 +1,6 @@
 # 歼-16 Blender 模型
 
-可编辑源文件 `assets/models/j16-source/J-16.blend`，导出件 `assets/models/j16.glb`（内嵌贴图，公制、Y 向上、机头朝 -Z，与 `fa18c.glb` 一致）。三视图与透视渲染见 `assets/three-views/J-16-three-view.png`。本模型尚未接入游戏。
+可编辑源文件 `assets/models/j16-source/J-16.blend`，导出件 `assets/models/j16.glb`（内嵌贴图，公制、Y 向上、机头朝 -Z，与 `fa18c.glb` 一致）。三视图与透视渲染见 `assets/three-views/J-16-three-view.png`。1.14 起作为可驾驶飞机接入游戏：`j16.js` 以喷口轴线（离地 2.0 m）为机体原点，起落架在空中隐藏，模型内的 PL-15 / PL-10 网格成为挂载模板；参数与挂点见 `docs/aircraft-systems.md`。
 
 ## 素材来源
 

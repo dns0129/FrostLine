@@ -22,7 +22,7 @@ test('all three campaign chapters have distinct goals, original story and aircra
 test('chapter one completes only after both batches are defeated and resupplies between batches', () => {
   const sim = new Simulation(); sim.startCampaign('dawn');
   assert.ok(sim.enemies.every(e => e.missileTimer > 1e8));
-  sim.player.missiles = 0; sim.player.ammo = 20; sim.player.health = 55;
+  sim.player.missiles = 0; for(const slot of sim.player.stores)if(['aim9','aim7','aim120'].includes(slot.store))slot.count=0; sim.player.ammo = 20; sim.player.health = 55;
   clearBatch(sim); assert.equal(sim.state, 'playing'); assert.equal(sim.wave, 1);
   assert.equal(sim.player.missiles, 3); assert.equal(sim.player.ammo, 340); assert.equal(sim.player.health, 80);
   waitForBatch(sim); assert.equal(sim.wave, 2); assert.equal(sim.enemies.length, 2);

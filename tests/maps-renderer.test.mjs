@@ -10,6 +10,8 @@ import { makeSky, makeOcean } from '../atmosphere.js';
 import { WorldRenderer } from '../renderer.js';
 import { Simulation } from '../simulation.js';
 import { campaignLevel, campaignUnlocked, normalizeCampaignProgress } from '../campaign.js';
+import { OWNED_VEHICLES, aircraftIdFor } from '../vehicle-catalog.js';
+import { normalizeWorkshop, STORES } from '../aircraft-systems.js';
 
 function resourcesIn(group) {
   const resources = new Set(), materials = new Set();
@@ -180,7 +182,7 @@ test('an invalid map selection returns to the original rendered geography, colli
   } finally { setup.dispose(); setActiveMap(previousMap.id); }
 });
 
-test('app mission transitions preserve the saved quick map while campaigns use the original geography', () => {
+for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraftId)) test(`${selectedAircraft.id}: app mission transitions preserve quick map and aircraft settings while campaigns use original geography`, () => {
   const previousMap = getActiveMap(), setup = fixture(), { world } = setup;
   try {
     // Execute production transition functions. Replace only DOM, input and
@@ -202,9 +204,10 @@ test('app mission transitions preserve the saved quick map while campaigns use t
     const sim = new Simulation();
     const context = vm.createContext({
       sim, world, getMap, DEFAULT_MAP_ID, campaignLevel, campaignUnlocked,
-      settings: { map: DEFAULT_MAP_ID, difficulty: 'normal' },
+      settings: { map: DEFAULT_MAP_ID, difficulty: 'normal', vehicle: selectedAircraft.id },
+      workshopProfile: normalizeWorkshop(null), hangarVehicle: selectedAircraft.id,
       campaignProgress: normalizeCampaignProgress(null), selectedCampaignId: 'dawn',
-      selectedMode: 'training', selectedVehicle: 'aircraft', playMode: 'quick',
+      selectedMode: 'training', selectedVehicle: selectedAircraft.id, playMode: 'quick',
       endingShown: false, cockpit: false, accumulator: 0, frameTime: 0, cannonAim: null,
       modeCodes: { training: 'TRAINING', campaign: 'CAMPAIGN' },
       $: field, document: { body: { classList: { toggle() {} } }, querySelectorAll: () => buttons, documentElement: {} },
@@ -218,15 +221,20 @@ test('app mission transitions preserve the saved quick map while campaigns use t
       selectVehicle(vehicle) { context.selectedVehicle = vehicle; },
       isShip: () => context.selectedVehicle === 'destroyer',
       isNaval: mode => mode === 'naval' || mode === 'naval-training',
+      aircraftId: () => aircraftIdFor(context.selectedVehicle) || 'fa18c',
+      hasAntiShip: () => context.workshopProfile.loadouts[aircraftIdFor(context.selectedVehicle)]
+        .some(store => store.count > 0 && STORES[store.store]?.kind === 'anti-ship'),
     });
     vm.runInContext(['syncMapSelection', 'selectMap', 'start', 'base'].map(functionSource).join('\n'), context);
     context.selectMap('city-bay');
     assert.equal(context.settings.map, 'city-bay');
     assert.equal(writes.length, 1); assert.equal(writes[0].key, 'frostline-settings');
     assert.equal(writes[0].value.map, 'city-bay');
+    assert.equal(writes[0].value.vehicle, selectedAircraft.id);
     context.start('training');
     assert.equal(world.mapId, 'city-bay'); assert.equal(getActiveMap().id, 'city-bay');
     assert.equal(sim.state, 'playing'); assert.equal(sim.mode, 'training');
+    assert.equal(sim.player.aircraftId, selectedAircraft.aircraftId);
     assert.equal(field('flightMapName').textContent, getMap('city-bay').name);
     context.selectMap('ice-ocean');
     assert.equal(context.settings.map, 'city-bay', 'playing must not change the saved or active map');
@@ -238,6 +246,7 @@ test('app mission transitions preserve the saved quick map while campaigns use t
     assert.equal(context.settings.map, 'city-bay', 'campaign selection must preserve the quick-map preference');
     context.start('campaign');
     assert.equal(sim.mode, 'campaign'); assert.equal(world.mapId, DEFAULT_MAP_ID);
+    assert.equal(sim.player.aircraftId, selectedAircraft.aircraftId);
     assert.equal(getActiveMap().id, DEFAULT_MAP_ID); assert.equal(context.settings.map, 'city-bay');
     assert.equal(field('flightMapName').textContent, getMap(DEFAULT_MAP_ID).name);
     context.base(); context.playMode = 'quick'; context.syncMapSelection();
@@ -245,5 +254,6 @@ test('app mission transitions preserve the saved quick map while campaigns use t
     context.start('training');
     assert.equal(world.mapId, 'city-bay'); assert.equal(getActiveMap().id, 'city-bay');
     assert.equal(sim.mode, 'training'); assert.equal(writes.length, 1);
+    assert.equal(sim.player.aircraftId, selectedAircraft.aircraftId);
   } finally { setup.dispose(); setActiveMap(previousMap.id); }
 });

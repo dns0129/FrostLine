@@ -2,6 +2,8 @@ import * as THREE from './vendor/three.module.js';
 import { makeTerrain } from './terrain.js';
 import { makeJetAssets, makeJet } from './aircraft.js';
 import { loadFA18Assets, makeFA18 } from './fa18.js';
+import { loadJ16Assets, makeJ16 } from './j16.js';
+import { loadNavalAssets } from './naval-assets.js';
 import { makeDestroyer, makeDestroyerWake, makeEnemyShip, ENEMY_SHIP_MODELS } from './destroyer.js';
 import { makeSky, makeOcean, SUN_DIRECTION } from './atmosphere.js';
 import { WaterReflection } from './water-reflection.js';
@@ -105,15 +107,20 @@ export class WorldRenderer {
     this._applyMapTheme();
     this.sky.userData.ready.then(()=>{if(!this.disposed){this._createEnvironment();this.refreshReflection=true;}});
     this.jetAssets = makeJetAssets(); this.playerJet = new THREE.Group(); this.scene.add(this.playerJet);
-    this.modelReady = loadFA18Assets().then(assets => {
-      if (this.disposed) { assets.dispose(); return; }
-      this.fa18Assets = assets; this.scene.remove(this.playerJet);
-      this.playerJet = makeFA18(assets, this.jetAssets); this.scene.add(this.playerJet);
-      return assets;
+    // Imported Blender models: both flyable jets and every ambient-fleet class.
+    this.modelReady = Promise.allSettled([loadFA18Assets(), loadJ16Assets(), loadNavalAssets()]).then(results => {
+      const loaded = results.filter(r => r.status === 'fulfilled').map(r => r.value), failed = results.find(r => r.status === 'rejected');
+      if (this.disposed || failed) { loaded.forEach(assets => assets.dispose()); if (failed) throw failed.reason; return; }
+      const [fa18, j16, naval] = loaded;
+      this.fa18Assets = fa18; this.j16Assets = j16; this.navalAssets = naval; this.scene.remove(this.playerJet);
+      this.playerJets = { fa18c: makeFA18(fa18, this.jetAssets), j16: makeJ16(j16, this.jetAssets) };
+      this.playerJets.j16.visible = false; this.scene.add(this.playerJets.fa18c, this.playerJets.j16);
+      this.playerJet = this.playerJets.fa18c;
+      this.ambientFleet = new AmbientFleet(this.scene, { imported: naval.assets }); this.ambientFleet.setQuality(this.effectiveQuality);
+      return fa18;
     });
     this.playerShip = makeDestroyer(); this.playerShip.visible = false; this.scene.add(this.playerShip);
     this.shipWake = makeDestroyerWake(); this.scene.add(this.shipWake);
-    this.ambientFleet = new AmbientFleet(this.scene);
     this.playerJet.traverse(o=>{if(o.isMesh&&!o.material.transparent){o.castShadow=true;o.receiveShadow=true;}});
     this.enemies = new Map(); this.enemyWakes = new Map(); this.missileMeshes = [];
     this.reflection = new WaterReflection(this.renderer, this.scene, this.ocean, { quality: this.effectiveQuality });
@@ -203,6 +210,7 @@ export class WorldRenderer {
       this.playerShip.rotation.set(this.playerShip.userData.wavePitch,p.heading||0,this.playerShip.userData.waveRoll,'YXZ');
       this.playerShip.visible=sim.state!=='lost'||p.health>0;
     }else {
+      this._selectPlayerAircraft(p.aircraftId);
       this.playerJet.position.copy(p.pos);this.playerJet.rotation.set(p.pitch||0,p.heading||0,p.bank||0,'YXZ');
       if(menu){this.playerJet.rotation.set(.035+Math.sin(this.elapsed*.35)*.01,-.16,-.07);this.playerJet.position.y+=Math.sin(this.elapsed*.7)*.8;}
       if(this.playerJet.userData.update)this.playerJet.userData.update(dt,p);
@@ -261,6 +269,12 @@ export class WorldRenderer {
       wake.position.set(enemy.pos.x+Math.sin(wake.rotation.y)*local,.065,enemy.pos.z+Math.cos(wake.rotation.y)*local);
       wake.material.opacity=clamp(speed/14,0,1)*.48;
     }
+  }
+  // Both imported jets stay loaded; only the configured airframe is shown.
+  _selectPlayerAircraft(id) {
+    const next=this.playerJets?.[id];
+    if(!next||next===this.playerJet)return;
+    this.playerJet.visible=false;this.playerJet=next;this.cameraReady=false;
   }
   _removeEnemy(id,model) {
     this.scene.remove(model);model.userData.dispose?.();this.enemies.delete(id);
@@ -334,18 +348,20 @@ export class WorldRenderer {
   dispose() {
     if(this.disposed)return;
     this.speedEffects?.dispose();
-    this.ambientFleet?.dispose();
+    this.ambientFleet?.dispose();this.navalAssets?.dispose();
     this.disposed=true;this.terrain.userData.dispose();this.scene.remove(this.terrain);
-    this.playerJet.userData.dispose?.();
-    this.scene.remove(this.playerJet);this.fa18Assets?.dispose();
+    for(const jet of this.playerJets?Object.values(this.playerJets):[this.playerJet]){jet?.userData.dispose?.();this.scene.remove(jet);}
+    this.fa18Assets?.dispose();this.j16Assets?.dispose();
     // Enemy class caches own shared resources. Release their instances before
     // traversing other scene resources, avoiding double disposal or stale refs.
     for(const[id,model]of this.enemies)if(model.userData.kind==='ship')this._removeEnemy(id,model);
     const geometries=new Set(),materials=new Set(),textures=new Set();
-    Object.values(this.jetAssets.geometries).forEach(g=>geometries.add(g));
-    geometries.add(this.jetAssets.exhaustGeometry);geometries.add(this.jetAssets.exhaustCoreGeometry);
-    Object.values(this.jetAssets.materials).forEach(m=>materials.add(m));
-    Object.values(this.jetAssets.textures).forEach(t=>textures.add(t));
+    if(this.jetAssets){
+      Object.values(this.jetAssets.geometries).forEach(g=>geometries.add(g));
+      geometries.add(this.jetAssets.exhaustGeometry);geometries.add(this.jetAssets.exhaustCoreGeometry);
+      Object.values(this.jetAssets.materials).forEach(m=>materials.add(m));
+      Object.values(this.jetAssets.textures).forEach(t=>textures.add(t));
+    }
     this.scene.traverse(obj=>{if(obj.geometry)geometries.add(obj.geometry);if(obj.material){for(const m of Array.isArray(obj.material)?obj.material:[obj.material]){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}}});
     if(this.missileAssets){Object.values(this.missileAssets.geometries).forEach(g=>geometries.add(g));Object.values(this.missileAssets.materials).forEach(m=>materials.add(m));}
     if(this.fireMap)textures.add(this.fireMap);

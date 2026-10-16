@@ -6,6 +6,7 @@ import { makeJetAssets } from '../aircraft.js';
 import { FA18_HARDPOINTS, makeFA18ArmamentAssets } from '../fa18-armament.js';
 import { Simulation } from '../simulation.js';
 import { fa18Assets } from './fa18-fixture.mjs';
+import { AIRCRAFT, normalizeWorkshop, validateLoadout } from '../aircraft-systems.js';
 
 const canvasContext = new Proxy({}, { get: (_target, key) => /create.*Gradient/.test(key)
   ? () => ({ addColorStop() {} }) : () => {} });
@@ -17,6 +18,29 @@ if (documentDescriptor) Object.defineProperty(globalThis, 'document', documentDe
 else delete globalThis.document;
 const armamentAssets = makeFA18ArmamentAssets();
 const assets = { ...fa18Assets, armament: armamentAssets };
+const FIT_SLOTS = Object.freeze({ innerL: [3, 'aim120'], innerR: [7, 'aim120'],
+  outerL: [2, 'aim120'], outerR: [8, 'aim120'], tipL: [1, 'aim9'], tipR: [9, 'aim9'] });
+const FIT_LOADOUT = AIRCRAFT.fa18c.stations.map(station => {
+  const fitted = Object.values(FIT_SLOTS).find(([id]) => id === station.id);
+  return { station: station.id, store: fitted?.[1] ?? null, count: fitted ? 1 : 0 };
+});
+
+function makeFittedFA18(options) {
+  const plane = makeFA18(assets, jetAssets, options);
+  plane.userData.setLoadout(FIT_LOADOUT);
+  return plane;
+}
+
+function storeMesh(plane, station) {
+  const [id, weapon] = FIT_SLOTS[station.id];
+  const slot = plane.userData.stores.userData.slots.find(slot => slot.station === id);
+  const group = slot.types[weapon][0];
+  assert.equal(group.userData.hardpoint, station.id);
+  assert.equal(group.visible, true);
+  assert.equal(group.children.length, 1);
+  assert.ok(group.children[0].isMesh);
+  return group.children[0];
+}
 
 function triangles(geometry, transform) {
   const position = geometry.attributes.position, indices = geometry.index;
@@ -77,13 +101,11 @@ function surfaceRange(projected, first, second) {
 
 function storeTransform(plane, station) {
   plane.updateMatrixWorld(true);
-  const mesh = plane.userData.armament.userData[station.type], instance = new THREE.Matrix4();
-  mesh.getMatrixAt(station.instanceIndex, instance);
-  return new THREE.Matrix4().multiplyMatrices(mesh.matrixWorld, instance);
+  return storeMesh(plane, station).matrixWorld.clone();
 }
 
 function storeTriangles(plane, station) {
-  return triangles(plane.userData.armament.userData[station.type].geometry, storeTransform(plane, station));
+  return triangles(storeMesh(plane, station).geometry, storeTransform(plane, station));
 }
 
 function inventory(group) {
@@ -97,11 +119,18 @@ function inventory(group) {
   return { objects, geometries, materials, instances };
 }
 
-const countStores = plane => plane.userData.armament.userData.medium.count + plane.userData.armament.userData.short.count;
+const countStores = plane => {
+  let count = 0;
+  plane.userData.stores.traverse(object => { if (object.userData.store && object.visible) count++; });
+  return count;
+};
 
 test('all six stores contact actual imported racks or rails and clear the original airframe surfaces', () => {
-  const plane = makeFA18(assets, jetAssets);
+  const plane = makeFittedFA18();
   try {
+    assert.equal(validateLoadout(FIT_LOADOUT, 'fa18c').valid, true);
+    assert.equal(FIT_LOADOUT.length, AIRCRAFT.fa18c.stations.length);
+    assert.equal(countStores(plane), 6);
     assert.equal(FA18_HARDPOINTS.length, 6);
     assert.equal(FA18_HARDPOINTS.filter(station => station.type === 'medium').length, 4);
     assert.equal(FA18_HARDPOINTS.filter(station => station.type === 'short').length, 2);
@@ -115,7 +144,7 @@ test('all six stores contact actual imported racks or rails and clear the origin
         && triangle.min[second] <= maximum[second] && triangle.max[second] >= minimum[second]);
       const projectedSource = projectTriangles(source, axis), projectedStore = projectTriangles(store, axis);
       const inverse = storeTransform(plane, station).invert();
-      const adapterContact = plane.userData.armament.userData[station.type].geometry.userData.adapterContact;
+      const adapterContact = storeMesh(plane, station).geometry.userData.adapterContact;
       let samples = 0, minimumGap = Infinity;
       const contacts = [], adapterGaps = [];
       // A 2 cm slice lattice covers the full store; all real vertices and face
@@ -171,19 +200,18 @@ test('all six stores contact actual imported racks or rails and clear the origin
 });
 
 test('armament preserves metre scale, forward direction and positive transforms on the real airframe', () => {
-  const plane = makeFA18(assets, jetAssets);
+  const plane = makeFittedFA18();
   try {
     plane.updateMatrixWorld(true);
     assert.deepEqual(plane.scale.toArray(), [1, 1, 1]);
-    const model = plane.children.find(child => child !== plane.userData.armament && child.name === 'F/A-18C Blender airframe');
+    const model = plane.children.find(child => child.name === 'F/A-18C Blender airframe');
     const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
     assert.ok(Math.abs(size.x - assets.metadata.span) < .002);
     assert.ok(Math.abs(size.z - assets.metadata.length) < .002);
-    const overall = new THREE.Box3().setFromObject(plane.userData.armament).getSize(new THREE.Vector3());
+    const overall = new THREE.Box3().setFromObject(plane.userData.stores).getSize(new THREE.Vector3());
     assert.ok(overall.x > assets.metadata.span && overall.x < 13.2, 'tip stores should add centimetres rather than rescale the aircraft');
     for (const station of FA18_HARDPOINTS) {
-      const mesh = plane.userData.armament.userData[station.type], matrix = new THREE.Matrix4();
-      mesh.getMatrixAt(station.instanceIndex, matrix);
+      const mesh = storeMesh(plane, station), matrix = storeTransform(plane, station);
       assert.ok(matrix.elements.every(Number.isFinite)); assert.ok(Math.abs(matrix.determinant() - 1) < 1e-5);
       const forward = new THREE.Vector3(0, 0, -1).transformDirection(matrix);
       assert.ok(forward.z < -.99, `${station.id}: missile nose must point forward`);
@@ -201,11 +229,13 @@ test('armament preserves metre scale, forward direction and positive transforms 
 });
 
 test('parked and flight stores follow real missile launch, pause and wave resupply without growing resources', () => {
-  const parked = makeFA18(assets, jetAssets, { parked: true }), flight = makeFA18(assets, jetAssets);
+  const parked = makeFittedFA18({ parked: true }), flight = makeFittedFA18();
   try {
-    const before = inventory(flight.userData.armament), matrices = before.instances.map(mesh => Array.from(mesh.instanceMatrix.array));
+    flight.updateMatrixWorld(true);
+    const before = inventory(flight.userData.stores), matrices = before.objects.map(object => object.matrixWorld.toArray());
     assert.equal(countStores(parked), 6); assert.equal(countStores(flight), 6);
-    const sim = new Simulation(7331); sim.start('intercept', 'easy');
+    const profile = normalizeWorkshop(null); profile.loadouts.fa18c = FIT_LOADOUT.map(slot => ({ ...slot }));
+    const sim = new Simulation(7331); sim.configureAircraft(profile, 'fa18c'); sim.start('intercept', 'easy');
     for (let frame = 0; frame < 90; frame++) sim.update(1 / 60);
     assert.equal(sim.lockProgress, 1); assert.ok(sim.lockTarget?.health > 0);
     assert.equal(sim.launchMissile(), true); assert.equal(sim.player.missiles, 5);
@@ -218,30 +248,39 @@ test('parked and flight stores follow real missile launch, pause and wave resupp
     assert.equal(sim.player.missiles, 6, 'wave completion must use the real ammunition resupply path');
     flight.userData.update(1 / 60, sim.player); assert.equal(countStores(flight), 6);
     for (let frame = 0; frame < 600; frame++) flight.userData.update(1 / 60, sim.player);
-    const after = inventory(flight.userData.armament);
+    flight.updateMatrixWorld(true);
+    const after = inventory(flight.userData.stores);
     assert.deepEqual(after, before, 'updates must retain the same scene and shared resources');
-    assert.deepEqual(after.instances.map(mesh => Array.from(mesh.instanceMatrix.array)), matrices);
+    assert.deepEqual(after.objects.map(object => object.matrixWorld.toArray()), matrices);
   } finally { parked.userData.dispose(); flight.userData.dispose(); }
 });
 
-test('disposing one aircraft releases only its two store instance buffers and preserves the other aircraft and shared assets', () => {
-  const first = makeFA18(assets, jetAssets), second = makeFA18(assets, jetAssets, { parked: true });
+test('disposing one configured aircraft releases its owned stores once and preserves the other aircraft and shared fitted templates', () => {
+  const first = makeFittedFA18(), second = makeFittedFA18({ parked: true });
   try {
     const shared = new Set([...inventory(assets.scene).geometries, ...inventory(assets.scene).materials,
       ...Object.values(armamentAssets.geometries), armamentAssets.material]);
     const sharedReleases = new Map([...shared].map(resource => [resource, 0]));
     for (const resource of shared) resource.addEventListener('dispose', () => sharedReleases.set(resource, sharedReleases.get(resource) + 1));
-    const firstBuffers = inventory(first.userData.armament).instances, secondBuffers = inventory(second.userData.armament).instances;
-    assert.equal(firstBuffers.length, 2); assert.equal(secondBuffers.length, 2);
-    const releases = new Map([...firstBuffers, ...secondBuffers].map(mesh => [mesh, 0]));
-    for (const mesh of releases.keys()) mesh.addEventListener('dispose', () => releases.set(mesh, releases.get(mesh) + 1));
+    const owned = plane => {
+      const resources = inventory(plane.userData.stores);
+      return new Set([...resources.geometries, ...resources.materials, ...resources.instances].filter(resource => !shared.has(resource)));
+    };
+    const firstOwned = owned(first), secondOwned = owned(second);
+    assert.ok(firstOwned.size > 0 && firstOwned.size === secondOwned.size,
+      'exercise ownership of every fallback store type alongside shared measured templates');
+    for (const resource of firstOwned) assert.ok(!secondOwned.has(resource), 'fallback GPU resources belong to individual aircraft');
+    const releases = new Map([...firstOwned, ...secondOwned].map(resource => [resource, 0]));
+    for (const resource of releases.keys()) resource.addEventListener('dispose', () => releases.set(resource, releases.get(resource) + 1));
     first.userData.dispose(); first.userData.dispose();
-    for (const mesh of firstBuffers) assert.equal(releases.get(mesh), 1);
-    for (const mesh of secondBuffers) assert.equal(releases.get(mesh), 0);
+    for (const resource of firstOwned) assert.equal(releases.get(resource), 1);
+    for (const resource of secondOwned) assert.equal(releases.get(resource), 0);
     for (const count of sharedReleases.values()) assert.equal(count, 0, 'one aircraft cannot dispose loader-owned geometry or paint');
+    assert.equal(first.userData.stores.parent, null);
+    assert.equal(second.userData.stores.parent, second);
     second.userData.update(1 / 60, { missiles: 0, throttle: 1, boost: true });
     assert.equal(countStores(second), 6); assert.ok(second.userData.gear.every(gear => gear.visible));
-    assert.ok(secondBuffers.every(mesh => mesh.geometry.attributes.position.array.every(Number.isFinite)));
+    assert.ok([...inventory(second.userData.stores).geometries].every(geometry => geometry.attributes.position.array.every(Number.isFinite)));
     second.userData.dispose(); second.userData.dispose();
     for (const count of releases.values()) assert.equal(count, 1);
     for (const count of sharedReleases.values()) assert.equal(count, 0);
