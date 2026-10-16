@@ -1,9 +1,44 @@
 import * as THREE from './vendor/three.module.js';
+import { getQualityPreset } from './quality.js';
 
 // One morning sun drives the sky, aircraft lighting and the reflection trail.
 export const SUN_DIRECTION = new THREE.Vector3(-.40, .26, -.88).normalize();
 
+const DEFAULT_ATMOSPHERE = Object.freeze({
+  skyZenith: [.035, .100, .195], skyHorizon: [.435, .537, .594],
+  skyBelowHorizon: [.225, .305, .355], sunTint: [1, 1, 1],
+  waterDeep: [.005, .020, .030], waterShallow: [.012, .047, .056],
+  cloudTint: [.69, .74, .76], cloudCoverage: .35, haze: 1, panoramaMix: 1,
+});
+const atmosphereColorKeys = ['skyZenith', 'skyHorizon', 'skyBelowHorizon', 'sunTint'];
+function colorUniform(key) { return { value: new THREE.Color(...DEFAULT_ATMOSPHERE[key]) }; }
+function atmosphereUniforms() {
+  return Object.fromEntries(atmosphereColorKeys.map(key => [key, colorUniform(key)]));
+}
+function setThemeColor(uniform, value, fallback) {
+  if (value?.isColor) uniform.value.copy(value);
+  else if (Array.isArray(value) && value.length >= 3 && value.slice(0, 3).every(Number.isFinite)) uniform.value.setRGB(value[0], value[1], value[2]);
+  else if (typeof value === 'string' || typeof value === 'number' && Number.isFinite(value)) uniform.value.set(value);
+  else uniform.value.setRGB(...fallback);
+}
+function applyAtmosphereTheme(uniforms, theme = {}) {
+  for (const key of atmosphereColorKeys) setThemeColor(uniforms[key], theme[key], DEFAULT_ATMOSPHERE[key]);
+}
+function themeNumber(value, fallback, minimum, maximum) {
+  return Number.isFinite(value) ? THREE.MathUtils.clamp(value, minimum, maximum) : fallback;
+}
+function setTextureAnisotropy(texture, value) {
+  if (texture && texture.anisotropy !== value) {
+    texture.anisotropy = value;
+    texture.needsUpdate = true;
+  }
+}
+
 const atmosphereGLSL = /* glsl */`
+  uniform vec3 skyZenith;
+  uniform vec3 skyHorizon;
+  uniform vec3 skyBelowHorizon;
+  uniform vec3 sunTint;
   float atmosphereHash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * .1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -16,31 +51,29 @@ const atmosphereGLSL = /* glsl */`
       mix(atmosphereHash(i + vec2(0., 1.)), atmosphereHash(i + vec2(1.)), f.x), f.y);
   }
   // Octave rotation prevents the axis-aligned streaks of the previous sky.
-  float cloudFbm(vec2 p, float quality) {
-    float sum = 0., amplitude = .52;
+  float cloudFbm(vec2 p, float octaves) {
+    float sum = 0., amplitude = .52, weight = 0.;
     mat2 rotation = mat2(.80, -.60, .60, .80);
-    for (int i = 0; i < 5; i++) {
-      if (i > 2 && quality < .5) break;
+    for (int i = 0; i < 6; i++) {
+      if (float(i) >= octaves) break;
       sum += amplitude * atmosphereNoise(p);
+      weight += amplitude;
       p = rotation * p * 2.07 + vec2(13.41, 7.23);
       amplitude *= .49;
     }
-    return sum * mix(1.105, 1.005, quality);
+    return sum / max(weight, .001);
   }
   // All colours are scene-linear. Output conversion happens once, at the end.
   vec3 clearAtmosphere(vec3 direction, vec3 sunDirection) {
     float elevation = max(direction.y, 0.);
     float towardsSun = max(dot(direction, sunDirection), 0.);
-    vec3 zenith = vec3(.035, .100, .195);
-    vec3 horizon = vec3(.435, .537, .594);
-    vec3 sky = mix(horizon, zenith, pow(elevation, .42));
+    vec3 sky = mix(skyHorizon, skyZenith, pow(elevation, .42));
     float morningHaze = exp(-elevation * 9.) * pow(towardsSun, 5.);
-    sky += vec3(.255, .165, .071) * morningHaze;
-    sky += vec3(.28, .204, .112) * pow(towardsSun, 24.);
-    sky += vec3(.33, .263, .178) * pow(towardsSun, 190.);
-    sky += vec3(4.8, 4.15, 3.12) * smoothstep(.999975, .999990, towardsSun);
-    vec3 belowHorizon = vec3(.225, .305, .355);
-    return mix(belowHorizon, sky, smoothstep(-.16, .012, direction.y));
+    sky += sunTint * vec3(.255, .165, .071) * morningHaze;
+    sky += sunTint * vec3(.28, .204, .112) * pow(towardsSun, 24.);
+    sky += sunTint * vec3(.33, .263, .178) * pow(towardsSun, 190.);
+    sky += sunTint * vec3(4.8, 4.15, 3.12) * smoothstep(.999975, .999990, towardsSun);
+    return mix(skyBelowHorizon, sky, smoothstep(-.16, .012, direction.y));
   }
 `;
 
@@ -52,8 +85,13 @@ export function makeSky() {
       time: { value: 0 },
       sunDirection: { value: SUN_DIRECTION.clone() },
       highQuality: { value: 1 },
+      cloudOctaves: { value: 5 },
+      cloudCoverage: { value: DEFAULT_ATMOSPHERE.cloudCoverage },
+      cloudTint: colorUniform('cloudTint'),
       skyPanorama: { value: null },
       panoramaReady: { value: 0 },
+      panoramaMix: { value: 1 },
+      ...atmosphereUniforms(),
     },
     vertexShader: /* glsl */`
       varying vec3 vDirection;
@@ -68,6 +106,10 @@ export function makeSky() {
       uniform float time;
       uniform sampler2D skyPanorama;
       uniform float panoramaReady;
+      uniform float panoramaMix;
+      uniform float cloudOctaves;
+      uniform float cloudCoverage;
+      uniform vec3 cloudTint;
       ${atmosphereGLSL}
       void main() {
         vec3 d = normalize(vDirection);
@@ -85,9 +127,21 @@ export function makeSky() {
           vec3 zenith = texture2D(skyPanorama, vec2(.5, .985)).rgb;
           photo = mix(photo, zenith, smoothstep(.91, .99, uv.y));
           float towardsSun = max(dot(d, sunDirection), 0.);
-          col = photo * .92;
-          col += vec3(.08, .062, .034) * pow(towardsSun, 70.);
-          col += vec3(4.8, 4.15, 3.12) * smoothstep(.999975, .999990, towardsSun);
+          photo *= .92;
+          photo += sunTint * vec3(.08, .062, .034) * pow(towardsSun, 70.);
+          photo += sunTint * vec3(4.8, 4.15, 3.12) * smoothstep(.999975, .999990, towardsSun);
+          col = mix(col, photo, panoramaMix);
+        }
+        // A gently advected, world-space layer keeps weather continuous in the
+        // main view, reflection and environment. Octave count follows the tier.
+        if (d.y > .015 && cloudCoverage > .001) {
+          vec2 cloudPoint = d.xz / max(.10, d.y) * 1.45 + vec2(time * .0007, time * .0002);
+          float density = cloudFbm(cloudPoint, cloudOctaves);
+          float threshold = mix(.92, .36, cloudCoverage);
+          float cloud = smoothstep(threshold, threshold + .17, density)
+            * smoothstep(.015, .16, d.y) * (1. - smoothstep(.75, .99, d.y));
+          vec3 litCloud = cloudTint * mix(.72, 1.04, density);
+          col = mix(col, litCloud, cloud * .58);
         }
         gl_FragColor = vec4(col, 1.);
         #include <tonemapping_fragment>
@@ -99,7 +153,21 @@ export function makeSky() {
   sky.name = 'Original maritime morning panorama';
   sky.frustumCulled = false;
   sky.renderOrder = -100;
-  sky.userData.ready = new Promise(resolve => {
+  sky.userData.setQuality = quality => {
+    const profile = getQualityPreset(quality);
+    material.uniforms.highQuality.value = profile.oceanDetail;
+    material.uniforms.cloudOctaves.value = profile.cloudOctaves;
+    setTextureAnisotropy(material.uniforms.skyPanorama.value, profile.textureAnisotropy);
+    sky.userData.quality = profile.id;
+  };
+  sky.userData.setTheme = (theme = {}) => {
+    const uniforms = material.uniforms;
+    applyAtmosphereTheme(uniforms, theme);
+    setThemeColor(uniforms.cloudTint, theme.cloudTint, DEFAULT_ATMOSPHERE.cloudTint);
+    uniforms.cloudCoverage.value = themeNumber(theme.cloudCoverage, DEFAULT_ATMOSPHERE.cloudCoverage, 0, 1);
+    uniforms.panoramaMix.value = themeNumber(theme.panoramaMix, DEFAULT_ATMOSPHERE.panoramaMix, 0, 1);
+  };
+  sky.userData.ready = typeof document === 'undefined' ? Promise.resolve(false) : new Promise(resolve => {
     const texture = new THREE.TextureLoader().load('./assets/sky-panorama.jpg', () => {
       material.uniforms.panoramaReady.value = 1;
       resolve(true);
@@ -174,6 +242,10 @@ export function makeOcean() {
       reflectionStrength: { value: 0 },
       highQuality: { value: 1 },
       waveNormalMap: { value: waveNormalMap },
+      waterDeep: colorUniform('waterDeep'),
+      waterShallow: colorUniform('waterShallow'),
+      haze: { value: 1 },
+      ...atmosphereUniforms(),
     },
     vertexShader: /* glsl */`
       varying vec3 vWorld;
@@ -196,6 +268,9 @@ export function makeOcean() {
       uniform sampler2D waveNormalMap;
       uniform float reflectionStrength;
       uniform float highQuality;
+      uniform vec3 waterDeep;
+      uniform vec3 waterShallow;
+      uniform float haze;
       ${atmosphereGLSL}
 
       // Slopes, not displaced vertices: collision height remains exactly sea level.
@@ -240,6 +315,12 @@ export function makeOcean() {
           vec2 capillaryWaves = texture2D(waveNormalMap, directionA * p * .0317 + vec2(time * .0071, time * .0034)).rg;
           slopes += directionA * (capillaryWaves * 2. - 1.) * .035;
         }
+        if (highQuality > 1.5) {
+          // The finest layer fades before its wavelengths fall below a pixel.
+          vec2 microWaves = texture2D(waveNormalMap, directionB * p * .0631 + vec2(time * -.0091, time * .0049)).rg;
+          float microFilter = 1. - smoothstep(1.2, 4.8, footprint);
+          slopes += directionB * (microWaves * 2. - 1.) * .017 * microFilter;
+        }
         vec3 normal = normalize(vec3(-slopes.x, 1., -slopes.y));
         float nDotV = max(.001, dot(normal, viewDirection));
         float grazing = 1. - nDotV;
@@ -268,7 +349,7 @@ export function makeOcean() {
 
         // Subsurface colour carries broad irregular changes, not periodic bands.
         float waterBody = atmosphereNoise(p * .00047 + vec2(5.3, 9.2));
-        vec3 deepWater = mix(vec3(.005, .020, .030), vec3(.012, .047, .056), waterBody);
+        vec3 deepWater = mix(waterDeep, waterShallow, waterBody);
         vec3 col = deepWater * (1. - fresnel) + reflectionColour * fresnel;
 
         vec3 halfway = normalize(viewDirection + sunDirection);
@@ -281,7 +362,7 @@ export function makeOcean() {
         float roughness = mix(.18, .265, unresolved);
         float sunLobe = ggxDistribution(nDotH, roughness)
           * smithVisibility(nDotV, nDotL, roughness) * sunFresnel * nDotL;
-        col += vec3(1.04, .86, .61) * min(sunLobe * .52, .72);
+        col += sunTint * vec3(1.04, .86, .61) * min(sunLobe * .52, .72);
 
         float closeDetail = (1. - smoothstep(1100., 5500., distanceToCamera))
           * (1. - smoothstep(4., 15., footprint));
@@ -290,9 +371,9 @@ export function makeOcean() {
           float foam = smoothstep(.79, .96, foamNoise) * smoothstep(.135, .22, length(slopes));
           col = mix(col, vec3(.47, .56, .58), foam * closeDetail * .21);
         }
-        float haze = 1. - exp(-distanceToCamera * .000019);
+        float seaHaze = 1. - exp(-distanceToCamera * .000019 * haze);
         vec3 hazeColour = clearAtmosphere(normalize(vec3(-viewDirection.x, .008, -viewDirection.z)), sunDirection);
-        col = mix(col, hazeColour * .73, haze * .58);
+        col = mix(col, hazeColour * .73, seaHaze * .58);
         gl_FragColor = vec4(col, 1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -302,5 +383,17 @@ export function makeOcean() {
   const ocean = new THREE.Mesh(geometry, material);
   ocean.name = 'Reflecting open sea';
   ocean.frustumCulled = false;
+  ocean.userData.setQuality = quality => {
+    const profile = getQualityPreset(quality);
+    material.uniforms.highQuality.value = profile.oceanDetail;
+    setTextureAnisotropy(waveNormalMap, profile.textureAnisotropy);
+    ocean.userData.quality = profile.id;
+  };
+  ocean.userData.setTheme = (theme = {}) => {
+    const uniforms = material.uniforms;
+    applyAtmosphereTheme(uniforms, theme);
+    for (const key of ['waterDeep', 'waterShallow']) setThemeColor(uniforms[key], theme[key], DEFAULT_ATMOSPHERE[key]);
+    uniforms.haze.value = themeNumber(theme.haze, DEFAULT_ATMOSPHERE.haze, 0, 4);
+  };
   return ocean;
 }

@@ -11,7 +11,11 @@ import { ChaseCamera } from './chase-camera.js';
 import { ShipCamera } from './ship-camera.js';
 import { SpeedEffects } from './speed-effects.js';
 import { AmbientFleet } from './ambient-fleet.js';
+import { getMap, DEFAULT_MAP_ID } from './maps.js';
+import { setActiveMap } from './world-math.js';
+import { getQualityPreset, resolveQuality } from './quality.js';
 export { terrainHeight } from './world-math.js';
+export { resolveQuality } from './quality.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const clamp = THREE.MathUtils.clamp;
@@ -73,10 +77,6 @@ function followMovingTarget(position, previous, target, rate, dt) {
 
 // A wide phone in landscape should retain its mobile budget. Explicit quality
 // choices still take precedence, including on touch-capable tablets.
-export function resolveQuality(requested, width, cores = 8, coarse = false) {
-  if(requested==='high'||requested==='low')return requested;
-  return coarse||width<850||cores<=4?'low':'high';
-}
 function deviceQuality(requested,width){return resolveQuality(requested,width,navigator.hardwareConcurrency||8,matchMedia('(pointer: coarse)').matches);}
 
 function canvasTexture(width, draw) {
@@ -91,17 +91,20 @@ function particleTexture() {
 }
 
 export class WorldRenderer {
-  constructor(canvas, { quality = 'auto' } = {}) {
+  constructor(canvas, { quality = 'auto', mapId = DEFAULT_MAP_ID } = {}) {
     this.canvas = canvas; this.quality = quality; this.effectiveQuality = deviceQuality(quality,innerWidth);
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.effectiveQuality !== 'low', alpha: false, powerPreference: 'high-performance' });
+    this.map = setActiveMap(mapId); this.mapId = this.map.id;
+    // Keep edge smoothing available when a phone switches to a higher preset.
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
     this.renderer.info.autoReset=false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .91;
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#97abb7'); this.scene.fog = new THREE.FogExp2('#97abb7', .000026);
     this.camera = new THREE.PerspectiveCamera(65, 1, .5, 90000); this.camera.position.set(0, 1115, 4050);
-    this.scene.add(new THREE.HemisphereLight('#c5d6e1', '#39444a', 1.35));
+    this.hemisphere = new THREE.HemisphereLight('#c5d6e1', '#39444a', 1.35); this.scene.add(this.hemisphere);
     const sun = new THREE.DirectionalLight('#fff0db', 2.5);sun.position.copy(SUN_DIRECTION).multiplyScalar(15000);this.scene.add(sun);this.scene.add(sun.target);this.sun=sun;
     sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-22,right:22,top:22,bottom:-22,near:1,far:180});sun.shadow.bias=-.00015;sun.shadow.normalBias=.025;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    this.sky = makeSky(); this.scene.add(this.sky); this.ocean = makeOcean(); this.scene.add(this.ocean); this.terrain = makeTerrain(this.effectiveQuality);this.scene.add(this.terrain);
+    this.sky = makeSky(); this.scene.add(this.sky); this.ocean = makeOcean(); this.scene.add(this.ocean); this.terrain = makeTerrain(this.effectiveQuality,this.mapId);this.scene.add(this.terrain);
+    this._applyMapTheme();
     this.sky.userData.ready.then(()=>{if(!this.disposed){this._createEnvironment();this.refreshReflection=true;}});
     this.jetAssets = makeJetAssets(); this.playerJet = new THREE.Group(); this.scene.add(this.playerJet);
     // Imported Blender models: both flyable jets and every ambient-fleet class.
@@ -135,22 +138,46 @@ export class WorldRenderer {
   setQuality(quality) {
     this.quality=quality;this.resize();
   }
+  setMap(mapId) {
+    const map=getMap(mapId);
+    if(map.id===this.mapId){setActiveMap(map.id);return map;}
+    const terrain=makeTerrain(this.effectiveQuality,map.id),previous=this.terrain;
+    this.map=setActiveMap(map.id);this.mapId=map.id;this.terrain=terrain;
+    this.scene.add(terrain);this.scene.remove(previous);previous.userData.dispose();
+    this._applyMapTheme();this._createEnvironment();
+    this.refreshReflection=true;this.cameraReady=false;this.trail.length=0;
+    return map;
+  }
+  _applyMapTheme() {
+    const theme=this.map.theme;
+    this.sky.userData.setTheme(theme);this.ocean.userData.setTheme(theme);
+    this.scene.background.set(theme.fogColor);
+    this.scene.fog.color.set(theme.fogColor);this.scene.fog.density=theme.fogDensity;
+    this.sun.color.set(theme.sunColor);this.sun.intensity=theme.sunIntensity;
+    this.hemisphere.color.set(theme.skyHorizon);
+    this.renderer.toneMappingExposure=theme.exposure;
+  }
   resize() {
     const bounds=this.canvas.getBoundingClientRect();this.width=Math.max(1,bounds.width||innerWidth);this.height=Math.max(1,bounds.height||innerHeight);
     const nextQuality=deviceQuality(this.quality,this.width);
     if(nextQuality!==this.effectiveQuality){
       const oldTerrain=this.terrain;
-      this.terrain=makeTerrain(nextQuality);this.scene.add(this.terrain);this.scene.remove(oldTerrain);
+      this.terrain=makeTerrain(nextQuality,this.mapId);this.scene.add(this.terrain);this.scene.remove(oldTerrain);
       oldTerrain.userData.dispose();this.effectiveQuality=nextQuality;this.refreshReflection=true;
     }
     this.reflection?.setQuality(this.effectiveQuality);
     this.speedEffects?.setQuality(this.effectiveQuality);
     this.ambientFleet?.setQuality(this.effectiveQuality);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,this.effectiveQuality==='low'?1.15:1.5));this.renderer.setSize(this.width,this.height,false);this.camera.aspect=this.width/this.height;this.camera.updateProjectionMatrix();
-    this.sky.material.uniforms.highQuality.value=this.effectiveQuality==='high'?1:0;
-    this.ocean.material.uniforms.highQuality.value=this.effectiveQuality==='high'?1:0;
+    const preset=getQualityPreset(this.effectiveQuality);
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,preset.pixelRatioCap));this.renderer.setSize(this.width,this.height,false);this.camera.aspect=this.width/this.height;this.camera.updateProjectionMatrix();
+    this.sky.userData.setQuality(this.effectiveQuality);
+    this.ocean.userData.setQuality(this.effectiveQuality);
     this.reflection?.resize(this.camera);
-    this.renderer.shadowMap.enabled=this.effectiveQuality==='high';this.sun.castShadow=this.effectiveQuality==='high';
+    this.renderer.shadowMap.enabled=preset.shadows;this.sun.castShadow=preset.shadows;
+    if(this.sun.shadow.mapSize.x!==preset.shadowMapSize){
+      this.sun.shadow.map?.dispose();this.sun.shadow.map=null;
+      this.sun.shadow.mapSize.setScalar(preset.shadowMapSize);this.sun.shadow.needsUpdate=true;
+    }
   }
   _createEnvironment() {
     // PMREM itself uses half-float attachments. Keep direct/hemisphere lighting

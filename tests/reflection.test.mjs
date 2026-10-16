@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { reflectCamera, reflectionTextureMatrix, projectionNeedsRefresh } from '../water-reflection.js';
+import { WaterReflection, reflectCamera, reflectionTextureMatrix, projectionNeedsRefresh } from '../water-reflection.js';
+import { getQualityPreset } from '../quality.js';
 
 const near = (actual, expected, tolerance = 1e-9) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `expected ${expected}, received ${actual}`);
@@ -156,4 +157,100 @@ test('small aspect changes and portrait rotation refresh immediately despite the
   camera.aspect = 9 / 19;
   camera.updateProjectionMatrix();
   assert.equal(projectionNeedsRefresh(camera.projectionMatrix, captured), true);
+});
+
+function reflectionFixture(quality = 'high', hdr = true) {
+  const scene = new THREE.Scene();
+  const ocean = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({ uniforms: {
+    reflectionMap: { value: null }, reflectionMatrix: { value: new THREE.Matrix4() }, reflectionStrength: { value: 0 },
+  } }));
+  const skipped = new THREE.Object3D(); skipped.userData.skipWaterReflection = true;
+  scene.add(ocean, skipped);
+  const originalTarget = {}, clippingPlanes = [new THREE.Plane()];
+  const renderer = {
+    extensions: { has: () => hdr }, xr: { enabled: true }, shadowMap: { autoUpdate: true },
+    toneMapping: THREE.ACESFilmicToneMapping, clippingPlanes, captures: 0,
+    target: originalTarget, face: 2, mip: 1, scissorTest: true,
+    viewport: new THREE.Vector4(10, 20, 800, 500), scissor: new THREE.Vector4(30, 40, 700, 400),
+    getRenderTarget() { return this.target; }, getActiveCubeFace() { return this.face; }, getActiveMipmapLevel() { return this.mip; },
+    getViewport(out) { return out.copy(this.viewport); }, getScissor(out) { return out.copy(this.scissor); }, getScissorTest() { return this.scissorTest; },
+    setRenderTarget(target, face = 0, mip = 0) { this.target = target; this.face = face; this.mip = mip; },
+    setViewport(value) { this.viewport.copy(value); }, setScissor(value) { this.scissor.copy(value); }, setScissorTest(value) { this.scissorTest = value; },
+    clear() {}, render() {
+      assert.equal(ocean.visible, false); assert.equal(skipped.visible, false);
+      assert.equal(this.toneMapping, THREE.NoToneMapping);
+      assert.equal(this.clippingPlanes.length, clippingPlanes.length + 1);
+      this.captures++;
+      if (this.failCapture) throw new Error('capture failed');
+    },
+  };
+  return { scene, ocean, skipped, renderer, originalTarget, clippingPlanes, reflection: new WaterReflection(renderer, scene, ocean, { quality }), camera: flightCamera() };
+}
+
+test('each visual tier bounds both reflection dimensions and maintains its scheduled capture cadence', () => {
+  for (const quality of ['low', 'high', 'ultra']) {
+    const { reflection, camera, renderer, ocean } = reflectionFixture(quality);
+    const profile = getQualityPreset(quality);
+    try {
+      for (const aspect of [16 / 9, 9 / 19, 1]) {
+        camera.aspect = aspect; camera.updateProjectionMatrix(); reflection.resize(camera);
+        assert.equal(Math.max(reflection.target.width, reflection.target.height), profile.reflectionResolution);
+        assert.ok(Math.abs(reflection.target.width / reflection.target.height - aspect) < .01);
+      }
+      assert.equal(reflection.target.texture.type, profile.reflectionHDR ? THREE.HalfFloatType : THREE.UnsignedByteType);
+      assert.equal(reflection.update(camera, 0), true);
+      const matrix = reflection.reflectionMatrix.clone();
+      assert.equal(reflection.update(camera, .5 / profile.reflectionHz), false);
+      assert.equal(reflection.reflectionMatrix.equals(matrix), true, 'skipped capture must keep image/projector paired');
+      assert.equal(reflection.update(camera, 1 / profile.reflectionHz), true);
+      assert.equal(renderer.captures, 2);
+      assert.equal(ocean.material.uniforms.reflectionStrength.value, 1);
+    } finally { reflection.dispose(); ocean.geometry.dispose(); ocean.material.dispose(); }
+  }
+});
+
+test('reflection restores renderer and object state even when capture fails, and retries cleanly', () => {
+  const { reflection, camera, renderer, ocean, skipped, originalTarget, clippingPlanes } = reflectionFixture();
+  try {
+    renderer.failCapture = true;
+    assert.throws(() => reflection.update(camera, 0), /capture failed/);
+    assert.equal(ocean.visible, true); assert.equal(skipped.visible, true);
+    assert.equal(renderer.target, originalTarget); assert.equal(renderer.face, 2); assert.equal(renderer.mip, 1);
+    assert.equal(renderer.clippingPlanes, clippingPlanes);
+    assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+    assert.equal(renderer.xr.enabled, true); assert.equal(renderer.shadowMap.autoUpdate, true);
+    assert.deepEqual(renderer.viewport.toArray(), [10, 20, 800, 500]);
+    assert.deepEqual(renderer.scissor.toArray(), [30, 40, 700, 400]);
+    assert.equal(renderer.scissorTest, true);
+    assert.equal(reflection._capturing, false); assert.equal(reflection._hidden.length, 0);
+    renderer.failCapture = false;
+    assert.equal(reflection.update(camera, 1), true);
+    const scratch = [reflection._saved, reflection._hidden, reflection._captureClipPlanes];
+    for (let frame = 1; frame <= 120; frame++) reflection.update(camera, 1 + frame / 60);
+    assert.deepEqual([reflection._saved, reflection._hidden, reflection._captureClipPlanes], scratch);
+    assert.equal(reflection._hidden.length, 0);
+    assert.equal(reflection._captureClipPlanes.length, clippingPlanes.length + 1, 'the clipping buffer must not accumulate planes');
+  } finally { reflection.dispose(); ocean.geometry.dispose(); ocean.material.dispose(); }
+});
+
+test('quality changes release reflection targets once and unsupported HDR keeps a valid byte target', () => {
+  const { reflection, camera, ocean } = reflectionFixture('high', false);
+  try {
+    assert.equal(reflection.target.texture.type, THREE.UnsignedByteType);
+    let disposed = 0;
+    reflection.target.addEventListener('dispose', () => disposed++);
+    reflection.setQuality('ultra'); reflection.resize(camera);
+    assert.equal(disposed, 1);
+    assert.equal(reflection.quality, 'ultra');
+    assert.equal(reflection.target.width, 768);
+    assert.equal(reflection.target.texture.type, THREE.UnsignedByteType);
+    assert.equal(ocean.material.uniforms.reflectionStrength.value, 0);
+    const target = reflection.target;
+    reflection.setQuality('ultra');
+    assert.equal(reflection.target, target, 'reapplying a quality must not recreate a target');
+    target.addEventListener('dispose', () => disposed++);
+    reflection.dispose(); reflection.dispose(); reflection.setQuality('low');
+    assert.equal(disposed, 2);
+    assert.equal(reflection.target, target);
+  } finally { reflection.dispose(); ocean.geometry.dispose(); ocean.material.dispose(); }
 });

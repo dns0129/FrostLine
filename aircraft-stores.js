@@ -4,9 +4,10 @@ import { aircraftById, STORES, presetLoadout } from './aircraft-systems.js';
 
 // Fixed-size reusable slots avoid allocations during launch, replenishment or
 // menu changes. Every instance owns and disposes only its stores resources.
-// `templates` maps store ids to model-supplied meshes (centred on the store);
-// those are cloned, share the model's geometry/materials and are never disposed here.
-export function attachAircraftStores(jet, aircraftId = 'fa18c', { templates = {} } = {}) {
+// `templates` maps store ids to model-supplied meshes (centred on the store).
+// Optional per-station `overrides` provide measured template transforms for a
+// particular airframe. Both kinds share asset-owned GPU resources.
+export function attachAircraftStores(jet, aircraftId = 'fa18c', { templates = {}, overrides = {} } = {}) {
   const group = new THREE.Group(); group.name = 'Custom external stores'; jet.add(group);
   const aircraft = aircraftById(aircraftId), bodies = {}, geometry = new Set(), material = new Set();
   const used = new Set(aircraft.stations.flatMap(station => Object.keys(station.allowed)));
@@ -31,8 +32,13 @@ export function attachAircraftStores(jet, aircraftId = 'fa18c', { templates = {}
     geometry.add(merged); material.add(paint);
     bodies[id] = { geometry:merged, paint };
   }
-  const makeStore = id => {
-    if (templates[id]) return templates[id].clone(true);
+  const makeStore = (id, override) => {
+    const template = override?.template || templates[id];
+    if (template) {
+      const model = template.clone(true);
+      model.traverse(mesh => { if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; } });
+      return model;
+    }
     const mesh = new THREE.Mesh(bodies[id].geometry, bodies[id].paint); mesh.castShadow = true; return mesh;
   };
   const slots = aircraft.stations.map(station => {
@@ -40,28 +46,44 @@ export function attachAircraftStores(jet, aircraftId = 'fa18c', { templates = {}
     const types = {};
     for (const id of Object.keys(station.allowed)) {
       const instances = [];
+      const override = overrides[station.id]?.[id];
       for (let n = 0; n < station.allowed[id]; n++) {
         const store = new THREE.Group(); store.userData.store = id; store.userData.station = station.id;
-        store.add(makeStore(id));
+        if (override) {
+          store.position.fromArray(override.position).sub(root.position);
+          store.rotation.set(...override.rotation);
+          store.userData.hardpoint = override.hardpoint;
+        }
+        store.userData.mountPosition = store.position.clone();
+        store.add(makeStore(id, override));
         root.add(store); instances.push(store);
       }
       types[id] = instances;
     }
-    return { station: station.id, root, types };
+    return { station: station.id, root, types, entries: Object.entries(types), store: undefined, count: undefined };
   });
-  let key = '';
-  const setLoadout = (value = presetLoadout('multirole', aircraftId)) => {
-    const nextKey = value.map(s => `${s.station}:${s.store}:${s.count}`).join('|');
-    if (nextKey === key) return; key = nextKey;
+  const defaultLoadout = presetLoadout('multirole', aircraftId);
+  let disposed = false;
+  const setLoadout = (value = defaultLoadout) => {
+    if (disposed || !Array.isArray(value)) return;
     for (const slot of slots) {
-      const item = value.find(s => s.station === slot.station);
-      for (const [id, instances] of Object.entries(slot.types)) instances.forEach((mesh, n) => {
-        mesh.visible = item?.store === id && n < item.count;
-        mesh.position.x = item?.count === 2 ? (n ? .18 : -.18) : 0;
-      });
+      let item;
+      for (let i = 0; i < value.length; i++) if (value[i]?.station === slot.station) { item = value[i]; break; }
+      const store = item?.store ?? null, count = Number.isFinite(item?.count) ? Math.max(0, Math.floor(item.count)) : 0;
+      if (slot.store === store && slot.count === count) continue;
+      slot.store = store; slot.count = count;
+      for (const [id, instances] of slot.entries) for (let n = 0; n < instances.length; n++) {
+        const mesh = instances[n];
+        mesh.visible = store === id && n < count;
+        mesh.position.x = mesh.userData.mountPosition.x + (count === 2 ? (n ? .18 : -.18) : 0);
+      }
     }
   };
   setLoadout();
-  let disposed = false;
-  return { group, setLoadout, dispose() { if (disposed) return; disposed = true; geometry.forEach(g => g.dispose()); material.forEach(m => m.dispose()); jet.remove(group); } };
+  const dispose = () => {
+    if (disposed) return; disposed = true;
+    geometry.forEach(g => g.dispose()); material.forEach(m => m.dispose()); jet.remove(group);
+  };
+  group.userData.slots = slots; group.userData.setLoadout = setLoadout; group.userData.dispose = dispose;
+  return { group, slots, setLoadout, dispose };
 }

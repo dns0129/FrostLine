@@ -57,13 +57,13 @@ export function makeImportedJet(assets, jetAssets, { parked = false, aircraftId,
   jet.userData.airframeScale = assets.metadata.span / 17.1;
   jet.userData.wingtips = assets.metadata.wingtips.map(p => new THREE.Vector3(...p));
   jet.userData.groundOffset = assets.metadata.parkedGroundOffset;
-  const stores = attachAircraftStores(jet, aircraftId, { templates: assets.templates });
+  const stores = attachAircraftStores(jet, aircraftId, { templates: assets.templates, overrides: assets.storeOverrides });
   jet.userData.setLoadout = stores.setLoadout;
   jet.userData.stores = stores.group;
   const update = jet.userData.update;
   jet.userData.update = (dt, state = {}) => {
     update(dt, state);
-    if (state.stores) stores.setLoadout(state.stores);
+    if (!parked && state.stores) stores.setLoadout(state.stores);
     if (parked) { jet.userData.exhaust.visible = false; jet.userData.exhaustCore.visible = false; }
   };
   const dispose = jet.userData.dispose; let disposed = false;

@@ -13,6 +13,8 @@ function fixture() {
   ocean.material = new THREE.ShaderMaterial({ uniforms: { waveNormalMap: { value: new THREE.Texture() } } });
   let rendererDisposals = 0;
   Object.assign(world, { scene, missileMeshes: [], enemies: new Map(), enemyWakes: new Map(), fireMap: new THREE.Texture(),
+    playerJet: new THREE.Group(), jetAssets: { geometries: {}, materials: {}, textures: {},
+      exhaustGeometry: new THREE.BufferGeometry(), exhaustCoreGeometry: new THREE.BufferGeometry() },
     sky, ocean, terrain: { userData: { dispose() {} } }, sun: new THREE.DirectionalLight(),
     speedEffects: { dispose() {} }, reflection: { dispose() {} }, renderer: { dispose() { rendererDisposals++; } },
     camera: new THREE.PerspectiveCamera(82, 16 / 9, .5, 90000), width: 1280, height: 720,

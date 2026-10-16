@@ -22,9 +22,15 @@ class DestroyerServingTests(unittest.TestCase):
                      'imported-airframe.js', 'j16.js', 'naval-assets.js', 'assets/models/j16.glb', 'assets/models/j16.metadata.json', 'assets/models/fujian.glb', 'assets/models/fujian.metadata.json',
                      'assets/models/enterprise.glb', 'assets/models/enterprise.metadata.json', 'assets/models/burke.glb', 'assets/models/burke.metadata.json',
                      'assets/models/type052d.glb', 'assets/models/type052d.metadata.json',
-                     'assets/models/j16-source/J-16.blend', 'assets/models/j16-source/COPYING'):
+                     'assets/models/j16-source/J-16.blend', 'assets/models/j16-source/COPYING',
+                     'maps.js', 'quality.js', 'map-scenery.js', 'fa18.js', 'fa18-armament.js'):
             with self.subTest(name=name):
                 self.assertIsNotNone(server.game_path('/' + name))
+
+    def test_required_aircraft_metadata_is_served_without_exposing_other_json(self):
+        self.assertIsNotNone(server.game_path('/assets/models/fa18c.metadata.json'))
+        self.assertIsNotNone(server.game_path('/assets/models/j16.metadata.json'))
+        self.assertIsNone(server.game_path('/assets/models/unlisted.metadata.json'))
 
     def test_source_and_verification_stay_private(self):
         for name in ('README.md', 'tests/browser-destroyer.mjs', 'verification/destroyer/metrics.json', '.openai/hosting.json'):
