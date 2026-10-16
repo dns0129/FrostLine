@@ -1,9 +1,10 @@
 """Render orthographic three views (with outlines) and hero shots of a model.
 
-    Blender -b <model.blend> --python scripts/render-three-views.py -- <out_dir> <name> <px_per_m> [views|hero|all]
+    Blender -b <model.blend> --python scripts/render-three-views.py -- <out_dir> <name> <px_per_m> [views|hero|all] [root]
 
 Views share one pixel scale so scripts/compose-three-view.py can assemble a
 dimensioned drawing sheet; their framing is written to <out_dir>/<name>_views.json.
+With [root], only that object and its children are rendered.
 Without a GPU (no EEVEE), set VIEW_ENGINE=CYCLES; VIEW_SAMPLES / HERO_SAMPLES
 override the Cycles sample counts.  With the bpy module, open the .blend first
 and pass the same arguments after '--' in sys.argv.
@@ -15,10 +16,16 @@ from mathutils import Vector
 a = sys.argv[sys.argv.index('--') + 1:]
 out_dir, name, ppm = a[0], a[1], float(a[2])
 mode = a[3] if len(a) > 3 else 'all'
+only = a[4] if len(a) > 4 else None
 sc = bpy.context.scene
 for o in list(sc.objects):
     if o.type in ('LIGHT', 'CAMERA'):
         bpy.data.objects.remove(o)
+if only:
+    keep = {bpy.data.objects[only], *bpy.data.objects[only].children_recursive}
+    for o in sc.objects:
+        if o.type == 'MESH' and o not in keep:
+            o.hide_render = True
 meshes = [o for o in sc.objects if o.type == 'MESH' and not o.hide_render]
 pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
 lo = Vector([min(p[i] for p in pts) for i in range(3)])
