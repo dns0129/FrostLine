@@ -205,7 +205,7 @@ for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraft
     const context = vm.createContext({
       sim, world, getMap, DEFAULT_MAP_ID, campaignLevel, campaignUnlocked,
       settings: { map: DEFAULT_MAP_ID, difficulty: 'normal', vehicle: selectedAircraft.id },
-      workshopProfile: normalizeWorkshop(null), hangarVehicle: selectedAircraft.id,
+      navalReadiness:{},workshopProfile: normalizeWorkshop(null), hangarVehicle: selectedAircraft.id,
       campaignProgress: normalizeCampaignProgress(null), selectedCampaignId: 'dawn',
       selectedMode: 'training', selectedVehicle: selectedAircraft.id, playMode: 'quick',
       endingShown: false, cockpit: false, accumulator: 0, frameTime: 0, cannonAim: null,
