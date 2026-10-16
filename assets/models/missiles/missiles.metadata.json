@@ -1,0 +1,90 @@
+{
+  "blend": "assets/models/missiles-source/Missiles.blend",
+  "blend_sha256": "1ca3c5f948a3fee9a983c17090dd9c87aaa5768242e0f8aaf5f5e21d81b0a351",
+  "units": "metres",
+  "glb_axes": "+Y up, nose -Z, origin at mid-length on the body axis",
+  "note": "Length, body diameter, YJ-83 wingspan and masses are published figures; fin chords, spans and stations are estimates from photographs.",
+  "missiles": {
+    "YJ-83": {
+      "file": "yj83.glb",
+      "title": "鹰击-83 反舰导弹（舰射型，含助推器）",
+      "role": "涡喷发动机巡航，末段主动雷达制导",
+      "length_m": 6.38,
+      "body_diameter_m": 0.36,
+      "fin_tip_diameter_m": 1.216,
+      "mass_kg": 800,
+      "published": [
+        "length 6.38 m (with booster)",
+        "diameter 0.36 m",
+        "wingspan 1.22 m",
+        "mass ~800 kg"
+      ],
+      "estimated": [
+        "wing 0.90 m root chord, mid-body",
+        "booster 1.20 m long with four fins",
+        "ventral intake 1.3 m"
+      ],
+      "triangles": 7047,
+      "glb_bytes": 452156
+    },
+    "PL-15": {
+      "file": "pl15.glb",
+      "title": "霹雳-15 中远距空空导弹",
+      "role": "AESA 主动雷达制导，双脉冲固体火箭发动机",
+      "length_m": 3.996,
+      "body_diameter_m": 0.203,
+      "fin_tip_diameter_m": 0.459,
+      "mass_kg": 210,
+      "published": [
+        "length 3.996 m (PL-15E)",
+        "diameter 0.203 m",
+        "mass ~210 kg (PL-15E)"
+      ],
+      "estimated": [
+        "centre-body fin 0.60 m chord, 0.07 m span",
+        "tail fin 0.36 m root chord, 0.13 m span"
+      ],
+      "triangles": 4336,
+      "glb_bytes": 205548
+    },
+    "PL-10": {
+      "file": "pl10.glb",
+      "title": "霹雳-10 近距格斗空空导弹",
+      "role": "红外成像制导，推力矢量 + 尾舵",
+      "length_m": 3.0,
+      "body_diameter_m": 0.16,
+      "fin_tip_diameter_m": 0.396,
+      "mass_kg": 89,
+      "published": [
+        "length 3.0 m",
+        "diameter 0.16 m",
+        "mass 89 kg"
+      ],
+      "estimated": [
+        "body strakes 1.9 m long, 0.035 m high",
+        "tail fin 0.28 m root chord, 0.12 m span"
+      ],
+      "triangles": 3600,
+      "glb_bytes": 205324
+    },
+    "HQ-10": {
+      "file": "hq10.glb",
+      "title": "红旗-10 舰载近程防空导弹",
+      "role": "被动射频 + 红外复合制导，24 联装发射装置",
+      "length_m": 2.0,
+      "body_diameter_m": 0.127,
+      "fin_tip_diameter_m": 0.283,
+      "mass_kg": null,
+      "published": [
+        "length ~2.0 m",
+        "diameter 0.127 m"
+      ],
+      "estimated": [
+        "rectangular canards 0.12 m chord, 0.065 m span",
+        "tail fins 0.19 m root chord, 0.08 m span"
+      ],
+      "triangles": 3931,
+      "glb_bytes": 263704
+    }
+  }
+}

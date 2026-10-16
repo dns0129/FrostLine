@@ -79,6 +79,10 @@ F/A-18C 继续使用九挂点配置、独立武器库存与发射显示。四个
 
 参数来源、公开估计与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)；模型来源、改动与重建命令见 [FUJIAN-ART.md](assets/FUJIAN-ART.md) 和 [J16-ART.md](assets/J16-ART.md)。浏览器验证：`npm run test:j16-fujian`（需要 Playwright 与 Chromium）。
 
+## 导弹模型素材：真实比例（未接入游戏）
+
+`assets/models/missiles/` 中有 PL-15、PL-10、HQ-10 和 YJ-83（舰射型，含助推器）四型导弹。全长和弹径按公开数据 1:1 建模，舵面尺寸为照片估计。四型同一比例尺的对比图为 `assets/three-views/Missiles-real-scale.png`。游戏内的歼-16 挂载暂未替换。来源、坐标约定与重建命令见 [MISSILES-ART.md](assets/MISSILES-ART.md)。
+
 ## 机库与海军基地（1.8.0）
 
 首页提供「机库」与「海军基地」切换，底部「我的载具」同时列出已可驾驶的 K-7 游隼与 D-21 霜卫。敌方巡逻艇与护卫舰不计入自有载具。
