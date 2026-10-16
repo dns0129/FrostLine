@@ -49,6 +49,8 @@
 
 公开在线版：<https://frostline-air-combat.dennis20070129.chatgpt.site>。支持直接在浏览器打开，无需启动本地服务器。建议手机横屏游玩。
 
+GitHub Pages：`.github/workflows/pages.yml` 在推送到 `main`（或手动运行）时执行语法检查、单元测试与服务器测试，用同一份 `scripts/prepare-sites.mjs` 清单生成 `sites/frostline/dist/` 并发布到 <https://dns0129.github.io/FrostLine/>。首次使用需在仓库 Settings → Pages 把 Source 设为 “GitHub Actions”。
+
 Sites 发布目录位于 `sites/frostline/`，站点身份保存在其中的 `.openai/hosting.json`。更新游戏后运行 `node scripts/prepare-sites.mjs` 可同步 30 个运行文件到 `dist/`，再通过 Sites 发布流程同步源码、保存版本并部署。最新发布记录见 `verification/sites-deployment.json`。
 
 需要 Python 3 和支持 WebGL 的现代浏览器。没有 pip 依赖，游戏资源已随项目存放，不需要互联网或 CDN。
