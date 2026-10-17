@@ -6,15 +6,15 @@ const freeze = value => {
 };
 const boundedInt = (value, max) => Number.isFinite(value) ? Math.max(0, Math.min(max, Math.floor(value))) : 0;
 // `visual` sizes the generated store meshes (metres); `hang` lowers a fatter
-// store so it still meets a pylon calibrated for a slimmer missile. PL-10,
-// PL-15 and YJ-83K use the real-scale models of missile-models.js on the J-16;
-// their visual sizes match those models (published length / body diameter;
-// the YJ-83K length is the ship-launched 6.38 m less its booster, an estimate).
+// store so it still meets a pylon calibrated for a slimmer missile. Every
+// missile here also has a real-scale model in missile-models.js; these visual
+// sizes match those models (published length / body diameter; the YJ-83K
+// length is the ship-launched 6.38 m less its booster, an estimate).
 export const STORES = freeze({
-  'aim9': { name: 'AIM-9M 响尾蛇', short: 'AIM-9M', kind: 'anti-air', massKg: 86, drag: .018, range: 2800, lockSeconds: 1.2, cone: 10, speed: 610, life: 9, damage: 125, guidance: '红外 / 近程', visual: { length: 2.87, radius: .063 } },
-  'aim7': { name: 'AIM-7M 麻雀', short: 'AIM-7M', kind: 'anti-air', massKg: 231, drag: .03, range: 4500, lockSeconds: 1.5, cone: 18, speed: 720, life: 13, damage: 145, guidance: '半主动雷达 / 中程', visual: { length: 3.66, radius: .105 } },
-  'aim120': { name: 'AIM-120C AMRAAM', short: 'AIM-120C', kind: 'anti-air', massKg: 162, drag: .024, range: 6500, lockSeconds: 1.1, cone: 25, speed: 820, life: 16, damage: 135, guidance: '主动雷达 / 中远程', visual: { length: 3.65, radius: .105 } },
-  'harpoon': { name: 'AGM-84D 鱼叉', short: 'AGM-84D', kind: 'anti-ship', massKg: 540, drag: .065, range: 7000, lockSeconds: 1.5, cone: 45, speed: 280, life: 38, damage: 280, guidance: '主动雷达 / 反舰', visual: { length: 3.8, radius: .17 } },
+  'aim9': { name: 'AIM-9M 响尾蛇', short: 'AIM-9M', kind: 'anti-air', massKg: 86, drag: .018, range: 2800, lockSeconds: 1.2, cone: 10, speed: 610, life: 9, damage: 125, guidance: '红外 / 近程', visual: { length: 2.87, radius: .0635 } },
+  'aim7': { name: 'AIM-7M 麻雀', short: 'AIM-7M', kind: 'anti-air', massKg: 231, drag: .03, range: 4500, lockSeconds: 1.5, cone: 18, speed: 720, life: 13, damage: 145, guidance: '半主动雷达 / 中程', visual: { length: 3.66, radius: .1015 } },
+  'aim120': { name: 'AIM-120C AMRAAM', short: 'AIM-120C', kind: 'anti-air', massKg: 162, drag: .024, range: 6500, lockSeconds: 1.1, cone: 25, speed: 820, life: 16, damage: 135, guidance: '主动雷达 / 中远程', visual: { length: 3.65, radius: .089 } },
+  'harpoon': { name: 'AGM-84D 鱼叉', short: 'AGM-84D', kind: 'anti-ship', massKg: 540, drag: .065, range: 7000, lockSeconds: 1.5, cone: 45, speed: 280, life: 38, damage: 280, guidance: '主动雷达 / 反舰', visual: { length: 3.84, radius: .1715 } },
   'tank': { name: '330 加仑副油箱', short: '330 gal', kind: 'fuel', massKg: 1100, fuelKg: 1000, drag: .085, guidance: '增加燃油 / 单挂', visual: { length: 4.1, radius: .4 } },
   'pl10': { name: 'PL-10 霹雳-10', short: 'PL-10', kind: 'anti-air', massKg: 105, drag: .016, range: 3000, lockSeconds: 1, cone: 14, speed: 640, life: 9, damage: 125, guidance: '红外 / 近程大离轴', visual: { length: 3, radius: .08 } },
   'pl15': { name: 'PL-15 霹雳-15', short: 'PL-15', kind: 'anti-air', massKg: 210, drag: .026, range: 7500, lockSeconds: 1.2, cone: 25, speed: 860, life: 18, damage: 135, guidance: '主动雷达 / 远程', visual: { length: 3.996, radius: .1015 } },

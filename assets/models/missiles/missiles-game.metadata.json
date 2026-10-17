@@ -39,6 +39,101 @@
         "yj83k_seeker"
       ],
       "triangles": 586
+    },
+    "aim9": {
+      "missile": "AIM-9M",
+      "length_m": 2.87,
+      "diameter_m": 0.127,
+      "meshes": [
+        "aim9_body",
+        "aim9_dark",
+        "aim9_fittings",
+        "aim9_seeker"
+      ],
+      "triangles": 618
+    },
+    "aim120": {
+      "missile": "AIM-120C",
+      "length_m": 3.65,
+      "diameter_m": 0.178,
+      "meshes": [
+        "aim120_body",
+        "aim120_dark",
+        "aim120_fittings",
+        "aim120_seeker"
+      ],
+      "triangles": 574
+    },
+    "aim7": {
+      "missile": "AIM-7M",
+      "length_m": 3.66,
+      "diameter_m": 0.203,
+      "meshes": [
+        "aim7_body",
+        "aim7_dark",
+        "aim7_fittings",
+        "aim7_seeker"
+      ],
+      "triangles": 574
+    },
+    "harpoon": {
+      "missile": "AGM-84D",
+      "length_m": 3.84,
+      "diameter_m": 0.343,
+      "meshes": [
+        "harpoon_body",
+        "harpoon_dark",
+        "harpoon_fittings",
+        "harpoon_seeker"
+      ],
+      "triangles": 558
+    },
+    "sm2": {
+      "missile": "SM-2MR",
+      "length_m": 4.72,
+      "diameter_m": 0.343,
+      "meshes": [
+        "sm2_body",
+        "sm2_dark",
+        "sm2_seeker"
+      ],
+      "triangles": 514
+    },
+    "rgm84": {
+      "missile": "RGM-84",
+      "length_m": 4.63,
+      "diameter_m": 0.343,
+      "meshes": [
+        "rgm84_body",
+        "rgm84_booster",
+        "rgm84_dark",
+        "rgm84_seeker"
+      ],
+      "triangles": 730
+    },
+    "hq10": {
+      "missile": "HQ-10",
+      "length_m": 2.0,
+      "diameter_m": 0.127,
+      "meshes": [
+        "hq10_body",
+        "hq10_dark",
+        "hq10_seeker"
+      ],
+      "triangles": 506
+    },
+    "yj83": {
+      "missile": "YJ-83",
+      "length_m": 6.38,
+      "diameter_m": 0.36,
+      "meshes": [
+        "yj83_body",
+        "yj83_booster",
+        "yj83_dark",
+        "yj83_fittings",
+        "yj83_seeker"
+      ],
+      "triangles": 802
     }
   }
 }

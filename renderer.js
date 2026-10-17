@@ -5,6 +5,7 @@ import { makeJetAssets, makeJet } from './aircraft.js';
 import { loadFA18Assets, makeFA18 } from './fa18.js';
 import { loadJ16Assets, makeJ16 } from './j16.js';
 import { loadNavalAssets } from './naval-assets.js';
+import { loadMissileModels, missileModelId } from './missile-models.js';
 import { makeDestroyer, makeDestroyerWake, makeEnemyShip, ENEMY_SHIP_MODELS } from './destroyer.js';
 import { makeSky, makeOcean, SUN_DIRECTION } from './atmosphere.js';
 import { WaterReflection } from './water-reflection.js';
@@ -64,8 +65,9 @@ function makeMissileMesh(assets, kind) {
   group.userData.visualKind = kind; group.userData.kind = kind; group.userData.weapon = kind;
   group.userData.visual = kind; group.userData.exhaust = fire; return group;
 }
-// A launched store keeps its real-scale model (missile-models.js). The clone
-// shares the template's geometry and materials, which the J-16 assets own.
+// A launched missile shows its real-scale model (missile-models.js): the store it
+// left, its ship class's missile or the enemy model. The clone shares the
+// template's geometry and materials, which the renderer's missile asset owns.
 function makeStoreMissileMesh(assets, template, kind) {
   const group = new THREE.Group(); group.name = `${template.userData.missile} in flight`;
   const model = template.clone(true); model.position.set(0, 0, 0); group.add(model);
@@ -120,12 +122,16 @@ export class WorldRenderer {
     this.sky.userData.ready.then(()=>{if(!this.disposed){this._createEnvironment();this.refreshReflection=true;}});
     this.jetAssets = makeJetAssets(); this.playerJet = new THREE.Group(); this.scene.add(this.playerJet);
     // Imported Blender models: both flyable jets and every ambient-fleet class.
-    this.modelReady = Promise.allSettled([loadFA18Assets(), loadJ16Assets(), loadNavalAssets()]).then(results => {
+    // The real-scale missiles are optional: without them stores and launches
+    // fall back to the baked / generated shapes. Both airframes share them.
+    const missilesReady = loadMissileModels().catch(error => { console.warn('Real-scale missile models unavailable', error); return null; });
+    this.modelReady = Promise.allSettled([missilesReady.then(loadFA18Assets), missilesReady.then(loadJ16Assets), loadNavalAssets()]).then(async results => {
+      const missiles = await missilesReady;
       const loaded = results.filter(r => r.status === 'fulfilled').map(r => r.value), failed = results.find(r => r.status === 'rejected');
-      if (this.disposed || failed) { loaded.forEach(assets => assets.dispose()); if (failed) throw failed.reason; return; }
+      if (this.disposed || failed) { loaded.forEach(assets => assets.dispose()); missiles?.dispose(); if (failed) throw failed.reason; return; }
       const [fa18, j16, naval] = loaded;
       this.fa18Assets = fa18; this.j16Assets = j16; this.navalAssets = naval; this.scene.remove(this.playerJet);
-      this.storeTemplates = j16.missiles?.templates || {};
+      this.missileModels = missiles; this.storeTemplates = missiles?.templates || {};
       this.playerJets = { fa18c: makeFA18(fa18, this.jetAssets), j16: makeJ16(j16, this.jetAssets) };
       this.playerJets.j16.visible = false; this.scene.add(this.playerJets.fa18c, this.playerJets.j16);
       this.playerJet = this.playerJets.fa18c;
@@ -259,8 +265,8 @@ export class WorldRenderer {
       const missile=i<count?missiles[i]:null;let mesh=this.missileMeshes[i];
       if(missile){
         const kind=missileVisualKind(missile);
-        const template=!missile.enemy&&missile.store?this.storeTemplates?.[missile.store]:null;
-        const visual=template?`store:${missile.store}`:kind;
+        const modelId=missileModelId(missile,sim),template=modelId?this.storeTemplates?.[modelId]:null;
+        const visual=template?`store:${modelId}`:kind;
         if(mesh&&mesh.userData.visual!==visual){
           // The retired group owns no GPU resources: generic missiles reuse this
           // renderer's geometry/materials and store models share asset templates.
@@ -371,6 +377,8 @@ export class WorldRenderer {
     this.disposed=true;this.terrain.userData.dispose();this.scene.remove(this.terrain);
     for(const jet of this.playerJets?Object.values(this.playerJets):[this.playerJet]){jet?.userData.dispose?.();this.scene.remove(jet);}
     this.fa18Assets?.dispose();this.j16Assets?.dispose();
+    // Launched missiles share the missile templates: retire them before releasing the owner.
+    for(const mesh of this.missileMeshes){this.scene.remove(mesh);mesh.clear();}this.missileModels?.dispose();
     // Enemy class caches own shared resources. Release their instances before
     // traversing other scene resources, avoiding double disposal or stale refs.
     for(const[id,model]of this.enemies)if(model.userData.kind==='ship')this._removeEnemy(id,model);

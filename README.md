@@ -85,11 +85,19 @@ F/A-18C 继续使用九挂点配置、独立武器库存与发射显示。四个
 
 参数来源、公开估计与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)；模型来源、改动与重建命令见 [FUJIAN-ART.md](assets/FUJIAN-ART.md) 和 [J16-ART.md](assets/J16-ART.md)。浏览器验证：`npm run test:j16-fujian`（需要 Playwright 与 Chromium）。
 
-## 真实比例导弹接入歼-16（本地开发）
+## 全部导弹改用真实比例模型（本地开发）
 
-歼-16 挂架上的 PL-15、PL-10、鹰击-83K 改用真实比例导弹模型（`missile-models.js` 加载 `assets/models/missiles/missiles-game.glb`）。玩家发射后，这三型导弹在飞行中也显示同一模型。PL-15、PL-10 的长度和弹径取公开数据（3.996 × 0.203 m、3.0 × 0.16 m）。鹰击-83K 的弹径与翼展取 YJ-83 家族数据，长度 5.2 m 为估计值。舵面尺寸按照片估计。弹体外形只改变显示，不影响游戏数值。模型加载失败时，退回模型内原有的导弹模板。敌方导弹与舰射导弹仍用通用外形。
+游戏中所有导弹都改用真实比例模型（`missile-models.js` 加载 `assets/models/missiles/missiles-game.glb`，约 250 KB），挂架上和发射后飞行中一致。
 
-`assets/models/missiles/` 另有 PL-15、PL-10、HQ-10、YJ-83（舰射型）、YJ-83K 的详细模型，同一比例尺的对比图为 `assets/three-views/Missiles-real-scale.png`。来源、估计项与重建命令见 [MISSILES-ART.md](assets/MISSILES-ART.md)，现实参考与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)。
+- **歼-16**：PL-15、PL-10、鹰击-83K。
+- **大黄蜂**：AIM-7M、鱼叉、机身 AIM-120C 改用新模型；翼下 AIM-120C 与翼尖 AIM-9M 保留按挂架实测拟合的模型；四型发射后都显示真实模型。
+- **伯克级**：SM-2MR、RGM-84。
+- **052D 与 D-21**：HQ-10、YJ-83。
+- **敌机来袭导弹**：AIM-7M。
+
+长度、弹径、翼展取公开数据。鹰击-83K 长度和各型舵面尺寸为估计值。D-21 与敌机的导弹外形是游戏设定。弹体外形只改变显示，不影响游戏数值。模型加载失败时，退回原有的烘焙与程序外形。
+
+`assets/models/missiles/` 有十一型的详细模型，中、美两组的同比例对比图为 `assets/three-views/Missiles-real-scale-CN.png` 与 `Missiles-real-scale-US.png`。来源、估计项与重建命令见 [MISSILES-ART.md](assets/MISSILES-ART.md)，现实参考与游戏近似的区分见 [系统说明](docs/aircraft-systems.md)。
 
 ## 机库与海军基地（1.8.0）
 
