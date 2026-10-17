@@ -316,10 +316,10 @@ export class Simulation {
     slot.count -= 1; this._refreshAircraftStores(); return result;
   }
 
-  _refillAircraftStores() {
+  _refillAircraftStores(full = false) {
     const p = this.player;
     for (const kind of ['anti-air', 'anti-ship']) {
-      let budget = 3;
+      let budget = full ? Infinity : 3;
       for (const configured of p.configuredStores) {
         if (STORES[configured.store]?.kind !== kind) continue;
         const slot = p.stores.find(s => s.station === configured.station);
@@ -466,14 +466,24 @@ export class Simulation {
       this._spawnNavalWave();
       return;
     }
+    if (this.mode === 'free') {
+      // Ramp enemy capabilities from easy to hard over ten waves.
+      // Keep the selected player aim assistance independent of enemy progression.
+      const progress = Math.min(1, (this.wave - 1) / 9);
+      this.settings = { ...DIFFICULTY[this.difficulty] };
+      for (const key of ['damage', 'enemyTurn', 'enemyHealth', 'missileEvery']) {
+        this.settings[key] = DIFFICULTY.easy[key] + (DIFFICULTY.hard[key] - DIFFICULTY.easy[key]) * progress;
+      }
+    }
     const level = campaignLevel(this.campaignId);
-    const count = level ? level.id === 'shield' ? 2 : level.waves[this.wave - 1] : this.mode === 'training' ? 3 : Math.min(6, this.wave + 1);
+    const count = level ? level.id === 'shield' ? 2 : level.waves[this.wave - 1] : this.mode === 'training' ? 3 : this.mode === 'free' ? this.wave + 1 : Math.min(6, this.wave + 1);
     const p = this.player;
     const ahead = forward(p.heading, clamp(p.pitch, -0.1, 0.1));
     const right = new THREE.Vector3().crossVectors(ahead, UP).normalize();
     for (let i = 0; i < count; i++) {
-      const distance = 820 + i * 310;
-      const lateral = i === 0 ? -75 : (i % 2 ? 1 : -1) * (150 + i * 70);
+      const formationIndex = this.mode === 'free' ? i % 8 : i;
+      const distance = 820 + formationIndex * 310 + (this.mode === 'free' ? Math.floor(i / 8) * 90 : 0);
+      const lateral = formationIndex === 0 ? -75 : (i % 2 ? 1 : -1) * (150 + formationIndex * 70);
       const pos = p.pos.clone().addScaledVector(ahead, distance).addScaledVector(right, lateral);
       pos.y = Math.max(terrainHeight(pos.x, pos.z) + 450,
         this.vehicle === 'destroyer' ? 600 + i * 75 : p.pos.y + (i % 2 ? 70 : -20));
@@ -485,7 +495,7 @@ export class Simulation {
         health: this.mode === 'training' ? 65 : this.settings.enemyHealth,
         maxHealth: this.mode === 'training' ? 65 : this.settings.enemyHealth,
         phase: this._random() * TAU, age: 0, extendTime: 0,
-        fireTimer: 2 + i * 1.3, missileTimer: 14 + i * 5 + this._random() * 5,
+        fireTimer: 2 + i * 1.3, missileTimer: (this.mode === 'free' ? this.settings.missileEvery : 14) + i * 5 + this._random() * 5,
         burst: 0, burstCooldown: 1 + i * 0.5, hitFlash: 0,
         passive: this.mode === 'training',
       });
@@ -1491,12 +1501,20 @@ export class Simulation {
       this._waveDelay = 4.5;
       const p = this.player;
       const ship = this.vehicle === 'destroyer';
-      p.health = Math.min(p.maxHealth, p.health + (ship ? 105 : 35));
+      const full = this.mode === 'free';
+      p.health = full ? p.maxHealth : Math.min(p.maxHealth, p.health + (ship ? 105 : 35));
       if(ship&&p.modules)p.modules={...this.shipSystems.modules};
-      p.ammo = Math.min(ship ? this.shipSystems.maxAmmo : p.systems.maxAmmo, p.ammo + (ship ? 100 : 320));
-      if (ship) { p.missiles = Math.min(this.shipSystems.maxMissiles, p.missiles + 6); p.antiShipMissiles = Math.min(this.shipSystems.maxAntiShipMissiles, p.antiShipMissiles + 3); }
-      else { this._refillAircraftStores(); p.fuelKg = Math.min(p.systems.fuelCapacity, p.fuelKg + 700); }
-      p.flares = Math.min((ship?this.shipSystems.maxFlares:p.systems?.maxFlares || 6) + (this.difficulty === 'easy' ? 2 : 0), p.flares + 3);
+      p.ammo = Math.min(ship ? this.shipSystems.maxAmmo : p.systems.maxAmmo, p.ammo + (full ? Infinity : ship ? 100 : 320));
+      if (ship) { p.missiles = Math.min(this.shipSystems.maxMissiles, p.missiles + (full ? Infinity : 6)); p.antiShipMissiles = Math.min(this.shipSystems.maxAntiShipMissiles, p.antiShipMissiles + (full ? Infinity : 3)); }
+      else { this._refillAircraftStores(full); p.fuelKg = full ? p.systems.fuelCapacity : Math.min(p.systems.fuelCapacity, p.fuelKg + 700); }
+      p.flares = Math.min((ship?this.shipSystems.maxFlares:p.systems?.maxFlares || 6) + (this.difficulty === 'easy' ? 2 : 0), p.flares + (full ? Infinity : 3));
+      if (full) {
+        // End the cleared wave's weapon effects before delivering fresh supplies.
+        this.missiles = [];
+        this.tracers = [];
+        this.incoming = this.threat = 0;
+        this._missileTimer = this._antiShipMissileTimer = this._flareTimer = this._gunTimer = 0;
+      }
       p.heat = 0;
       p.overheated = false;
       this._lowAmmoAnnounced = false;
