@@ -44,3 +44,12 @@
 - `tests/browser-fleet.mjs`：12 项通过，包括 8 种桌面出击组合下六舰航行与尾迹、暂停冻结、四个舰级检阅视角的真实 WebGL 渲染（无 WebGL 错误），以及 844×390、390×844 手机视口。该脚本改为可用 `PLAYWRIGHT_PATH`、`CHROMIUM_PATH`、`ANGLE_BACKEND` 指定环境。
 - `npm run test:j16-fujian`：10 项在新舰队下重新通过，无页面错误或失败请求。
 - 三视图：`assets/three-views/Enterprise-CVN65-three-view.png`、`Arleigh-Burke-DDG51-three-view.png`、`Type-052D-three-view.png`，由 `scripts/render-three-views.py`（`VIEW_ENGINE=CYCLES`）与 `scripts/compose-three-view.py` 生成；原始渲染在 `assets/three-views/raw/`。福建舰与歼-16 的旧图未重新生成。
+
+## 1.19 冰原海域（2026-10-17）
+
+在云端实现并验证第五张地图 `glacial-sea`：入海冰川、139 座实体冰山和海面着色器浮冰。地图说明、现实参考与游戏近似见 `docs/glacial-sea.md`。
+
+- `npm run check`：通过（已加入 `icebergs.js`、`sea-ice.js`）。`npm test`：491 项全部通过。新增 `tests/glacial-sea.test.mjs` 9 项，覆盖冰山目录固定且不重叠、冰崖连续、三档冰山与冰川全部顶点和碰撞面一致、冰川冰崖、海冰水道、海面纹理原地更新和部署图冰山标注。原地图测试已扩展到五张图，并把冰山计入碰撞对照。
+- `python3 -m unittest discover -s tests -p 'test_*.py'`：5 项通过，新运行文件已加入白名单。`npm run prepare`：生成 71 个文件。`git diff --check`：通过。
+- `npm run test:sortie`：10 项通过。`npm run test:glacial`（新增）：5 项通过，无页面错误或失败请求。覆盖第五个地图按钮、部署图冰山、飞机出击（海冰开启、冰山计入碰撞、无 WebGL 错误）、驱逐舰舰炮训练 10 秒航行不受损，以及 390×844、844×390 触控视口标清出击且无横向溢出。截图在 `verification/glacial-sea/`，按仓库规则不提交。
+- 云端 Chromium 使用 SwiftShader 软件渲染。同一视角下，新地图比「极地冰原」多约 15%（标清）到 20%（高清）的帧耗时，只作相对参考，不代表实体设备帧率。SwiftShader 在相机正对 45° 对角或正水平视线时，超大海面三角形的插值会出错；这是软件光栅器的问题，验收截图避开了这些角度，海面网格保持原样。
