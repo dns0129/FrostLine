@@ -19,7 +19,7 @@ export function missionChoices(category, vehicle = 'aircraft') {
   ];
   return [
     { id: 'intercept', title: '破晓拦截', subtitle: ship ? '三波敌机 · 舰队防空' : '三波敌机 · 守住空域' },
-    { id: 'free', title: '无尽巡猎', subtitle: '持续交战 · 挑战生存纪录' },
+    { id: 'free', title: '无尽巡猎', subtitle: '逐波增敌 · 清波全量补给' },
     { id: 'naval', title: '海峡歼敌', subtitle: ship ? '三波敌舰 · 炮击与机动' : '三波敌舰 · 空中对海打击' },
   ];
 }
@@ -67,10 +67,10 @@ export function missionBriefing({ mode = 'intercept', chapter = 'dawn', vehicle 
     story: training ? `在${area.name}熟悉${naval ? '对海射击与目标锁定' : ship ? '航行、转舵与对空防御' : '飞行、机炮与导弹锁定'}。靶标不会主动攻击，完成全部目标后结束训练。`
       : endless ? `来袭机群将持续进入${area.name}。在连续交战中保存战力，挑战自己的任务纪录。`
       : `前往${area.name}，${naval ? '清除阻断航道的敌方舰艇' : ship ? '以舰艇防空火力击退来袭机群' : '拦截进入空域的敌方机群'}。清除当前波次后获得补给，完成三波交战。`,
-    description: training ? '训练无任务倒计时；完成全部靶标后结束。敌方靶标不主动攻击，训练不发放改装奖励。' : endless ? '没有固定终局和任务时限，后续机群持续进入。生存越久，挑战越高。' : '三波交战，敌方数量依次为 2、3、4。清除每波后等待补给与下一波到达。',
+    description: training ? '训练无任务倒计时；完成全部靶标后结束。敌方靶标不主动攻击，训练不发放改装奖励。' : endless ? '首波 2 架，每波增加 1 架；敌方装甲、转向和火力从简单逐步提升，第 10 波达到困难。清空整波后全量补给，4.5 秒后下一波进入，无波数与时间限制。' : '三波交战，敌方数量依次为 2、3、4。清除每波后等待补给与下一波到达。',
     time: '不限时', objectives,
     failures: [`${ship ? '舰体' : '机体'}被击毁`, ...(naval ? ['对舰弹药耗尽，且在途弹药结算后仍有敌舰存活'] : [])],
-    rules: training ? '静止靶舰 / 被动靶机 · 不发改装奖励' : endless ? '持续增援 · 生存计分 · 波次间补给' : '三波交战 · 波次间补给',
+    rules: training ? '静止靶舰 / 被动靶机 · 不发改装奖励' : endless ? '清波后机体完全修复，导弹按出击挂载补满，热诱弹、机炮弹药与燃油补满 · 生存计分' : '三波交战 · 波次间补给',
     enemy: endless ? '持续增援的敌机' : `${total} ${naval ? '艘' : '架'}${target}`,
     threats: training ? '训练目标不会主动攻击' : naval ? '敌舰舰炮威胁' : '敌机机炮与导弹威胁',
     steps: [['进入任务区域', `${area.name} · ${area.subtitle}`], [training ? '熟悉操作' : '分批交战', naval ? ship ? '舰炮射击，或锁定后发射反舰导弹。' : '保持对海锁定，使用反舰导弹。' : ship ? '转舵航行，雷达锁定后发射防空导弹。' : '追踪目标，使用机炮与空空导弹。'], [endless ? '挑战纪录' : '完成任务', endless ? '持续迎敌，取得更高生存分数。' : `清除全部${target}，保持${ship ? '舰体' : '机体'}存活。`]],
