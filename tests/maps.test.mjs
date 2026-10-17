@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, DEFAULT_MAP_ID, getMap } from '../maps.js';
-import { ISLANDS, getActiveMap, setActiveMap, islandHeight, terrainGroundHeight, terrainHeight, structureHeight } from '../world-math.js';
+import { ISLANDS, getActiveMap, setActiveMap, islandHeight, icebergHeight, terrainGroundHeight, terrainHeight, structureHeight } from '../world-math.js';
 import { createDefaultFleet, updateDefaultFleet } from '../ambient-fleet.js';
 import { NAVAL_MODELS } from '../naval-models.js';
 
 test.afterEach(() => setActiveMap(DEFAULT_MAP_ID));
 
-test('four immutable map definitions retain metre scale and stable legacy island imports', () => {
-  assert.deepEqual(MAPS.map(map => map.id), ['north-atlantic', 'ice-ocean', 'city-bay', 'nile-red-sea']);
+test('five immutable map definitions retain metre scale and stable legacy island imports', () => {
+  assert.deepEqual(MAPS.map(map => map.id), ['north-atlantic', 'ice-ocean', 'city-bay', 'nile-red-sea', 'glacial-sea']);
   const reference = ISLANDS;
   for (const map of MAPS) {
     assert.ok(Object.isFrozen(map) && Object.isFrozen(map.islands));
@@ -35,7 +35,8 @@ test('each map has distinct real terrain and collision uses the same ground fiel
     for (let index = 0; index < 600; index++) {
       const x = Math.sin(index * 27.31) * 18000, z = Math.cos(index * 91.17) * 28000;
       const ground = Math.max(-32, ...map.islands.map(island => islandHeight(island, x, z)));
-      const collision = Math.max(ground, ...map.structures.map(structure => structureHeight(structure, x, z)));
+      const collision = Math.max(ground, ...map.structures.map(structure => structureHeight(structure, x, z)),
+        ...(map.icebergs ?? []).map(berg => icebergHeight(berg, x, z)));
       assert.equal(terrainGroundHeight(x, z), ground);
       assert.equal(terrainHeight(x, z), collision);
       assert.ok(Number.isFinite(collision));
