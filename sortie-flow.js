@@ -1,6 +1,7 @@
 import { CAMPAIGN_LEVELS, CAMPAIGN_TITLE, CAMPAIGN_SYNOPSIS, campaignUnlocked, recommendedCampaignLevel } from './campaign.js';
 import { MAPS, DEFAULT_MAP_ID, getMap } from './maps.js';
 import { BRIEFING_PAGES, SORTIE_MODES, missionChoices, missionBriefing } from './mission-briefing.js';
+import { icebergFrame, icebergRadius } from './world-math.js';
 
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const n = value => String(value).padStart(2, '0');
@@ -23,6 +24,16 @@ export function tacticalChart(briefing, route = false) {
       }).join(' ');
       land += `<path d="${points}Z" class="${scale === 1 ? 'tactical-land' : 'tactical-contour'}"/>`;
     }
+  }
+  // Solid icebergs are navigation hazards; larger ones use their true outline.
+  for (const berg of (area.icebergs ?? []).filter(b => b.radius >= 60)) {
+    const frame = icebergFrame(berg);
+    const points = Array.from({ length: 16 }, (_, i) => {
+      const a = i / 16 * Math.PI * 2, r = icebergRadius(berg, a), u = Math.cos(a) * r * frame.stretch, v = Math.sin(a) * r;
+      const [x, y] = project(berg.x + u * frame.cos - v * frame.sin, berg.z + u * frame.sin + v * frame.cos);
+      return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    land += `<path d="${points}Z" class="tactical-ice"/>`;
   }
   const marker = (x, y, type, label, className = 'allied', labelY = 39) => `<g class="tactical-marker ${className}" transform="translate(${x},${y})"><path d="${type === 'ship' ? ship : plane}"/><text y="${labelY}" text-anchor="middle">${escapeHTML(label)}</text></g>`;
   let markers;

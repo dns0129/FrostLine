@@ -186,7 +186,7 @@ for (const map of MAP_LIST) for (const quality of TIERS) {
 test('all maps preserve world scale and collision samples across quality rebuilds and reduce work in standard definition', () => {
   const previous = getActiveMap();
   try {
-    assert.equal(MAP_LIST.length, 4, 'original map and all three requested environments must be available');
+    assert.equal(MAP_LIST.length, 5, 'original map and all four added environments must be available');
     for (const map of MAP_LIST) {
       setActiveMap(map.id);
       const samples = map.islands.flatMap(island => [-.5, 0, .5].flatMap(x => [-.5, 0, .5].map(z => ({

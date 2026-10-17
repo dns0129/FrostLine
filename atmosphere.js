@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { getQualityPreset } from './quality.js';
+import { SEA_ICE_SIZE, fillSeaIceField, seaIceGLSL } from './sea-ice.js';
 
 // One morning sun drives the sky, aircraft lighting and the reflection trail.
 export const SUN_DIRECTION = new THREE.Vector3(-.40, .26, -.88).normalize();
@@ -230,6 +231,14 @@ export function makeOcean() {
   waveNormalMap.generateMipmaps = true;
   waveNormalMap.anisotropy = 4;
   waveNormalMap.needsUpdate = true;
+  // One persistent sea-ice field, rewritten in place when the map changes.
+  const seaIceData = new Uint8Array(SEA_ICE_SIZE * SEA_ICE_SIZE * 4);
+  const seaIceMap = new THREE.DataTexture(seaIceData, SEA_ICE_SIZE, SEA_ICE_SIZE, THREE.RGBAFormat);
+  seaIceMap.name = 'Sea-ice concentration, new ice and floe size';
+  seaIceMap.minFilter = seaIceMap.magFilter = THREE.LinearFilter;
+  seaIceMap.wrapS = seaIceMap.wrapT = THREE.ClampToEdgeWrapping;
+  seaIceMap.generateMipmaps = false;
+  seaIceMap.needsUpdate = true;
   const geometry = new THREE.PlaneGeometry(150000, 150000, 1, 1);
   geometry.rotateX(-Math.PI / 2);
   const material = new THREE.ShaderMaterial({
@@ -242,6 +251,9 @@ export function makeOcean() {
       reflectionStrength: { value: 0 },
       highQuality: { value: 1 },
       waveNormalMap: { value: waveNormalMap },
+      seaIceMap: { value: seaIceMap },
+      seaIceStrength: { value: 0 },
+      seaIceExtent: { value: 24000 },
       waterDeep: colorUniform('waterDeep'),
       waterShallow: colorUniform('waterShallow'),
       haze: { value: 1 },
@@ -272,6 +284,7 @@ export function makeOcean() {
       uniform vec3 waterShallow;
       uniform float haze;
       ${atmosphereGLSL}
+      ${seaIceGLSL}
 
       // Slopes, not displaced vertices: collision height remains exactly sea level.
       // Analytic derivatives also avoid four expensive repeated height evaluations.
@@ -297,6 +310,8 @@ export function makeOcean() {
         float distanceToCamera = length(toCamera);
         vec3 viewDirection = toCamera / max(distanceToCamera, .001);
         float footprint = max(length(dFdx(p)), length(dFdy(p)));
+        float iceFootprint = sqrt(length(dFdx(p)) * length(dFdy(p))) * 1.25;
+        vec3 iceField = seaIceStrength > .001 ? seaIceAt(p) : vec3(0.);
         vec2 broadDrift = vec2(time * -.0019, time * .0006);
         vec2 warp = texture2D(waveNormalMap, p * .00031 + broadDrift * .18).rg * 2. - 1.;
         vec2 waterPoint = p + warp * 95.;
@@ -321,6 +336,8 @@ export function makeOcean() {
           float microFilter = 1. - smoothstep(1.2, 4.8, footprint);
           slopes += directionB * (microWaves * 2. - 1.) * .017 * microFilter;
         }
+        // Pack ice damps the swell in the leads between floes.
+        slopes *= 1. - iceField.r * seaIceStrength * .8;
         vec3 normal = normalize(vec3(-slopes.x, 1., -slopes.y));
         float nDotV = max(.001, dot(normal, viewDirection));
         float grazing = 1. - nDotV;
@@ -371,6 +388,19 @@ export function makeOcean() {
           float foam = smoothstep(.79, .96, foamNoise) * smoothstep(.135, .22, length(slopes));
           col = mix(col, vec3(.47, .56, .58), foam * closeDetail * .21);
         }
+        if (seaIceStrength > .001) {
+          SeaIce ice = seaIceSurface(p, iceFootprint, highQuality, iceField);
+          col = mix(col, mix(col, vec3(.07, .15, .18), .6), ice.thin);
+          col = mix(col, vec3(.05, .27, .31) * (.75 + .25 * sunTint), ice.halo * .5);
+          col *= 1. - ice.shadow * .4;
+          // Diffuse snow-covered floes under the same sky and low sun as the land.
+          vec3 iceNormal = normalize(vec3(-ice.slope.x, 1., -ice.slope.y));
+          float iceSun = max(dot(iceNormal, sunDirection), 0.);
+          vec3 iceAmbient = clearAtmosphere(vec3(0., 1., 0.), sunDirection) * .6
+            + clearAtmosphere(normalize(vec3(-sunDirection.x, .2, -sunDirection.z)), sunDirection) * .4;
+          vec3 iceColour = ice.albedo * (iceAmbient * 1.15 + sunTint * vec3(1., .93, .84) * iceSun * 2.1);
+          col = mix(col, iceColour, ice.cover);
+        }
         float seaHaze = 1. - exp(-distanceToCamera * .000019 * haze);
         vec3 hazeColour = clearAtmosphere(normalize(vec3(-viewDirection.x, .008, -viewDirection.z)), sunDirection);
         col = mix(col, hazeColour * .73, seaHaze * .58);
@@ -388,6 +418,14 @@ export function makeOcean() {
     material.uniforms.highQuality.value = profile.oceanDetail;
     setTextureAnisotropy(waveNormalMap, profile.textureAnisotropy);
     ocean.userData.quality = profile.id;
+  };
+  let seaIceSource = null;
+  ocean.userData.setSeaIce = (seaIce = null) => {
+    material.uniforms.seaIceStrength.value = seaIce ? themeNumber(seaIce.strength, 1, 0, 1) : 0;
+    material.uniforms.seaIceExtent.value = seaIce ? themeNumber(seaIce.extent, 24000, 1000, 70000) : 24000;
+    if (!seaIce || seaIce === seaIceSource) return;
+    fillSeaIceField(seaIce, seaIceData, SEA_ICE_SIZE);
+    seaIceSource = seaIce; seaIceMap.needsUpdate = true;
   };
   ocean.userData.setTheme = (theme = {}) => {
     const uniforms = material.uniforms;

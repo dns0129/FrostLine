@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { islandHeight, noise2 } from './world-math.js';
+import { makeIcebergGeometry, makeIceHaloMaterial } from './icebergs.js';
 
 const DEFAULT_COLOURS = { building: '#9caeb1', warehouse: '#b6b1a1', quay: '#a1a59d' };
 
@@ -211,21 +212,42 @@ function addDeltaVegetation(group, map, quality) {
   return sites.length;
 }
 
+// All bergs share one lit draw and one wash draw. They are solid collision
+// bodies indexed by world-math; every rendered vertex lies on that surface.
+function addIcebergs(group, map, quality, { iceMaterial, detail } = {}) {
+  const bergs = map.icebergs ?? [];
+  if (!bergs.length || !iceMaterial) return 0;
+  const { geometry, halo } = makeIcebergGeometry(bergs, quality);
+  const mesh = new THREE.Mesh(geometry, iceMaterial);
+  mesh.name = 'Tabular, pinnacle, dome and drydock icebergs';
+  mesh.userData.icebergs = bergs;
+  group.add(mesh);
+  const wash = new THREE.Mesh(halo, makeIceHaloMaterial(detail, map.theme));
+  wash.name = 'Submerged ice foot around icebergs';
+  wash.userData.skipWaterReflection = true;
+  wash.renderOrder = 2;
+  group.add(wash);
+  group.userData.animated.push(wash.material);
+  return bergs.length;
+}
+
 /** Static, deterministic scenery. Terrain owns disposal of the returned tree. */
-export function makeMapScenery(map, quality = 'high') {
+export function makeMapScenery(map, quality = 'high', options = {}) {
   quality = quality === 'low' || quality === 'ultra' ? quality : 'high';
   const group = new THREE.Group();
-  group.name = `${map.id ?? 'Frostline'} architecture and grounded vegetation`;
+  group.name = `${map.id ?? 'Frostline'} architecture, vegetation and floating ice`;
+  group.userData.animated = [];
   const structureCount = addArchitecture(group, map, quality);
   const vegetationCount = addDeltaVegetation(group, map, quality);
-  const stats = { triangles: 0, drawCalls: 0, instanceCount: 0, structureCount, vegetationCount };
+  const icebergCount = addIcebergs(group, map, quality, options);
+  const stats = { triangles: 0, drawCalls: 0, instanceCount: 0, structureCount, vegetationCount, icebergCount };
   group.traverse(object => {
     if (!object.isMesh) return;
     const count = object.isInstancedMesh ? object.count : 1;
     const indices = object.geometry.index?.count ?? object.geometry.attributes.position.count;
     stats.triangles += indices / 3 * count;
     stats.drawCalls += count > 0 ? 1 : 0;
-    stats.instanceCount += count;
+    if (object.isInstancedMesh) stats.instanceCount += count;
   });
   group.userData.stats = stats;
   group.userData.quality = quality;
