@@ -27,7 +27,7 @@ GAME_FILES = frozenset({
     "missile-models.js", "assets/models/missiles/missiles-game.metadata.json", "assets/models/j16-source/J-16.blend", "assets/models/j16-source/COPYING",
     "naval-assets.js", "assets/models/fujian.metadata.json", "assets/models/enterprise.metadata.json",
     "assets/models/burke.metadata.json", "assets/models/type052d.metadata.json", "atmosphere.js", "water-reflection.js", "flight-presentation.js", "terrain.js", "chase-camera.js", "speed-effects.js",
-    "manifest.webmanifest", "maps.js", "quality.js", "map-scenery.js", "fa18-armament.js",
+    "manifest.webmanifest", "maps.js", "quality.js", "map-scenery.js", "icebergs.js", "sea-ice.js", "fa18-armament.js",
 })
 ASSET_EXTENSIONS = frozenset({
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".avif",

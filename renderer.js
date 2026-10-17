@@ -171,7 +171,7 @@ export class WorldRenderer {
   }
   _applyMapTheme() {
     const theme=this.map.theme;
-    this.sky.userData.setTheme(theme);this.ocean.userData.setTheme(theme);
+    this.sky.userData.setTheme(theme);this.ocean.userData.setTheme(theme);this.ocean.userData.setSeaIce?.(this.map.seaIce);
     this.scene.background.set(theme.fogColor);
     this.scene.fog.color.set(theme.fogColor);this.scene.fog.density=theme.fogDensity;
     this.sun.color.set(theme.sunColor);this.sun.intensity=theme.sunIntensity;
@@ -392,7 +392,7 @@ export class WorldRenderer {
     this.scene.traverse(obj=>{if(obj.geometry)geometries.add(obj.geometry);if(obj.material){for(const m of Array.isArray(obj.material)?obj.material:[obj.material]){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}}});
     if(this.missileAssets){Object.values(this.missileAssets.geometries).forEach(g=>geometries.add(g));Object.values(this.missileAssets.materials).forEach(m=>materials.add(m));}
     if(this.fireMap)textures.add(this.fireMap);
-    textures.add(this.sky.material.uniforms.skyPanorama.value);textures.add(this.ocean.material.uniforms.waveNormalMap.value);
+    textures.add(this.sky.material.uniforms.skyPanorama.value);textures.add(this.ocean.material.uniforms.waveNormalMap.value);if(this.ocean.material.uniforms.seaIceMap)textures.add(this.ocean.material.uniforms.seaIceMap.value);
     this.reflection.dispose();this.environmentTarget?.dispose();this.sun.shadow.dispose();
     geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());this.renderer.dispose();
   }
