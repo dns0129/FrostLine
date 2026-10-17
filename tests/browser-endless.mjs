@@ -15,7 +15,7 @@ try {
   const page = await context.newPage(), errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto(process.env.BASE_URL || 'http://127.0.0.1:8778');
-  await page.waitForFunction(() => !!window.__endlessQA, null, { timeout: 60000 });
+  await page.waitForFunction(() => !!window.__endlessQA, null, { timeout: 60000, polling: 100 });
   await page.click('#startBtn');
   await page.click('[data-category="quick"]');
   await page.click('[data-flow-action="next"]');
