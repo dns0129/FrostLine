@@ -6,7 +6,7 @@ import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { makeJ16, J16_ORIGIN_Y, J16_NOZZLES } from '../j16.js';
 import { makeJetAssets } from '../aircraft.js';
 import { AIRCRAFT } from '../aircraft-systems.js';
-import { j16Assets } from './j16-fixture.mjs';
+import { j16Assets, missileModels } from './j16-fixture.mjs';
 
 const context = new Proxy({}, { get: (t,k) => /create.*Gradient/.test(k) ? () => ({addColorStop(){}}) : () => {} });
 const prior = globalThis.document;
@@ -71,7 +71,7 @@ test('prepared J-16 asset is metres, nose -Z, gear tagged, and baked missiles be
   assert.equal(j16Assets.metadata.storeModels, 'real-scale');
   for (const [store, length, hang] of [['pl15', 3.996, 0], ['pl10', 3, 0], ['yj83k', 5.2, .08]]) {
     const template = j16Assets.templates[store], box = new THREE.Box3().setFromObject(template);
-    assert.equal(template, j16Assets.missiles.templates[store]); assert.equal(template.children.length, 4);
+    assert.equal(template, missileModels.templates[store]); assert.equal(template.children.length, 4);
     assert.ok(Math.abs(box.getSize(new THREE.Vector3()).z - length) < .002, `${store} length`);
     assert.ok(box.getCenter(new THREE.Vector3()).distanceTo(new THREE.Vector3(0, -hang, 0)) < 1e-3, `${store} centre`);
   }

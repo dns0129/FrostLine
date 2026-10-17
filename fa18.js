@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { prepareAirframeMaterials, disposeAirframeObjects, makeImportedJet } from './imported-airframe.js';
 import { FA18_HARDPOINTS, makeFA18ArmamentAssets } from './fa18-armament.js';
+import { storeTemplates } from './missile-models.js';
 
 // The workshop remains the source of inventory. These shared templates improve
 // only the stores whose actual pylon / rail fit has been measured on this GLB.
@@ -28,7 +29,11 @@ function prepareStoreOverrides(armament) {
   return overrides;
 }
 
-export async function loadFA18Assets() {
+// `missiles` (optional, owned by the caller) supplies real-scale AIM-7M, AGM-84D and
+// AIM-120C / AIM-9M templates. The measured wing/tip fits above still take
+// precedence at their stations; the templates replace the generated cylinders
+// elsewhere (AIM-7M, Harpoon, fuselage AIM-120C). The fuel tank stays generated.
+export async function loadFA18Assets(missiles = null) {
   const url = new URL('./assets/models/fa18c.glb', import.meta.url);
   const metadataURL = new URL('./assets/models/fa18c.metadata.json', import.meta.url);
   const [gltf, response] = await Promise.all([new GLTFLoader().loadAsync(url.href), fetch(metadataURL)]);
@@ -41,7 +46,8 @@ export async function loadFA18Assets() {
   const armament = makeFA18ArmamentAssets(), storeOverrides = prepareStoreOverrides(armament);
   let disposed = false;
   return {
-    scene: gltf.scene, metadata, armament, storeOverrides,
+    scene: gltf.scene, metadata: { ...metadata, storeModels: missiles ? 'real-scale' : 'generated' }, armament, storeOverrides,
+    templates: storeTemplates(missiles, ['aim9', 'aim120', 'aim7', 'harpoon']),
     dispose() {
       if (disposed) return; disposed = true;
       disposeAirframeObjects(gltf.scene); armament.dispose();

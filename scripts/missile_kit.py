@@ -128,6 +128,48 @@ SPECS = {
                       'turbojet tail cone in place of the booster joint'],
         'mass_kg': None,
     },
+    'AIM-9M': {
+        'title': 'AIM-9M 响尾蛇近距空空导弹', 'role': '红外制导，双三角前舵 + 带陀螺舵的尾翼',
+        'length': 2.87, 'diameter': 0.127,
+        'published': ['length 2.87 m', 'diameter 0.127 m', 'wingspan 0.63 m', 'mass 85.5 kg (NAVAIR)'],
+        'estimated': ['canard planform and station', 'tail-wing chord, rolleron size'],
+        'mass_kg': 85.5,
+    },
+    'AIM-120C': {
+        'title': 'AIM-120C 先进中距空空导弹', 'role': '主动雷达制导，削尖中段弹翼 + 尾舵',
+        'length': 3.65, 'diameter': 0.178,
+        'published': ['length 3.65 m (C-5/6/7)', 'diameter 0.178 m', 'wingspan 0.48 m (US Navy, 19 in)', 'mass ~162 kg'],
+        'estimated': ['mid-body wing and tail-fin chords and stations'],
+        'mass_kg': 162,
+    },
+    'AIM-7M': {
+        'title': 'AIM-7M 麻雀中距空空导弹', 'role': '半主动雷达制导，中段可动三角翼 + 固定尾翼',
+        'length': 3.66, 'diameter': 0.203,
+        'published': ['length 3.66 m', 'diameter 0.203 m', 'wingspan 1.0 m (USAF)', 'mass 231 kg'],
+        'estimated': ['wing and tail-fin chords and stations'],
+        'mass_kg': 231,
+    },
+    'AGM-84D': {
+        'title': 'AGM-84D 鱼叉空射反舰导弹', 'role': '涡喷巡航，末段主动雷达制导',
+        'length': 3.84, 'diameter': 0.343,
+        'published': ['length 3.84 m (air-launched, 12 ft 7 in)', 'diameter 0.343 m', 'wingspan 0.914 m', 'mass ~520 kg'],
+        'estimated': ['wing and tail-fin chords and stations', 'ventral intake'],
+        'mass_kg': 520,
+    },
+    'RGM-84': {
+        'title': 'RGM-84 鱼叉舰射反舰导弹（含助推器）', 'role': '固体助推起飞，涡喷巡航',
+        'length': 4.63, 'diameter': 0.343,
+        'published': ['length 4.6-4.64 m with booster', 'diameter 0.343 m', 'wingspan 0.914 m', 'mass ~690 kg'],
+        'estimated': ['booster 0.79 m with four fins', 'wing and tail-fin chords'],
+        'mass_kg': 690,
+    },
+    'SM-2MR': {
+        'title': '标准-2 中程舰空导弹（RIM-66M）', 'role': '指令 + 惯性中段，半主动雷达末制导',
+        'length': 4.72, 'diameter': 0.343,
+        'published': ['length 4.72 m', 'diameter 0.343 m', 'span 1.07 m', 'mass ~708 kg'],
+        'estimated': ['dorsal fin length and height', 'tail control-fin chord'],
+        'mass_kg': 708,
+    },
 }
 
 DETAIL = {
@@ -218,6 +260,68 @@ def build(kind, coll, matrix=Matrix.Identity(4), prefix=None, stencil=True, deta
         add('warhead band', ring(1.55, r, 0.04, 0.0008), m['yellow'], True)
         add('booster lugs' if booster else 'suspension lugs',
             K.merge(*([lug(5.5, r, 0.05)] if booster else []), lug(1.6, r, 0.05), lug(3.9, r, 0.05)), m['steel'])
+    elif kind == 'AIM-9M':
+        cone = [(0.0, 0.0)] + list(dome(0.05, max(4, NOSE // 2 + 1)))[1:]
+        add('IR seeker dome', K.lathe(cone, S), m['dome'], True)
+        add('body', K.lathe([(0.05, 0.05), (0.10, 0.056), (0.19, r), (2.80, r), (2.86, r * 0.84), (2.87, r * 0.8), (2.87, 0)], S), m['body'], True)
+        add('nozzle', K.lathe([(2.862, r * 0.66), (2.87, r * 0.66), (2.80, r * 0.4), (2.80, 0)], SMALL, cap=False), m['nozzle'], True)
+        add('double-delta canards', cruciform([(0, 0.34), (0, 0.62), (0.10, 0.60), (0.10, 0.53), (0.035, 0.42)], r, 0.006, 0.002), m['body'])
+        span = 0.63 / 2 - r
+        add('tail wings', cruciform([(0, 2.30), (0, 2.84), (span, 2.84), (span, 2.66)], r, 0.008, 0.003), m['body'])
+        add('rollerons & launch hooks', K.merge(
+            *[K.transform(K.box(r + span - 0.02, 2.80, 0, 0.04, 0.07, 0.012), Matrix.Rotation(math.radians(45 + 90 * k), 4, 'Y'))
+              for k in range(4)], lug(0.75, r, 0.024), lug(1.70, r, 0.024), K.box(0, 1.25, r + 0.005, 0.022, 1.0, 0.01)), m['steel'])
+        add('section bands', K.merge(ring(0.19, r, 0.01), ring(0.66, r, 0.008), ring(1.12, r, 0.008)), m['band'], True)
+        add('warhead band', ring(0.90, r, 0.024, 0.0008), m['yellow'], True)
+    elif kind == 'AIM-120C':
+        add('radar radome', K.lathe(ogive(0.62, r, tip=0.006, n=NOSE), S), m['radome'], True)
+        add('body', K.lathe([(0.62, r), (3.58, r), (3.635, r * 0.85), (3.65, r * 0.8), (3.65, 0)], S), m['white'], True)
+        add('nozzle', K.lathe([(3.642, r * 0.68), (3.65, r * 0.68), (3.58, r * 0.4), (3.58, 0)], SMALL, cap=False), m['nozzle'], True)
+        span = 0.484 / 2 - r
+        add('clipped wings', cruciform([(0, 1.50), (0, 1.98), (span, 1.96), (span, 1.86)], r, 0.008, 0.003), m['white'])
+        add('tail control fins', cruciform([(0, 3.20), (0, 3.62), (span, 3.60), (span, 3.50)], r, 0.008, 0.003), m['white'])
+        add('raceway & hooks', K.merge(K.box(0, 1.85, r + 0.007, 0.028, 2.2, 0.014), lug(1.30, r, 0.026), lug(2.40, r, 0.026)), m['steel'])
+        add('section bands', K.merge(ring(0.62, r, 0.01), ring(1.10, r, 0.008), ring(1.45, r, 0.008)), m['band'], True)
+        add('warhead band', ring(1.28, r, 0.024, 0.0008), m['yellow'], True)
+    elif kind == 'AIM-7M':
+        add('radar radome', K.lathe(ogive(0.48, r, tip=0.008, n=NOSE), S), m['grey_radome'], True)
+        add('body', K.lathe([(0.48, r), (3.60, r), (3.645, r * 0.86), (3.66, r * 0.8), (3.66, 0)], S), m['body'], True)
+        add('nozzle', K.lathe([(3.652, r * 0.68), (3.66, r * 0.68), (3.59, r * 0.4), (3.59, 0)], SMALL, cap=False), m['nozzle'], True)
+        add('delta wings', cruciform([(0, 1.05), (0, 1.72), (1.0 / 2 - r, 1.66), (1.0 / 2 - r, 1.58)], r, 0.012, 0.005), m['body'])
+        add('tail fins', cruciform([(0, 3.12), (0, 3.62), (0.21, 3.62), (0.21, 3.45)], r, 0.010, 0.004), m['body'])
+        add('raceway & hooks', K.merge(K.box(0, 2.30, r + 0.008, 0.03, 1.6, 0.016), lug(1.95, r, 0.028), lug(2.70, r, 0.028)), m['steel'])
+        add('section bands', K.merge(ring(0.48, r, 0.01), ring(0.95, r, 0.008), ring(1.85, r, 0.008)), m['band'], True)
+        add('warhead band', ring(2.05, r, 0.025, 0.0008), m['yellow'], True)
+    elif kind in ('AGM-84D', 'RGM-84'):
+        booster = kind == 'RGM-84'
+        nose = [(0.0, 0.0)] + [(0.45 * (1 - math.cos(math.pi / 2 * i / NOSE)), r * math.sin(math.pi / 2 * i / NOSE) ** 0.8)
+                               for i in range(1, NOSE + 1)]
+        add('radar radome', K.lathe(nose, S), m['grey_radome'], True)
+        add('body', K.lathe([(0.45, r), (3.70, r), (3.80, r * 0.82), (3.84, r * 0.70), (3.84, 0)], S), m['white'], True)
+        span = 0.914 / 2 - r
+        add('cruciform wings', cruciform([(0, 1.85), (0, 2.55), (span, 2.50), (span, 2.32)], r, 0.014, 0.006), m['white'])
+        add('tail control fins', cruciform([(0, 3.33), (0, 3.78), (0.20, 3.78), (0.20, 3.62)], r, 0.012, 0.005), m['white'])
+        scoop = K.transform(K.prism([(-0.08, 0.0), (0.08, 0.0), (0.06, -0.09), (-0.06, -0.09)], 2.65, 3.35, 'XZ'), Matrix.Translation((0, 0, -r + 0.02)))
+        add('ventral air intake', scoop, m['white'])
+        add('intake mouth', K.box(0, 2.646, -r - 0.025, 0.11, 0.008, 0.06), m['intake'])
+        if booster:
+            add('booster', K.lathe([(3.84, 0), (3.84, r * 0.97), (3.87, r), (4.56, r), (4.62, r * 0.82), (4.63, r * 0.74), (4.63, 0)], S), m['booster'], True)
+            add('booster nozzle', K.lathe([(4.62, r * 0.6), (4.63, r * 0.6), (4.55, r * 0.38), (4.55, 0)], SMALL, cap=False), m['nozzle'], True)
+            add('booster fins', cruciform([(0, 4.20), (0, 4.60), (0.24, 4.60), (0.24, 4.40)], r, 0.012, 0.005), m['booster'])
+        else:
+            add('turbojet exhaust', K.lathe([(3.832, r * 0.55), (3.84, r * 0.55), (3.77, r * 0.33), (3.77, 0)], SMALL, cap=False), m['nozzle'], True)
+            add('suspension lugs', K.merge(lug(1.45, r, 0.04), lug(2.20, r, 0.04)), m['steel'])
+        add('section bands', K.merge(ring(0.45, r, 0.012), ring(1.20, r, 0.01), ring(3.0, r, 0.01)), m['band'], True)
+        add('warhead band', ring(0.95, r, 0.035, 0.0008), m['yellow'], True)
+    elif kind == 'SM-2MR':
+        add('radar radome', K.lathe(ogive(0.78, r, tip=0.012, n=NOSE), S), m['radome'], True)
+        add('body', K.lathe([(0.78, r), (4.62, r), (4.70, r * 0.84), (4.72, r * 0.78), (4.72, 0)], S), m['white'], True)
+        add('nozzle', K.lathe([(4.71, r * 0.66), (4.72, r * 0.66), (4.64, r * 0.4), (4.64, 0)], SMALL, cap=False), m['nozzle'], True)
+        add('dorsal fins', cruciform([(0, 1.30), (0, 3.95), (0.14, 3.80), (0.14, 1.55)], r, 0.010, 0.004), m['white'])
+        span = 1.07 / 2 - r
+        add('tail control fins', cruciform([(0, 4.22), (0, 4.70), (span, 4.70), (span, 4.55)], r, 0.014, 0.006), m['white'])
+        add('section bands', K.merge(ring(0.78, r, 0.012), ring(1.30, r, 0.01), ring(2.6, r, 0.01), ring(3.95, r, 0.012)), m['band'], True)
+        add('warhead band', ring(1.75, r, 0.035, 0.0008), m['yellow'], True)
     if stencil:
         out.append(_stencil(kind, name, coll, to_origin, r, m['stencil']))
     for ob in out:
@@ -234,7 +338,8 @@ def _stencil(kind, name, coll, to_origin, r, mat):
     tmp = bpy.data.objects.new('tmp', cu); bpy.context.scene.collection.objects.link(tmp)
     me = bpy.data.meshes.new_from_object(tmp.evaluated_get(bpy.context.evaluated_depsgraph_get()))
     bpy.data.objects.remove(tmp); bpy.data.curves.remove(cu)
-    station = {'PL-15': 1.85, 'PL-10': 1.40, 'HQ-10': 0.95, 'YJ-83': 2.15, 'YJ-83K': 2.15}[kind]
+    station = {'PL-15': 1.85, 'PL-10': 1.40, 'HQ-10': 0.95, 'YJ-83': 2.15, 'YJ-83K': 2.15, 'AIM-9M': 1.45,
+               'AIM-120C': 2.40, 'AIM-7M': 2.60, 'AGM-84D': 1.55, 'RGM-84': 1.55, 'SM-2MR': 2.30}[kind]
     # text in the YZ plane on the +X (port) side, reading nose -> tail
     place = Matrix(((0, 0, 1, r + 0.0015), (1, 0, 0, station), (0, 1, 0, 0), (0, 0, 0, 1)))
     bm = bmesh.new(); bm.from_mesh(me)

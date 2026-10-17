@@ -1,6 +1,6 @@
 {
   "blend": "assets/models/missiles-source/Missiles.blend",
-  "blend_sha256": "706a52b812ef21a6beae59af49cd0a0c5acbf483423bdf91baa1f672834d3d5a",
+  "blend_sha256": "66c6009e5d48fd64b51df43b467d84a5fd55dd974ec64b0e42b78bb5054fb7bf",
   "units": "metres",
   "glb_axes": "+Y up, nose -Z, origin at mid-length on the body axis",
   "note": "Length, body diameter, YJ-83 wingspan and masses are published figures; fin chords, spans and stations are estimates from photographs.",
@@ -104,6 +104,130 @@
       ],
       "triangles": 4111,
       "glb_bytes": 267376
+    },
+    "RGM-84": {
+      "file": "rgm84.glb",
+      "title": "RGM-84 鱼叉舰射反舰导弹（含助推器）",
+      "role": "固体助推起飞，涡喷巡航",
+      "length_m": 4.63,
+      "body_diameter_m": 0.343,
+      "fin_tip_diameter_m": 0.91,
+      "mass_kg": 690,
+      "published": [
+        "length 4.6-4.64 m with booster",
+        "diameter 0.343 m",
+        "wingspan 0.914 m",
+        "mass ~690 kg"
+      ],
+      "estimated": [
+        "booster 0.79 m with four fins",
+        "wing and tail-fin chords"
+      ],
+      "triangles": 7158,
+      "glb_bytes": 462560
+    },
+    "SM-2MR": {
+      "file": "sm2mr.glb",
+      "title": "标准-2 中程舰空导弹（RIM-66M）",
+      "role": "指令 + 惯性中段，半主动雷达末制导",
+      "length_m": 4.72,
+      "body_diameter_m": 0.343,
+      "fin_tip_diameter_m": 1.066,
+      "mass_kg": 708,
+      "published": [
+        "length 4.72 m",
+        "diameter 0.343 m",
+        "span 1.07 m",
+        "mass ~708 kg"
+      ],
+      "estimated": [
+        "dorsal fin length and height",
+        "tail control-fin chord"
+      ],
+      "triangles": 5965,
+      "glb_bytes": 371564
+    },
+    "AGM-84D": {
+      "file": "agm84d.glb",
+      "title": "AGM-84D 鱼叉空射反舰导弹",
+      "role": "涡喷巡航，末段主动雷达制导",
+      "length_m": 3.84,
+      "body_diameter_m": 0.343,
+      "fin_tip_diameter_m": 0.91,
+      "mass_kg": 520,
+      "published": [
+        "length 3.84 m (air-launched, 12 ft 7 in)",
+        "diameter 0.343 m",
+        "wingspan 0.914 m",
+        "mass ~520 kg"
+      ],
+      "estimated": [
+        "wing and tail-fin chords and stations",
+        "ventral intake"
+      ],
+      "triangles": 6385,
+      "glb_bytes": 421296
+    },
+    "AIM-7M": {
+      "file": "aim7m.glb",
+      "title": "AIM-7M 麻雀中距空空导弹",
+      "role": "半主动雷达制导，中段可动三角翼 + 固定尾翼",
+      "length_m": 3.66,
+      "body_diameter_m": 0.203,
+      "fin_tip_diameter_m": 0.996,
+      "mass_kg": 231,
+      "published": [
+        "length 3.66 m",
+        "diameter 0.203 m",
+        "wingspan 1.0 m (USAF)",
+        "mass 231 kg"
+      ],
+      "estimated": [
+        "wing and tail-fin chords and stations"
+      ],
+      "triangles": 3373,
+      "glb_bytes": 112864
+    },
+    "AIM-120C": {
+      "file": "aim120c.glb",
+      "title": "AIM-120C 先进中距空空导弹",
+      "role": "主动雷达制导，削尖中段弹翼 + 尾舵",
+      "length_m": 3.65,
+      "body_diameter_m": 0.178,
+      "fin_tip_diameter_m": 0.48,
+      "mass_kg": 162,
+      "published": [
+        "length 3.65 m (C-5/6/7)",
+        "diameter 0.178 m",
+        "wingspan 0.48 m (US Navy, 19 in)",
+        "mass ~162 kg"
+      ],
+      "estimated": [
+        "mid-body wing and tail-fin chords and stations"
+      ],
+      "triangles": 5749,
+      "glb_bytes": 354584
+    },
+    "AIM-9M": {
+      "file": "aim9m.glb",
+      "title": "AIM-9M 响尾蛇近距空空导弹",
+      "role": "红外制导，双三角前舵 + 带陀螺舵的尾翼",
+      "length_m": 2.87,
+      "body_diameter_m": 0.127,
+      "fin_tip_diameter_m": 0.626,
+      "mass_kg": 85.5,
+      "published": [
+        "length 2.87 m",
+        "diameter 0.127 m",
+        "wingspan 0.63 m",
+        "mass 85.5 kg (NAVAIR)"
+      ],
+      "estimated": [
+        "canard planform and station",
+        "tail-wing chord, rolleron size"
+      ],
+      "triangles": 3934,
+      "glb_bytes": 220856
     }
   }
 }

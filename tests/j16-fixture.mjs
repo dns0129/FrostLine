@@ -11,5 +11,6 @@ const loader = new GLTFLoader();
 loader.register(() => ({ name: 'QA_SKIP_RASTER_DECODE', loadTexture: () => Promise.resolve(new THREE.Texture()) }));
 const gltf = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
 const metadata = JSON.parse(await readFile(new URL('../assets/models/j16.metadata.json', import.meta.url), 'utf8'));
-// Like the browser loader, the airframe owns the real-scale store models.
-export const j16Assets = prepareJ16Assets(gltf.scene, metadata, await loadMissileFixture());
+// Like the renderer, a separate owner supplies the shared real-scale missiles.
+export const missileModels = await loadMissileFixture();
+export const j16Assets = prepareJ16Assets(gltf.scene, metadata, missileModels);
