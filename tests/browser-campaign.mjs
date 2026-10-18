@@ -1,121 +1,176 @@
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-const root = fileURLToPath(new URL('../', import.meta.url)), out = resolve(root, 'verification/campaign');
+import { createRequire } from 'node:module';
+import { CAMPAIGN_LEVELS, CAMPAIGN_SAVE_KEY } from '../campaign.js';
+import { getMap } from '../maps.js';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const out = new URL('../verification/campaign-v2/', import.meta.url);
 await mkdir(out, { recursive: true });
-const { chromium } = await import(pathToFileURL('/Users/yuanzichen/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core/index.mjs').href);
-const browser = await chromium.launch({ executablePath: '/Users/yuanzichen/Library/Caches/ms-playwright/chromium_headless_shell-1193/chrome-mac/headless_shell', headless: true, args: ['--use-gl=angle', '--use-angle=metal', '--enable-unsafe-swiftshader'] });
-const source = await readFile(resolve(root, 'app.js'), 'utf8'), baseURL = process.env.BASE_URL || 'http://127.0.0.1:8778';
-const report = { baseURL, checks: [], errors: [], metrics: {}, boundary: 'One kill uses a real locked missile and keyboard F. Later mission transitions use explicit simulation fixtures; they do not prove full human-played victories. Mobile sizes are emulated.' };
-async function check(name, fn) { await fn(); report.checks.push(name); console.log('PASS ' + name); }
-async function open(viewport, ship = false) {
+const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true,
+  args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const checks = [], errors = [], metrics = {};
+async function check(name, fn) { await fn(); checks.push(name); console.log('PASS ' + name); }
+async function open(viewport, vehicle = 'aircraft') {
   const context = await browser.newContext({ viewport, hasTouch: viewport.width < 900, serviceWorkers: 'block' });
-  await context.addInitScript(ship => localStorage.setItem('frostline-settings', JSON.stringify({ vehicle: ship ? 'destroyer' : 'aircraft', quality: 'auto', sound: false, difficulty: 'easy' })), ship);
-  await context.route('**/app.js', route => route.fulfill({ contentType: 'text/javascript', body: source + '\nwindow.__campaignQA={sim,world,result};' }));
-  const page = await context.newPage(); page.on('pageerror', e => report.errors.push(String(e)));
-  page.on('console', m => { if (m.type() === 'error') report.errors.push(m.text()); });
-  page.on('response', r => { if (r.status() >= 400) report.errors.push(`${r.status()} ${r.url()}`); });
-  await page.goto(baseURL, { waitUntil: 'networkidle' }); await page.waitForFunction(() => !!window.__campaignQA);
+  await context.addInitScript(vehicle => {
+    window.__now = 0; window.requestAnimationFrame = () => 0;
+    Object.defineProperty(performance, 'now', { value: () => window.__now });
+    if (!localStorage.getItem('frostline-settings')) localStorage.setItem('frostline-settings', JSON.stringify({ vehicle, quality: 'low', sound: false, difficulty: 'easy', map: 'city-bay' }));
+  }, vehicle);
+  await context.route('**/app.js', route => route.fulfill({ contentType: 'text/javascript',
+    body: source + '\nwindow.__campaignQA={sim,world,sortie,result,frame,readouts,input};' }));
+  const page = await context.newPage();
+  page.on('pageerror', e => errors.push(String(e)));
+  page.on('response', r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+  await page.goto(process.env.BASE_URL || 'http://127.0.0.1:8778');
+  await page.waitForFunction(() => !!window.__campaignQA, null, { timeout: 60000, polling: 100 });
   return { page, context };
 }
-async function snapshot(page) { return page.evaluate(() => {
+const next = page => page.locator('[data-flow-action="next"]').click();
+async function draw(page) { await page.evaluate(() => { window.__now += 200; window.__campaignQA.frame(window.__now); }); }
+async function layout(page) {
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  assert.equal(await page.locator('#sortieFlow').evaluate(e => e.scrollWidth > e.clientWidth), false);
+  const r = await page.locator('.sortie-footer [data-flow-action="next"]').boundingBox(), v = page.viewportSize();
+  assert.ok(r.x >= 0 && r.x + r.width <= v.width + 1 && r.y + r.height <= v.height + 1);
+}
+const snapshot = page => page.evaluate(() => {
   const { sim, world } = window.__campaignQA;
-  return { state: sim.state, mode: sim.mode, chapter: sim.campaignId, vehicle: sim.vehicle, time: sim.time, kills: sim.kills, wave: sim.wave,
-    campaign: JSON.parse(JSON.stringify(sim.campaignState)), targets: sim.enemies.map(e => ({ name: e.name, commander: e.commander, health: e.health })), fleet: sim.ambientShips.length,
-    progress: JSON.parse(localStorage.getItem('frostline-campaign-v1') || 'null'), glError: world.renderer.getContext().getError() };
-}); }
-async function fixtureClear(page) { await page.evaluate(() => {
-  const { sim, result } = window.__campaignQA;
-  for (let wave = 0; wave < 4 && sim.state === 'playing'; wave++) {
-    sim.enemies.forEach(e => e.health = 0); sim.update(1 / 60);
-    for (let step = 0; step < 300 && !sim.enemies.length && sim.state === 'playing'; step++) sim.update(1 / 60);
-  }
-  if (sim.state !== 'won') throw Error('Fixture did not satisfy the mission victory conditions'); result();
-}); }
+  return { state: sim.state, chapter: sim.campaignId, time: sim.time, wave: sim.wave, map: world.mapId,
+    allies: sim.allies.length, enemies: sim.enemies.length, carrier: sim.carrier?.health,
+    airKills: sim.campaignState?.airKills, shipKills: sim.campaignState?.shipKills,
+    credits: JSON.parse(localStorage.getItem('frostline-workshop-v1'))?.credits ?? 1200,
+    progress: JSON.parse(localStorage.getItem('frostline-campaign-v2') || 'null'), gl: world.renderer.getContext().getError() };
+});
+async function clearFixture(page) {
+  await page.evaluate(() => {
+    const { sim, result } = window.__campaignQA;
+    for (let wave = 0; wave < 5 && sim.state === 'playing'; wave++) {
+      sim.enemies.forEach(e => e.health = 0); sim.update(1 / 60);
+      for (let step = 0; step < 300 && !sim.enemies.length && sim.wave < 5 && sim.state === 'playing'; step++) sim.update(1 / 60);
+    }
+    if (sim.carrier && sim.state === 'playing') {
+      sim.time = sim.campaignId === 'shield' ? 180 : 240; sim._updateCampaignFleet();
+      sim.player.pos.copy(sim.campaignState.objectivePos).setY(1250); sim.update(1 / 60);
+    }
+    if (sim.state !== 'won') throw Error('Clear fixture failed: ' + sim.campaignId + ' / ' + sim.endReason);
+    result();
+  });
+}
 try {
-  const { page, context } = await open({ width: 1440, height: 900 }, true);
-  await check('Campaign mode opens from naval base, selects aircraft, displays three chapters and ordered locks', async () => {
-    await page.locator('#quickBriefing [data-play-mode="campaign"]').click();
-    assert.equal(await page.locator('#campaignPanel').isVisible(), true); assert.equal(await page.locator('[data-vehicle="aircraft"]').getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.locator('[data-campaign]').count(), 3); assert.equal(await page.locator('#campaignProgress').innerText(), '战役进度 0 / 3');
-    assert.equal(await page.locator('#campaignStartBtn').isEnabled(), true);
-  }); await page.screenshot({ path: resolve(out, 'desktop-campaign-overview.png') });
-  await check('Locked chapters have readable story and briefing while sortie remains disabled', async () => {
-    await page.locator('[data-campaign="finale"]').click(); assert.equal(await page.locator('#campaignTitle').innerText(), '灰潮终局');
-    assert.equal(await page.locator('#campaignStartBtn').isEnabled(), false); await page.locator('#campaignBriefingBtn').click();
-    assert.ok((await page.locator('#chapterBriefingRules').innerText()).includes('210 秒')); assert.equal(await page.locator('#chapterBriefingStart').isEnabled(), false);
-    await page.screenshot({ path: resolve(out, 'desktop-final-briefing.png') }); await page.locator('#campaignBriefingPanel .close-panel').click();
+  const { page, context } = await open({ width: 1440, height: 900 });
+  await check('Campaign selection shows ten route nodes, distinct map names, rewards and readable locked briefings', async () => {
+    await page.click('#startBtn'); await page.click('[data-category="campaign"]'); await next(page);
+    assert.equal(await page.locator('[data-mission]').count(), 10); assert.equal(await page.locator('.campaign-chart-node').count(), 10);
+    for (const level of CAMPAIGN_LEVELS) {
+      await page.locator(`[data-mission="${level.id}"]`).click(); await next(page);
+      for (let i = 0; i < 4; i++) { await page.click(`[data-brief-page="${i}"]`); await layout(page); }
+      assert.ok((await page.locator('.sortie-confirmation').innerText()).includes(getMap(level.mapId).name));
+      assert.ok((await page.locator('.sortie-confirmation').innerText()).includes(`+${level.rewardPoints}`));
+      assert.equal(await page.locator('[data-flow-action="next"]').isEnabled(), level.number === 1);
+      await page.locator('.sortie-header .flow-back').click();
+    }
+    await page.click('[data-mission="dawn"]'); await page.screenshot({ path: new URL('01-ten-chapters.png', out).pathname });
   });
-  await check('Chapter-one briefing launches its actual two-target mission and keeps six sailing ships', async () => {
-    await page.locator('[data-campaign="dawn"]').click(); await page.locator('#campaignBriefingBtn').click(); await page.locator('#chapterBriefingStart').click();
-    await page.waitForFunction(() => window.__campaignQA.sim.time > .1); const s = await snapshot(page);
-    assert.equal(s.chapter, 'dawn'); assert.equal(s.targets.length, 2); assert.equal(s.vehicle, 'aircraft'); assert.equal(s.fleet, 6); assert.equal(s.glError, 0);
-    await page.screenshot({ path: resolve(out, 'desktop-chapter-one-flight.png') });
+  await next(page);
+  for (const level of CAMPAIGN_LEVELS) {
+    await check(`Chapter ${level.number}: confirms ${getMap(level.mapId).name}, launches actual air/sea wave and four-plane squad`, async () => {
+      await page.click('[data-brief-page="3"]'); await next(page); await draw(page);
+      const s = await snapshot(page); assert.equal(s.state, 'playing'); assert.equal(s.chapter, level.id); assert.equal(s.map, level.mapId);
+      assert.equal(s.allies, 3); assert.equal(s.gl, 0);
+      assert.equal(await page.evaluate(() => window.__campaignQA.world.enemies.size), level.waves[0] + level.shipWaves[0] + 3);
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('frostline-settings')).map), 'city-bay');
+    });
+    if (level.number === 1) {
+      await check('Real keyboard F launches a locked missile; physical flight/hit records the first kill', async () => {
+        await page.evaluate(() => {
+          const { sim } = window.__campaignQA;
+          sim.allies.forEach(a => { a.fireTimer = a.missileTimer = 100000; });
+          sim.enemies.forEach(e => e.passive = true);
+          const e = sim.enemies[0]; e.pos.copy(sim.player.pos); e.pos.z -= 1000; e.health = 60;
+          for (let step = 0; step < 100; step++) sim.update(1 / 60);
+          if (sim.lockProgress < 1) throw Error('No physical radar lock');
+        });
+        const before = await page.evaluate(() => window.__campaignQA.sim.player.missiles);
+        await page.keyboard.press('f');
+        assert.equal(await page.evaluate(() => window.__campaignQA.sim.player.missiles), before - 1);
+        await page.evaluate(() => { const { sim } = window.__campaignQA; for (let step = 0; step < 300 && !sim.kills; step++) sim.update(1 / 60); });
+        assert.ok((await snapshot(page)).airKills >= 1);
+        await draw(page); await page.screenshot({ path: new URL('02-four-plane-flight.png', out).pathname });
+      });
+    }
+    if (level.number === 2) {
+      await check('Carrier destruction fails without unlocking chapter three or paying a completion bonus; retry restores it', async () => {
+        await page.evaluate(() => { const { sim, result } = window.__campaignQA; sim.carrier.health = 0; sim.update(1 / 60); result(); });
+        assert.equal((await snapshot(page)).state, 'lost');
+        assert.ok((await page.locator('#resultDescription').innerText()).includes('企业号被击沉'));
+        assert.equal((await snapshot(page)).progress.completed.shield, undefined);
+        await page.click('#againBtn'); await draw(page); assert.equal((await snapshot(page)).carrier, 2200);
+        await page.screenshot({ path: new URL('03-carrier-retreat.png', out).pathname });
+      });
+      await check('Pause freezes carrier movement, wingmen and mission time', async () => {
+        await page.click('#pauseBtn'); const before = await snapshot(page);
+        await page.evaluate(() => { for (let i = 0; i < 120; i++) window.__campaignQA.sim.update(1 / 60); });
+        assert.deepEqual(await snapshot(page), before); await page.click('#resumeBtn');
+      });
+    }
+    if (level.number === 10) {
+      await check('Final core commander renders distinctly; destroying only the commander leaves escorts active', async () => {
+        await page.evaluate(() => { const { sim } = window.__campaignQA;
+          for (let wave = 1; wave < 5; wave++) { sim.enemies.forEach(e => e.health = 0); sim.update(1 / 60);
+            for (let i = 0; i < 300 && !sim.enemies.length; i++) sim.update(1 / 60); }
+        }); await draw(page);
+        assert.equal(await page.evaluate(() => { const { sim, world } = window.__campaignQA; return world.enemies.get(sim.enemies.find(e => e.commander).id).scale.x; }), 1.3);
+        await page.screenshot({ path: new URL('04-final-core.png', out).pathname });
+        await page.evaluate(() => { const { sim } = window.__campaignQA; sim.enemies.find(e => e.commander).health = 0; sim.update(1 / 60); });
+        assert.equal((await snapshot(page)).state, 'playing');
+      });
+    }
+    await check(`Chapter ${level.number}: clear fixture saves ordered progress, pays +${level.rewardPoints} points exactly once and opens next briefing`, async () => {
+      const before = (await snapshot(page)).credits;
+      await clearFixture(page); const after = await snapshot(page);
+      assert.equal(after.airKills, level.airTotal); assert.equal(after.shipKills, level.shipTotal);
+      assert.ok(after.progress.completed[level.id]); assert.ok(after.credits >= before + level.rewardPoints);
+      assert.match(await page.locator('#resultDescription').innerText(), new RegExp(`通关奖励 ${level.rewardPoints} 点`));
+      await page.evaluate(() => window.__campaignQA.result()); assert.equal((await snapshot(page)).credits, after.credits);
+      metrics[level.id] = after;
+      if (level.number < 10) { await page.click('#campaignNextBtn'); assert.equal((await snapshot(page)).state, 'menu');
+        assert.equal(await page.locator('#sortieTitle').innerText(), CAMPAIGN_LEVELS[level.number].title);
+      } else { assert.equal(await page.locator('#resultTitle').innerText(), '暗潮行动 · 战役完成'); assert.equal(await page.locator('#campaignNextBtn').isVisible(), false); }
+    });
+  }
+  await page.screenshot({ path: new URL('05-campaign-complete.png', out).pathname });
+  await check('Earned points purchase a persistent engine upgrade and all ten chapter records survive reload', async () => {
+    await page.click('#resultExitBtn'); await page.click('#workshopBtn');
+    const before = (await snapshot(page)).credits;
+    await page.click('[data-upgrade="engine"]');
+    assert.equal((await snapshot(page)).credits, before - 300);
+    await page.reload(); await page.waitForFunction(() => !!window.__campaignQA, null, { polling: 100 });
+    const profile = await page.evaluate(() => JSON.parse(localStorage.getItem('frostline-workshop-v1')));
+    assert.equal(profile.levels.engine, 1); assert.equal(profile.credits, before - 300);
+    assert.equal(Object.keys((await snapshot(page)).progress.completed).length, 10);
+    assert.equal((await snapshot(page)).progress.version, 2);
   });
-  await check('A real F missile lock, launch and hit defeats the first scout and records a kill', async () => {
-    await page.waitForFunction(() => window.__campaignQA.sim.lockProgress >= 1, { timeout: 15000 });
-    await page.keyboard.press('f'); await page.waitForFunction(() => window.__campaignQA.sim.kills >= 1, { timeout: 20000 });
-    const s = await snapshot(page); assert.equal(s.chapter, 'dawn'); assert.ok(s.kills >= 1); report.metrics.realMissileKill = s;
-  });
-  await check('Pause freezes mission clock, campaign credit and radio state', async () => {
-    await page.locator('#pauseBtn').click(); const before = await snapshot(page);
-    await page.evaluate(() => new Promise(resolve => { let n = 0; function frame() { if (++n > 8) resolve(); else requestAnimationFrame(frame); } requestAnimationFrame(frame); }));
-    const after = await snapshot(page); assert.equal(after.time, before.time); assert.deepEqual(after.campaign, before.campaign);
-    await page.locator('#resumeBtn').click();
-  });
-  await check('Victory fixture unlocks chapter two, saves stars and follows the next-chapter button', async () => {
-    await fixtureClear(page); const s = await snapshot(page); assert.equal(s.state, 'won'); assert.ok(s.progress.completed.dawn);
-    await page.screenshot({ path: resolve(out, 'desktop-chapter-one-fixture-result.png') }); await page.locator('#campaignNextBtn').click();
-    assert.equal((await snapshot(page)).chapter, 'shield'); assert.ok((await page.locator('#objective').innerText()).includes('坚守'));
-    await page.screenshot({ path: resolve(out, 'desktop-chapter-two-flight.png') });
-  });
-  await check('Defence failure fixture does not unlock chapter three and retry resets the mission', async () => {
-    await page.evaluate(() => { const { sim, result } = window.__campaignQA; sim.player.pos.x += 7000; sim.campaignState.outsideFor = 9.99; sim.update(1 / 60); if (sim.state !== 'lost' || sim.endReason !== 'airspace') throw Error('Airspace failure not enforced'); result(); });
-    assert.equal((await snapshot(page)).progress.completed.shield, undefined); assert.equal(await page.locator('#campaignNextBtn').isVisible(), false);
-    await page.locator('#againBtn').click(); const s = await snapshot(page); assert.equal(s.chapter, 'shield'); assert.equal(s.state, 'playing'); assert.ok(s.campaign.guardElapsed < 1); assert.equal(s.campaign.outsideFor, 0);
-  });
-  await check('Defence victory fixture unlocks chapter three with independent objectives', async () => {
-    await page.evaluate(() => { const { sim, result } = window.__campaignQA; sim.campaignState.guardElapsed = 90; sim.kills = 6; sim.player.pos.copy(sim.campaignState.objectivePos); sim.player.pos.y = 1250; sim.update(1 / 60); if (sim.state !== 'won') throw Error('Defence objectives unmet'); result(); });
-    assert.ok((await snapshot(page)).progress.completed.shield); await page.locator('#campaignNextBtn').click();
-    assert.equal((await snapshot(page)).chapter, 'finale'); assert.equal(await page.locator('#modeLabel').innerText(), 'CAMPAIGN');
-  });
-  await check('Final commander renders larger with distinct identity; its death alone is insufficient and escorts complete the campaign', async () => {
-    await page.evaluate(() => { const { sim } = window.__campaignQA; for(let wave=0;wave<2;wave++){sim.enemies.forEach(e=>e.health=0);sim.update(1/60);for(let step=0;step<300&&!sim.enemies.length;step++)sim.update(1/60);} });
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    const boss = await page.evaluate(() => { const { sim, world } = window.__campaignQA; const b=sim.enemies.find(e=>e.commander);return { name:b?.name,health:b?.health,scale:world.enemies.get(b?.id)?.scale.x }; });
-    assert.equal(boss.name, '灰潮指挥机'); assert.equal(boss.scale, 1.3); assert.ok(boss.health > 100);
-    await page.screenshot({ path: resolve(out, 'desktop-chapter-three-commander.png') });
-    await page.evaluate(() => {const {sim}=window.__campaignQA;sim.enemies.find(e=>e.commander).health=0;sim.update(1/60);}); assert.equal((await snapshot(page)).state, 'playing');
-    await fixtureClear(page); assert.equal(await page.locator('#resultTitle').innerText(), '北境航线 · 战役完成'); assert.equal(await page.locator('#campaignNextBtn').isVisible(), false);
-    await page.screenshot({ path: resolve(out, 'desktop-campaign-fixture-complete.png') });
-  });
-  await check('Reload restores all unlocked chapters and replay keeps best stars and scores', async () => {
-    await page.locator('#resultExitBtn').click(); assert.equal(await page.locator('#campaignProgress').innerText(), '战役进度 3 / 3');
-    const before = (await snapshot(page)).progress; await page.reload({ waitUntil: 'networkidle' });
-    await page.locator('#quickBriefing [data-play-mode="campaign"]').click();
-    assert.equal(await page.locator('#campaignProgress').innerText(), '战役进度 3 / 3'); assert.deepEqual((await snapshot(page)).progress, before);
-    await page.locator('[data-campaign="dawn"]').click(); assert.ok((await page.locator('#campaignStartBtn').innerText()).includes('重玩'));
-  });
-  await check('Choosing a ship returns to quick missions with naval training available', async () => {
-    await page.locator('[data-vehicle="destroyer"]').click(); assert.equal(await page.locator('#quickBriefing').isVisible(), true); assert.equal(await page.locator('#campaignPanel').isVisible(), false);
-    await page.locator('[data-mode="naval-training"]').click(); await page.locator('#startBtn').click(); const s = await snapshot(page);
-    assert.equal(s.chapter, null); assert.equal(s.mode, 'naval-training'); assert.equal(s.targets.length, 2); assert.equal(s.glError, 0);
-  }); await context.close();
-  for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 844, height: 390 }, { width: 390, height: 844 }, { width: 360, height: 780 }]) {
-    const { page, context } = await open(viewport);
-    await check(`${viewport.width}x${viewport.height}: readable campaign, three selectable stories and reachable launch`, async () => {
-      await page.locator('#quickBriefing [data-play-mode="campaign"]').click();
-      for (const id of ['dawn', 'shield', 'finale']) { await page.locator(`[data-campaign="${id}"]`).scrollIntoViewIfNeeded(); await page.locator(`[data-campaign="${id}"]`).click(); assert.equal(await page.locator('#campaignStartBtn').isEnabled(), id === 'dawn'); }
-      await page.locator('[data-campaign="dawn"]').click(); await page.locator('#campaignStartBtn').scrollIntoViewIfNeeded();
-      const layout = await page.evaluate(() => { const p = document.getElementById('campaignPanel').getBoundingClientRect(), f = document.querySelector('.fleet-deck').getBoundingClientRect(); return { width: innerWidth, menuWidth: document.getElementById('menu').scrollWidth, panelLeft: p.left, panelRight: p.right, panelBottom: p.bottom, fleetTop: f.top }; });
-      assert.ok(layout.menuWidth <= viewport.width); assert.ok(layout.panelLeft >= 0 && layout.panelRight <= viewport.width); assert.ok(layout.panelBottom <= layout.fleetTop + 1);
-      report.metrics[`${viewport.width}x${viewport.height}`] = layout;
-      await page.screenshot({ path: resolve(out, `campaign-${viewport.width}x${viewport.height}.png`) });
-      await page.locator('#campaignStartBtn').click(); await page.waitForFunction(() => window.__campaignQA.sim.time > .1); const s = await snapshot(page);
-      assert.equal(s.chapter, 'dawn'); assert.equal(s.glError, 0); assert.equal(s.fleet, 6);
+  await context.close();
+  for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }, { width: 360, height: 780 }]) {
+    const { page, context } = await open(viewport, 'j16');
+    await check(`${viewport.width}x${viewport.height}: ten selectable chapters, four briefing pages, reachable launch and J-16 squad sortie`, async () => {
+      await page.click('#startBtn'); await page.click('[data-category="campaign"]'); await next(page);
+      await layout(page); await page.click('[data-mission="finale"]'); await next(page);
+      for (let i = 0; i < 4; i++) { await page.click(`[data-brief-page="${i}"]`); await layout(page); }
+      assert.equal(await page.locator('[data-flow-action="next"]').isDisabled(), true);
+      await page.locator('.sortie-header .flow-back').click(); await page.click('[data-mission="dawn"]'); await next(page);
+      await page.screenshot({ path: new URL(`briefing-${viewport.width}x${viewport.height}.png`, out).pathname });
+      await page.click('[data-brief-page="3"]'); await next(page); await draw(page);
+      const s = await snapshot(page); assert.equal(s.state, 'playing'); assert.equal(s.allies, 3); assert.equal(s.gl, 0);
+      assert.equal(await page.evaluate(() => window.__campaignQA.sim.player.aircraftId), 'j16');
     }); await context.close();
   }
-  assert.deepEqual(report.errors, []); report.passed = true; console.log(`PASS ${report.checks.length} campaign browser checks`);
-} catch (error) { report.passed = false; report.failure = String(error); throw error;
-} finally { await writeFile(resolve(out, 'metrics.json'), JSON.stringify(report, null, 2)); await browser.close(); }
+  assert.deepEqual(errors, []);
+} finally {
+  await writeFile(new URL('metrics.json', out), JSON.stringify({ checks, errors, metrics,
+    boundary: 'One real locked missile uses keyboard F and physical combat. Remaining wins use explicit clear fixtures; mobile viewports are emulated, not device FPS measurements.' }, null, 2));
+  await browser.close();
+}
+console.log(`PASS ${checks.length} campaign browser checks`);

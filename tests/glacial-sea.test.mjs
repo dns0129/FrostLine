@@ -32,7 +32,7 @@ test('the glacial sea catalog is deterministic, frozen and varied', async () => 
   const fresh = await import(`../maps.js?fresh=${Date.now()}`);
   assert.deepEqual(fresh.getMap(MAP_ID).icebergs, map.icebergs);
   assert.ok(map.islands.some(island => island.shape === 'glacier'));
-  assert.ok(MAPS.at(-1) === map, 'the new map is appended after the existing four');
+  assert.ok(MAPS[4] === map, 'glacial sea retains its original catalog position');
 });
 
 test('icebergs are solid, separate bodies floating in deep water', () => {

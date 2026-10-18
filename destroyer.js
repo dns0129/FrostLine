@@ -205,6 +205,8 @@ export function makeDestroyerWake() {
 }
 
 export const ENEMY_SHIP_MODELS = Object.freeze({
+  destroyer: Object.freeze({ name: '暗潮驱逐舰', length: 110, beam: 20, collisionTop: 21,
+    gunPivot: Object.freeze([0, 8, -32]), targetAimHeight: 8 }),
   patrol: Object.freeze({ name: 'R-4 Rustfin patrol boat', length: 45, beam: 11, collisionTop: 10,
     gunPivot: Object.freeze([0, 4, -12]), targetAimHeight: 4 }),
   frigate: Object.freeze({ name: 'F-9 Ironwake frigate', length: 85, beam: 17, collisionTop: 17,

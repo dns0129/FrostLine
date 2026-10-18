@@ -1,6 +1,6 @@
 {
   "name": "frostline-air-combat",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "type": "module",
   "private": true,
   "description": "原创离线单机空战游戏，支持 PC 与手机",
@@ -11,6 +11,7 @@
     "prepare": "node scripts/prepare-sites.mjs",
     "test:workshop": "node tests/browser-workshop.mjs",
     "test:j16-fujian": "node tests/browser-j16-fujian.mjs",
+    "test:campaign": "node tests/browser-campaign.mjs",
     "test:sortie": "node tests/browser-sortie-flow.mjs",
     "test:glacial": "node tests/browser-glacial-sea.mjs"
   }

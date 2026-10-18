@@ -1,9 +1,9 @@
 import * as THREE from './vendor/three.module.js';
 import { DESTROYER, effectiveShip, isShipVehicle } from './ship-systems.js';
 export { DESTROYER } from './ship-systems.js';
-import { terrainHeight } from './world-math.js';
+import { terrainHeight, setActiveMap } from './world-math.js';
 import { createDefaultFleet, updateDefaultFleet } from './ambient-fleet.js';
-import { campaignLevel } from './campaign.js';
+import { CAMPAIGN_LEVELS, campaignLevel } from './campaign.js';
 import { aircraftById, STORES, normalizeWorkshop, normalizeLoadout, effectiveAircraft, storeRange, primaryAirWeapon } from './aircraft-systems.js';
 
 const TAU = Math.PI * 2;
@@ -21,12 +21,20 @@ export const HOSTILE_SHIPS = Object.freeze({
     turretY: 4, turretZ: -12, aimHeight: 4, maxSpeed: 14, maxHealth: 140 }),
   frigate: Object.freeze({ halfLength: 42.5, halfWidth: 8.5, collisionTop: 17, waterline: 0.5,
     turretY: 6, turretZ: -24, aimHeight: 6, maxSpeed: 11, maxHealth: 240 }),
+  destroyer: Object.freeze({ halfLength: 55, halfWidth: 10, collisionTop: 21, waterline: 0.5,
+    turretY: 8, turretZ: -32, aimHeight: 8, maxSpeed: 18, maxHealth: 300 }),
 });
 const isNavalMode = mode => mode === 'naval' || mode === 'naval-training';
 
 // Local metre boxes follow buildEnemyShipAssets in destroyer.js. Only the low
 // hull spans the vessel; bridges and gunhouses occupy their actual deck stations.
 const HOSTILE_SHIP_HIT_ZONES = Object.freeze({
+  destroyer: [
+    { min: [-10, -3, -55], max: [10, 5, 55] },
+    { min: [-7, 5, -20], max: [7, 16, 28] },
+    { min: [-2, 16, -4], max: [2, 21, 4] },
+    { min: [-3, 5, -3], max: [3, 10, 3], gunhouse: true },
+  ],
   patrol: [
     { min: [-5.5, -2.15, -22.5], max: [5.5, 2.735, 22.5] },
     { min: [-3.1, 3.6, -0.5], max: [3.1, 7.6, 8.5] },
@@ -373,6 +381,8 @@ export class Simulation {
     }
     this._lastShipWater = { pos: this.player.pos.clone(), heading: 0 };
     this.enemies = [];
+    this.allies = [];
+    this.carrier = null;
     this.ambientShips = createDefaultFleet();
     this.tracers = [];
     this.missiles = [];
@@ -425,16 +435,31 @@ export class Simulation {
     this.settings = DIFFICULTY[this.difficulty];
     this.state = 'playing';
     if (level) {
+      setActiveMap(level.mapId);
       this.campaignId = level.id;
-      this.campaignState = { outsideFor: 0, guardElapsed: 0, nextReinforcement: level.reinforcementEvery || 0, radioIndex: 0,
+      this.settings = { ...this.settings, damage: this.settings.damage * level.damageScale, missileEvery: level.missileEvery };
+      this.campaignState = { outsideFor: 0, retreatElapsed: 0, radioIndex: 0, airKills: 0, shipKills: 0,
         protectedFleetId: 'US-CVN-65', objectivePos: new THREE.Vector3(-980, 18, 1900), commanderDown: false };
       this.player.pos.set(...level.spawn);
+      this.player.altitude = this.player.pos.y;
+      for (let i = 0; i < level.wingmen; i++) {
+        const pos = this.player.pos.clone().add(new THREE.Vector3((i % 2 ? 1 : -1) * (110 + i * 65), 35 + i * 25, 120 + i * 85));
+        this.allies.push({ id: `wingman-${i + 2}`, name: `苍隼${['二', '三', '四'][i]}号`, kind: 'aircraft', allied: true,
+          pos, vel: this.player.vel.clone(), heading: 0, pitch: 0, bank: 0, speed: 185, health: 135, maxHealth: 135,
+          fireTimer: i * .2, missileTimer: 9 + i * 3, seaMissiles: 1, hitFlash: 0 });
+      }
+      if (level.escortDuration) {
+        this.carrier = this.ambientShips.find(ship => ship.id === this.campaignState.protectedFleetId);
+        Object.assign(this.carrier, { health: level.carrierHealth, maxHealth: level.carrierHealth,
+          halfLength: 171, halfWidth: 39, collisionTop: 44, vel: new THREE.Vector3(), retreatStart: this.carrier.pos.clone() });
+        this._updateCampaignFleet();
+      }
     }
     if (isNavalMode(this.mode) && this.vehicle === 'destroyer') this.player.turretPitch = 0.006;
     if (isNavalMode(this.mode) && this.vehicle === 'aircraft') { this.player.pos.y = 450; this.player.altitude = 450; }
     if (this.difficulty === 'easy') this.player.flares += 2;
     this._spawnWave();
-    this._emit('toast', { text: level ? `${level.number} / 03 · ${level.title}` : isNavalMode(this.mode)
+    this._emit('toast', { text: level ? `${level.number} / ${CAMPAIGN_LEVELS.length} · ${level.title}` : isNavalMode(this.mode)
       ? this.vehicle === 'aircraft' ? `${aircraftById(this.aircraftId).shortName}对海出击 · 机头指向敌舰，R 反舰导弹，Tab 换目标`
         : this.mode === 'naval-training' ? '转动视角瞄准 · 开火舰炮 · R 反舰导弹'
         : '敌舰来袭 · 舰炮与反舰导弹协同作战'
@@ -476,7 +501,7 @@ export class Simulation {
       }
     }
     const level = campaignLevel(this.campaignId);
-    const count = level ? level.id === 'shield' ? 2 : level.waves[this.wave - 1] : this.mode === 'training' ? 3 : this.mode === 'free' ? this.wave + 1 : Math.min(6, this.wave + 1);
+    const count = level ? level.waves[this.wave - 1] : this.mode === 'training' ? 3 : this.mode === 'free' ? this.wave + 1 : Math.min(6, this.wave + 1);
     const p = this.player;
     const ahead = forward(p.heading, clamp(p.pitch, -0.1, 0.1));
     const right = new THREE.Vector3().crossVectors(ahead, UP).normalize();
@@ -502,25 +527,120 @@ export class Simulation {
       if (level) {
         const enemy = this.enemies.at(-1), commander = this.wave === level.commanderWave && i === 0;
         enemy.commander = commander;
-        enemy.name = commander ? '灰潮指挥机' : level.id === 'dawn' ? '灰潮先遣机' : '灰潮无人机';
+        enemy.name = commander ? (level.id === 'finale' ? '暗潮核心指挥机' : '暗潮指挥机') : level.id === 'dawn' ? '不明敌机' : '暗潮无人机';
         enemy.health = enemy.maxHealth = this.settings.enemyHealth * level.healthScale * (commander ? level.commanderHealthScale : 1);
-        enemy.turnScale = commander ? 1.3 : level.turnScale;
-        enemy.missileTimer = level.enemyMissiles ? commander ? 8 : 18 + i * 7 : 1e9;
+        enemy.turnScale = level.turnScale * (commander ? 1.25 : 1);
+        enemy.missileTimer = level.enemyMissiles ? commander ? 8 : level.missileEvery + i * 2 : 1e9;
+        enemy.attackCarrier = !!level.escortDuration && i % (level.number >= 7 ? 2 : 3) === 0;
+        const targetIndex = i % (this.allies.length + 1);
+        enemy.targetId = enemy.attackCarrier ? this.carrier.id : targetIndex === 0 ? 'player' : this.allies[targetIndex - 1]?.id || 'player';
       }
     }
+    if (level) this._spawnCampaignShips(level);
     this.targetId = this.enemies[0]?.id || null;
     this.lockProgress = 0;
     this.lockTarget = null;
     this._lockAnnounced = false;
     this._resetAntiShipLock();
     this._emit('wave', { wave: this.wave, count, text: level
-      ? this.wave === level.commanderWave ? '塔台：灰潮指挥机现身。强化装甲，注意导弹威胁！' : `${level.title} · 第 ${this.wave} 批，${count} 架无人机`
+      ? this.wave === level.commanderWave ? '塔台：暗潮指挥机现身。强化装甲，注意导弹威胁！' : `${level.title} · 第 ${this.wave}/5 波，${count} 架敌机${level.shipWaves[this.wave - 1] ? `、${level.shipWaves[this.wave - 1]} 艘驱逐舰` : ''}`
       : this.mode === 'training' ? '训练开始 · 3 架靶机' : `第 ${this.wave} 波 · ${count} 架敌机` });
+  }
+
+  _spawnCampaignShips(level) {
+    const body = HOSTILE_SHIPS.destroyer, count = level.shipWaves[this.wave - 1];
+    for (let i = 0; i < count; i++) {
+      const anchor = this.carrier || this.player, heading = Math.PI;
+      const desired = anchor.pos.clone().add(new THREE.Vector3((i ? 1 : -1) * 650, 0, -1500 - i * 400)).setY(body.waterline);
+      const pos = this._shipSpawnPosition(desired, heading, body);
+      if (!pos) { this._spawnIncomplete = true; this.state = 'paused'; this._emit('toast', { text: '无法找到安全出舰海域，请返回基地重新出击。' }); return; }
+      const health = Math.round(body.maxHealth * level.healthScale * this.settings.enemyHealth / 100);
+      this.enemies.push({ ...body, id: `hostile-ship-${this._nextId++}`, kind: 'ship', shipType: 'destroyer', name: '暗潮驱逐舰',
+        pos, vel: new THREE.Vector3(), heading, pitch: 0, bank: 0, speed: 0, health, maxHealth: health,
+        turretHeading: heading, turretPitch: 0, age: 0, hitFlash: 0, rudder: 0, phase: this._random() * TAU,
+        fireTimer: 5 + i, missileTimer: 12 + i * 4, ammo: 180, shots: 0,
+        attackCarrier: !!this.carrier, targetId: this.carrier?.id || 'player', _lastWater: { pos: pos.clone(), heading } });
+    }
+  }
+
+  _friendlyTarget(id = 'player') {
+    if (id === 'player') return this.player.health > 0 ? this.player : null;
+    if (this.carrier?.id === id) return this.carrier.health > 0 ? this.carrier : null;
+    return this.allies.find(ally => ally.id === id && ally.health > 0) || null;
+  }
+
+  _enemyTarget(enemy) {
+    return this._friendlyTarget(enemy.targetId || 'player') || this.player;
+  }
+
+  _damageFriendly(target, damage) {
+    if (target === this.player) this._damagePlayer(damage);
+    else { target.health = Math.max(0, target.health - damage); target.hitFlash = 1; }
+  }
+
+  _updateCampaignFleet() {
+    const level = campaignLevel(this.campaignId), carrier = this.carrier;
+    if (!carrier || !level) return;
+    const elapsed = Math.min(level.escortDuration, this.time), distance = level.retreatDistance * elapsed / level.escortDuration;
+    this.campaignState.retreatElapsed = elapsed;
+    carrier.pos.copy(carrier.retreatStart); carrier.pos.z += distance;
+    carrier.heading = Math.PI; carrier.speed = elapsed < level.escortDuration ? level.retreatDistance / level.escortDuration : 0;
+    carrier.vel.set(0, 0, carrier.speed);
+    for (const ship of this.ambientShips.filter(ship => ship.country === carrier.country && ship !== carrier)) {
+      ship.pos.set(carrier.pos.x - ship.right, carrier.pos.y, carrier.pos.z - ship.aft); ship.heading = carrier.heading; ship.speed = carrier.speed;
+    }
+    this.campaignState.objectivePos.copy(carrier.pos).setY(18);
+  }
+
+  _updateAllies(dt) {
+    for (const [i, ally] of this.allies.entries()) {
+      if (ally.health <= 0) continue;
+      ally.fireTimer -= dt; ally.missileTimer -= dt; ally.hitFlash = Math.max(0, ally.hitFlash - dt * 4);
+      const air = this.enemies.filter(e => e.health > 0 && e.kind !== 'ship');
+      const targets = air.length ? air : this.enemies.filter(e => e.health > 0);
+      const target = targets[i % targets.length];
+      const point = target ? target.pos.clone().addScaledVector(target.vel, .8) : this.player.pos.clone().add(new THREE.Vector3((i % 2 ? 1 : -1) * 180, 60, 220));
+      point.y = Math.max(point.y, terrainHeight(point.x, point.z) + 400, 450);
+      const delta = point.sub(ally.pos), desired = angles(delta.clone().normalize());
+      const turn = clamp(wrap(desired.heading - ally.heading), -.46 * dt, .46 * dt);
+      ally.heading = wrap(ally.heading + turn); ally.pitch = smooth(ally.pitch, clamp(desired.pitch, -.4, .4), 1.4, dt);
+      ally.bank = smooth(ally.bank, clamp(turn / dt * ally.speed / 9.81, -1, 1), 2.3, dt);
+      ally.speed = smooth(ally.speed, delta.length() > 1400 ? 225 : 170, .8, dt);
+      const ahead = forward(ally.heading, ally.pitch); ally.vel.copy(ahead).multiplyScalar(ally.speed); ally.pos.addScaledVector(ally.vel, dt);
+      ally.pos.y = Math.max(ally.pos.y, terrainHeight(ally.pos.x, ally.pos.z) + 220);
+      if (ally.pos.distanceTo(this.player.pos) > 6500) ally.pos.copy(this.player.pos).add(new THREE.Vector3(180 + i * 100, 80, 240));
+      if (!target) continue;
+      const aimPoint = target.pos.clone(); if (target.kind === 'ship') aimPoint.y += target.aimHeight;
+      const distance = ally.pos.distanceTo(aimPoint), aligned = ahead.dot(aimPoint.clone().sub(ally.pos).normalize());
+      if (segmentTerrainEntry(ally.pos, aimPoint) !== null) continue;
+      if (distance < 1200 && aligned > .96 && ally.fireTimer <= 0) {
+        this._addTracer(ally.pos, aimPoint.sub(ally.pos).normalize(), ally.vel, false);
+        Object.assign(this.tracers.at(-1), { allied: true, sourceId: ally.id, damage: 12 }); ally.fireTimer = .3;
+      }
+      if (distance > 400 && distance < 3200 && aligned > .8 && ally.missileTimer <= 0) {
+        if (target.kind === 'ship' && ally.seaMissiles > 0) {
+          const pos = ally.pos.clone();
+          if (this.missiles.length >= MAX_MISSILES) this.missiles.shift();
+          this.missiles.push({ id: `wingman-missile-${this._nextId++}`, weapon: 'anti-ship', enemy: false, allied: true,
+            targetId: target.id, pos, prev: pos.clone(), dir: ahead.clone(), heading: ally.heading, pitch: ally.pitch,
+            speed: ally.speed, maxSpeed: 320, life: 35, maxLife: 35, cruiseHeight: 15, damage: 190,
+            verticalLaunch: 0, smokeTimer: 0 }); ally.seaMissiles--;
+        } else if (target.kind !== 'ship') {
+          this._addMissile(ally, false, target.id); Object.assign(this.missiles.at(-1), { allied: true, damage: 65 });
+        }
+        ally.missileTimer = 16;
+      }
+    }
+    this.allies = this.allies.filter(ally => {
+      if (ally.health > 0) return true;
+      this._explosion(ally.pos, 18); this._emit('toast', { text: `${ally.name}失去联系。本关补给不会复活僚机。` }); return false;
+    });
   }
 
   _shipSpawnPosition(preferred, heading, body, others = this.enemies) {
     const valid = position => Math.hypot(position.x, position.z) < 10300
       && shipHasClearWater(position, heading, body)
+      && !(this.carrier && shipsOverlap({ ...body, pos: position, heading }, this.carrier, 80))
       && !others.some(other => other.kind === 'ship' && other.health > 0
         && shipsOverlap({ ...body, pos: position, heading }, other, 45))
       && !shipsOverlap({ ...body, pos: position, heading }, this.player, 80);
@@ -591,6 +711,7 @@ export class Simulation {
     dt = Math.min(dt, 1 / 30);
     this.time += dt;
     updateDefaultFleet(this.ambientShips, this.time);
+    this._updateCampaignFleet();
     this._gunTimer -= dt;
     this._missileTimer = Math.max(0, this._missileTimer - dt);
     this._antiShipMissileTimer = Math.max(0, this._antiShipMissileTimer - dt);
@@ -602,6 +723,7 @@ export class Simulation {
     this._updatePlayer(dt, input);
     if (this.state !== 'playing') return;
     this._updateEnemies(dt);
+    this._updateAllies(dt);
     this._updateLock(dt);
     this._updateAntiShipLock(dt);
     if (input.fire) this._fireGun();
@@ -800,6 +922,7 @@ export class Simulation {
   _shipCanOccupy(entity, position, heading, ignore = null) {
     if (Math.hypot(position.x, position.z) > 10880 || !shipHasClearWater(position, heading, entity)) return false;
     const moved = { ...entity, pos: position, heading };
+    if (this.carrier && shipsOverlap(moved, this.carrier, 30)) return false;
     if (entity !== this.player && this.vehicle === 'destroyer' && shipsOverlap(moved, this.player)) return false;
     return !this.enemies.some(other => other !== entity && other !== ignore && other.kind === 'ship'
       && other.health > 0 && shipsOverlap(moved, other));
@@ -809,7 +932,20 @@ export class Simulation {
     e.age += dt; e.hitFlash = Math.max(0, e.hitFlash - dt * 4); e.fireTimer -= dt;
     e.pos.y = e.waterline;
     if (e.passive) { e.speed = 0; e.vel.set(0, 0, 0); e.pitch = e.bank = 0; return; }
-    const p = this.player, delta = p.pos.clone().sub(e.pos), distance = delta.length();
+    const p = this._enemyTarget(e), delta = p.pos.clone().sub(e.pos), distance = delta.length();
+    if (e.shipType === 'destroyer') {
+      e.missileTimer -= dt;
+      const aim = p.pos.clone().add(new THREE.Vector3(0, p === this.carrier ? 18 : 0, 0));
+      const origin = e.pos.clone().add(new THREE.Vector3(0, 14, 0));
+      if (e.missileTimer <= 0 && distance < 4300 && segmentTerrainEntry(origin, aim) === null
+        && this.missiles.filter(m => m.enemy && m.targetId === (p.id || 'player')).length < 2) {
+        this._addMissile({ ...e, pos: origin, pitch: Math.PI / 2 }, true, p.id || 'player');
+        Object.assign(this.missiles.at(-1), { dir: UP.clone(), verticalLaunch: .35, shipLaunched: true,
+          life: 16, maxLife: 16, damage: p === this.carrier ? 60 : 30 });
+        e.missileTimer = this.settings.missileEvery * 1.2;
+        this._emit('missile', { enemy: true, kind: 'ship' });
+      }
+    }
     const toPlayer = Math.atan2(-delta.x, -delta.z);
     const side = Math.sin(e.phase) >= 0 ? 1 : -1;
     let desired = distance > 1700 ? toPlayer : distance < 550 ? toPlayer + Math.PI + side * 0.3 : toPlayer + side * 1.25;
@@ -837,7 +973,7 @@ export class Simulation {
     if (this._shipCanOccupy(e, proposed, e.heading)) e.pos.copy(proposed);
     else { e.pos.copy(previous); e.heading = previousHeading; e.speed *= 0.2; e.vel.set(0, 0, 0); }
     // A player can outrun a small combat vessel. Re-enter only from safe water beyond 4 km.
-    if (distance > 4200) {
+    if (distance > 4200 && !e.attackCarrier) {
       const preferred = p.pos.clone().addScaledVector(forward(toPlayer + Math.PI, 0), 1800);
       preferred.y = e.waterline;
       const relocated = this._shipSpawnPosition(preferred, e.heading, e, this.enemies.filter(other => other !== e));
@@ -855,7 +991,7 @@ export class Simulation {
     e.turretPitch = smooth(e.turretPitch, clamp(desiredAim.pitch, -0.05, 0.25), 3.5, dt);
     const alignment = forward(e.turretHeading, e.turretPitch).dot(aim.clone().sub(origin).normalize());
     const terrain = segmentTerrainEntry(origin, p.pos.clone().add(new THREE.Vector3(0, 8, 0)));
-    if (this.vehicle === 'destroyer' && distance < 3000 && distance > 100 && e.fireTimer <= 0
+    if ((this.vehicle === 'destroyer' || p === this.carrier) && distance < 3000 && distance > 100 && e.fireTimer <= 0
       && e.ammo > 0 && alignment > Math.cos(0.055) && terrain === null) {
       const dir = forward(e.turretHeading, e.turretPitch);
       const spread = this.difficulty === 'easy' ? 0.008 : this.difficulty === 'hard' ? 0.002 : 0.004;
@@ -865,6 +1001,7 @@ export class Simulation {
       const shell = this.tracers[this.tracers.length - 1];
       shell.life = shell.maxLife = 4.2; shell.damage = e.shipType === 'frigate' ? 22 : 14;
       shell.kind = 'ship'; shell.sourceId = e.id;
+      shell.targetId = p.id || 'player';
       e.ammo -= 1; e.shots += 1;
       e.fireTimer = (e.shipType === 'frigate' ? 1.8 : 2.3) * (this.difficulty === 'easy' ? 1.3 : this.difficulty === 'hard' ? 0.78 : 1);
       this._emit('fire', { enemy: true, kind: 'ship', shipType: e.shipType, id: e.id });
@@ -872,10 +1009,10 @@ export class Simulation {
   }
 
   _updateEnemies(dt) {
-    const p = this.player;
     for (const e of this.enemies) {
       if (e.health <= 0) continue;
       if (e.kind === 'ship') { this._updateEnemyShip(e, dt); continue; }
+      const p = this._enemyTarget(e), surfaceTarget = p.kind !== 'aircraft';
       e.age += dt;
       e.hitFlash = Math.max(0, e.hitFlash - dt * 4);
       e.fireTimer -= dt;
@@ -897,7 +1034,7 @@ export class Simulation {
         } else {
           const lead = p.pos.clone().addScaledVector(p.vel, Math.min(distance / 850, 1.1));
           // Attack along the coast at a safe altitude; weapon guidance still aims at the hull.
-          if (this.vehicle === 'destroyer') lead.y = Math.max(350, terrainHeight(lead.x, lead.z) + 350);
+          if (surfaceTarget) lead.y = Math.max(350, terrainHeight(lead.x, lead.z) + 350);
           lead.sub(e.pos);
           desiredHeading = Math.atan2(-lead.x, -lead.z);
           desiredPitch = clamp(Math.atan2(lead.y, Math.hypot(lead.x, lead.z)), -0.5, 0.5);
@@ -921,7 +1058,7 @@ export class Simulation {
         const delta = e.pos.clone().sub(p.pos).normalize();
         e.pos.copy(p.pos).addScaledVector(delta, 3500);
       }
-      if (this.vehicle === 'destroyer') {
+      if (surfaceTarget) {
         const minimumAltitude = Math.max(300, terrainHeight(e.pos.x, e.pos.z) + 300);
         if (e.pos.y < minimumAltitude) {
           e.pos.y = minimumAltitude;
@@ -931,8 +1068,8 @@ export class Simulation {
       }
       if (e.passive) continue;
       const aim = forward(e.heading, e.pitch).dot(toPlayer.normalize());
-      if (e.burstCooldown <= 0 && aim > (this.vehicle === 'destroyer' ? 0.93 : 0.978)
-        && distance < (this.vehicle === 'destroyer' ? 2100 : 1300) && distance > 140) {
+      if (e.burstCooldown <= 0 && aim > (surfaceTarget ? 0.93 : 0.978)
+        && distance < (surfaceTarget ? 2100 : 1300) && distance > 140) {
         e.burst = 4;
         e.burstCooldown = 2.8 + this._random() * 1.5;
       }
@@ -943,12 +1080,14 @@ export class Simulation {
         lead.x += (this._random() - 0.5) * 0.017;
         lead.y += (this._random() - 0.5) * 0.017;
         this._addTracer(e.pos, lead.normalize(), e.vel, true);
+        this.tracers.at(-1).targetId = p.id || 'player';
       }
-      if (e.missileTimer <= 0 && aim > (this.vehicle === 'destroyer' ? 0.8 : 0.91)
-        && distance > 550 && distance < (this.vehicle === 'destroyer' ? 3800 : 2600) && p.flareTime === 0 && this.incoming < 2) {
+      if (e.missileTimer <= 0 && aim > (surfaceTarget ? 0.8 : 0.91)
+        && distance > 550 && distance < (surfaceTarget ? 3800 : 2600) && !p.flareTime
+        && this.missiles.filter(m => m.enemy && !m.decoy && m.targetId === (p.id || 'player')).length < 2) {
         e.missileTimer = this.settings.missileEvery + this._random() * 8;
-        this._addMissile(e, true, 'player');
-        this._emit('toast', { text: '导弹来袭！释放热诱饵并大幅转弯。' });
+        this._addMissile(e, true, p.id || 'player');
+        if (p === this.player) this._emit('toast', { text: '导弹来袭！释放热诱饵并大幅转弯。' });
         this._emit('missile', { enemy: true });
       }
     }
@@ -1125,11 +1264,12 @@ export class Simulation {
           if(missile.interceptHealth<=0){missile.life=0;this.player.interceptions++;this._explosion(missile.pos,5);this._emit('toast',{text:'近防炮拦截成功'});}
         }
       } else if (t.enemy) {
-        const hit = this.vehicle === 'destroyer' ? segmentShipEntry(this.player, t.prev, t.pos, 2)
-          : segmentSphereEntry(this.player.pos, t.prev, t.pos, 15);
+        const target = this._friendlyTarget(t.targetId || 'player');
+        const hit = !target ? null : target.kind !== 'aircraft' ? segmentShipEntry(target, t.prev, t.pos, 2)
+          : segmentSphereEntry(target.pos, t.prev, t.pos, 15);
         if (hit !== null && (terrain === null || hit < terrain)) {
           t.life = 0;
-          this._damagePlayer((t.damage || 6.5) * this.settings.damage);
+          this._damageFriendly(target, (t.damage || 6.5) * this.settings.damage);
         }
       } else {
         let target = null, firstHit = terrain ?? Infinity;
@@ -1141,7 +1281,7 @@ export class Simulation {
         }
         if (target) {
           const damage = t.damage || 24;
-          target.health -= damage; target.hitFlash = 1; this.hits += 1;
+          target.health -= damage; target.hitFlash = 1; if (!t.allied) this.hits += 1;
           const impact = t.prev.clone().lerp(t.pos, firstHit);
           this._emit('hit', { id: target.id, pos: impact, damage, kind: target.kind, shipType: target.shipType });
           this._spark(impact, target.kind === 'ship' ? 7 : 3);
@@ -1316,7 +1456,7 @@ export class Simulation {
     }
     let diverted = 0;
     for (const m of this.missiles) {
-      if (!m.enemy || m.decoy || m.pos.distanceTo(p.pos) > 3000) continue;
+      if (!m.enemy || (m.targetId && m.targetId !== 'player') || m.decoy || m.pos.distanceTo(p.pos) > 3000) continue;
       m.decoy = p.pos.clone().addScaledVector(backwards, 150).add(new THREE.Vector3(100, ship ? 12 : -95, 0));
       m.decoyLife = 2.8;
       m.targetId = null;
@@ -1335,7 +1475,7 @@ export class Simulation {
       m.smokeTimer -= dt;
       m.prev.copy(m.pos);
       if (m.weapon === 'anti-ship') { this._updateAntiShipMissile(m, dt); continue; }
-      let target = m.enemy ? this.player : this.enemies.find(e => e.id === m.targetId && e.health > 0 && e.kind !== 'ship');
+      let target = m.enemy ? this._friendlyTarget(m.targetId || 'player') : this.enemies.find(e => e.id === m.targetId && e.health > 0 && e.kind !== 'ship');
       if (m.store === 'aim7' && target) {
         const radarAligned = forward(this.player.heading, this.player.pitch).dot(target.pos.clone().sub(this.player.pos).normalize()) > Math.cos(STORES.aim7.cone * Math.PI / 180);
         if (this.targetId !== target.id || !radarAligned || target.pos.distanceTo(this.player.pos) > STORES.aim7.range
@@ -1367,12 +1507,11 @@ export class Simulation {
         m.smokeTimer = 0.065;
         this._particle(m.pos, 'smoke', 1.5, 4, new THREE.Vector3(0, 2, 0));
       }
-      if (target && (m.enemy && this.vehicle === 'destroyer' ? segmentHitsShip(this.player, m.prev, m.pos, 8)
+      if (target && (m.enemy && target.kind !== 'aircraft' ? segmentHitsShip(target, m.prev, m.pos, 8)
         : segmentDistanceSq(target.pos, m.prev, m.pos) < (m.enemy ? 24 : 30) ** 2)) {
         m.life = 0;
         this._explosion(m.pos, m.enemy ? 10 : 14);
-        if (m.enemy) this._damagePlayer(33 * this.settings.damage,
-          this.vehicle === 'destroyer' ? '反舰导弹命中 · 释放诱饵并转舵规避' : '导弹命中 · 检查机体并规避来袭方向');
+        if (m.enemy) this._damageFriendly(target, (m.damage || 33) * this.settings.damage);
         else {
           const damage = m.damage || 125;
           target.health -= damage;
@@ -1457,8 +1596,9 @@ export class Simulation {
       if (e.health > 0) continue;
       this.kills += 1;
       const seaTarget = e.kind === 'ship';
+      if (this.campaignState) this.campaignState[seaTarget ? 'shipKills' : 'airKills']++;
       const points = this.mode === 'training' || this.mode === 'naval-training' ? 100
-        : seaTarget ? (e.shipType === 'frigate' ? 260 : 180) + this.wave * 25 : 150 + this.wave * 25;
+        : seaTarget ? (e.shipType === 'destroyer' ? 340 : e.shipType === 'frigate' ? 260 : 180) + this.wave * 25 : 150 + this.wave * 25;
       this.score += points;
       this._explosion(e.pos.clone().add(new THREE.Vector3(0, seaTarget ? e.aimHeight : 0, 0)), seaTarget ? 30 : 22);
       this._emit('kill', { id: e.id, pos: e.pos.clone(), points, kills: this.kills, kind: e.kind, shipType: e.shipType });
@@ -1476,7 +1616,7 @@ export class Simulation {
   }
 
   _updateThreat() {
-    this.incoming = this.missiles.filter(m => m.enemy && !m.decoy && m.life > 0).length;
+    this.incoming = this.missiles.filter(m => m.enemy && (!m.targetId || m.targetId === 'player') && !m.decoy && m.life > 0).length;
     let threat = 0;
     for (const e of this.enemies) {
       if (e.passive) continue;
@@ -1528,37 +1668,34 @@ export class Simulation {
     if (this.state !== 'playing') return;
     const level = campaignLevel(this.campaignId), state = this.campaignState;
     if (!level || !state) return;
+    if (this.player.health <= 0) { this._finish(false, 'health'); return; }
+    if (this.carrier && this.carrier.health <= 0) { this._finish(false, 'carrier'); return; }
     while (state.radioIndex < level.radio.length && this.time >= level.radio[state.radioIndex].at) {
       this._emit('toast', { text: level.radio[state.radioIndex++].text });
     }
-    if (level.id === 'shield') {
-      const carrier = this.ambientShips.find(ship => ship.id === state.protectedFleetId);
-      if (carrier) state.objectivePos.copy(carrier.pos).setY(18);
+    if (this.carrier) {
+      state.objectivePos.copy(this.carrier.pos).setY(18);
       const distance = Math.hypot(this.player.pos.x - state.objectivePos.x, this.player.pos.z - state.objectivePos.z);
       const outside = distance > level.guardRadius;
-      if (outside && state.outsideFor === 0) this._emit('toast', { text: '塔台：你已离开护航空域。10 秒内返回绿色标记！' });
+      if (outside && state.outsideFor === 0) this._emit('toast', { text: `塔台：你已离开护航空域。${level.abandonAfter} 秒内返回绿色标记！` });
       state.outsideFor = outside ? state.outsideFor + dt : 0;
-      if (!outside) state.guardElapsed += dt;
       if (state.outsideFor >= level.abandonAfter) { this._finish(false, 'airspace'); return; }
-      if (!outside && state.guardElapsed >= level.guardDuration && this.kills >= level.minimumKills) { this._finish(true); return; }
-      if (this.time >= level.timeLimit) { this._finish(false, 'time'); return; }
-      if (this.time >= state.nextReinforcement && this.enemies.length <= 4) {
-        this._spawnWave(); state.nextReinforcement = this.time + level.reinforcementEvery;
-      }
-      return;
     }
     // A valid final kill on the time boundary takes precedence over timeout.
-    if (!this.enemies.length && this.wave >= level.waves.length
-      && (!level.commanderWave || state.commanderDown)) { this._finish(true); return; }
+    if (!this._spawnIncomplete && !this.enemies.length && this.wave >= level.waves.length
+      && state.airKills >= level.airTotal && state.shipKills >= level.shipTotal
+      && (!level.commanderWave || state.commanderDown)
+      && (!this.carrier || state.retreatElapsed >= level.escortDuration && state.outsideFor === 0)) { this._finish(true); return; }
     if (level.timeLimit && this.time >= level.timeLimit) { this._finish(false, 'time'); return; }
-    if (!this.enemies.length) {
+    if (!this.enemies.length && this.wave < level.waves.length && !this._spawnIncomplete) {
       if (this._waveDelay < 0) {
         this._waveDelay = 4.5;
         const p = this.player;
         p.health = Math.min(p.maxHealth, p.health + 25); p.ammo = Math.min(p.systems.maxAmmo, p.ammo + 320);
-        this._refillAircraftStores(); p.fuelKg = Math.min(p.systems.fuelCapacity, p.fuelKg + 700);
+        this._refillAircraftStores(true); p.fuelKg = Math.min(p.systems.fuelCapacity, p.fuelKg + 1000);
         p.flares = Math.min(p.systems.maxFlares + (this.difficulty === 'easy' ? 2 : 0), p.flares + 3);
         p.heat = 0; p.overheated = false; this._lowAmmoAnnounced = false;
+        for (const ally of this.allies) { ally.health = Math.min(ally.maxHealth, ally.health + 25); ally.seaMissiles = 1; }
         this._emit('toast', { text: '塔台：本批目标已清除。修复与补给完成，准备迎击下一批。' });
       }
       this._waveDelay -= dt;
@@ -1571,6 +1708,7 @@ export class Simulation {
     this.state = won ? 'won' : 'lost';
     this.endReason = won ? '' : reason || 'health';
     if (won) this.score += Math.round(this.player.health * 5);
+    else if (reason === 'carrier') this._explosion(this.carrier.pos, 35);
     else if (this.player.health <= 0) this._explosion(this.player.pos, 25);
     this._emit('result', { won, reason: this.endReason, score: this.score, kills: this.kills, time: this.time, accuracy: this.shots ? this.hits / this.shots : 0 });
   }

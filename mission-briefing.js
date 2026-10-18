@@ -1,4 +1,4 @@
-import { CAMPAIGN_LEVELS, campaignLevel, campaignUnlocked } from './campaign.js';
+import { CAMPAIGN_TITLE, CAMPAIGN_LEVELS, campaignLevel, campaignUnlocked } from './campaign.js';
 import { DEFAULT_MAP_ID, getMap } from './maps.js';
 import { isShipVehicle } from './ship-systems.js';
 import { sampleFleetRoute } from './ambient-fleet.js';
@@ -6,13 +6,14 @@ import { sampleFleetRoute } from './ambient-fleet.js';
 export const BRIEFING_PAGES = Object.freeze(['战斗简介', '剧本细节', '部署情况', '任务目标']);
 export const SORTIE_MODES = Object.freeze([
   { id: 'quick', title: '快速任务', english: 'QUICK SORTIE', description: '独立任务 · 自由选择战场' },
-  { id: 'campaign', title: '战役模式', english: 'STORY CAMPAIGN', description: '北境航线 · 连续剧情与章节' },
+  { id: 'campaign', title: '战役模式', english: 'STORY CAMPAIGN', description: `${CAMPAIGN_TITLE} · 十关海空战役` },
   { id: 'training', title: '训练模式', english: 'TRAINING', description: '飞行训练 · 海上射击' },
 ]);
 
 export function missionChoices(category, vehicle = 'aircraft') {
   const ship = isShipVehicle(vehicle);
-  if (category === 'campaign') return CAMPAIGN_LEVELS.map(level => ({ id: level.id, title: level.title, subtitle: level.subtitle }));
+  if (category === 'campaign') return CAMPAIGN_LEVELS.map(level => ({ id: level.id, title: level.title,
+    subtitle: `${getMap(level.mapId).name} · ${level.subtitle} · +${level.rewardPoints} 点` }));
   if (category === 'training') return [
     { id: 'training', title: ship ? '初次出航' : '初次升空', subtitle: ship ? '航行与对空训练' : '飞行与空空训练' },
     { id: 'naval-training', title: ship ? '舰炮训练' : '反舰训练', subtitle: '两艘静止靶舰 · 熟悉对海操作' },
@@ -29,33 +30,31 @@ export function missionBriefing({ mode = 'intercept', chapter = 'dawn', vehicle 
   const ship = isShipVehicle(vehicle), level = mode === 'campaign' ? campaignLevel(chapter) : null;
   const naval = mode === 'naval' || mode === 'naval-training';
   const training = mode === 'training' || mode === 'naval-training';
-  const area = getMap(level ? DEFAULT_MAP_ID : map);
+  const area = getMap(level ? level.mapId : map);
   let blocked = level && !campaignUnlocked(progress, level.id) ? '完成前一章后解锁出击，可先阅读全部简报。' : '';
-  if (mode === 'campaign' && ship) blocked = '北境航线是战机战役，请返回机库选择战机。';
-  if (naval && !ship && !hasAntiShip) blocked = '对海任务需要反舰导弹，请返回机库整备。';
+  if (mode === 'campaign' && ship) blocked = `${CAMPAIGN_TITLE}是战机战役，请返回机库选择战机。`;
+  if ((naval || level?.shipTotal) && !ship && !hasAntiShip) blocked = '本关有水面目标，需要反舰导弹，请返回机库整备。';
   const common = { mode, chapter: level?.id, map: area, ship, naval, training, blocked, canLaunch: !blocked,
     location: level?.location || area.subtitle, recommended: level ? '战斗机' : ship ? '驱逐舰' : '战斗机',
     spawn: level?.spawn || [0, ship ? 18 : naval ? 450 : 1100, 4000],
-    fleet: level?.id === 'shield' ? sampleFleetRoute('US', 0) : null,
+    fleet: level?.escortDuration ? sampleFleetRoute('US', 0) : null,
     radius: level?.guardRadius || null,
   };
   if (level) {
-    const total = level.waves.reduce((n, count) => n + count, 0);
-    const shield = level.id === 'shield';
-    return { ...common, title: level.title, subtitle: level.subtitle, code: `CHAPTER ${String(level.number).padStart(2, '0')} / ${level.tag}`,
+    return { ...common, mixed: level.shipTotal > 0, wingmen: level.wingmen, rewardPoints: level.rewardPoints, escortDuration: level.escortDuration,
+      title: level.title, subtitle: level.subtitle, code: `CHAPTER ${String(level.number).padStart(2, '0')} / ${CAMPAIGN_LEVELS.length} · ${level.tag}`,
       story: level.story, description: level.briefing, time: level.timeLimit ? `${level.timeLimit} 秒` : '不限时',
       objectives: [...level.objectives, ...(level.objectives.some(s => s.includes('存活')) ? [] : ['保持机体存活'])],
-      failures: ['机体被击毁', ...(shield ? [`连续离开防区 ${level.abandonAfter} 秒`] : []), ...(level.timeLimit ? [`${level.timeLimit} 秒内未完成全部目标`] : [])],
-      rules: level.rules, enemy: shield ? '持续增援的灰潮无人机' : `${total} 架灰潮无人机${level.commanderWave ? '（含指挥机）' : ''}`,
-      threats: level.enemyMissiles ? '敌机使用机炮与导弹' : '敌机仅使用机炮',
-      steps: shield ? [
-        ['进入护航空域', `留在护航标记 ${level.guardRadius / 1000} km 范围内。`],
-        ['应对持续来袭', `每 ${level.reinforcementEvery} 秒进入新一批，空中最多 6 架。`],
-        ['坚守并清除目标', `防区内累计坚守 ${level.guardDuration} 秒，击落至少 ${level.minimumKills} 架。`],
-      ] : [
-        ['进入指定空域', level.location],
-        ['分批迎击目标', `${level.waves.length} 批共 ${total} 架，批次间获得补给。`],
-        [level.commanderWave ? '切断指挥节点' : '肃清先遣机群', level.commanderWave ? '击落强化指挥机后，仍需清除全部护航机。' : '清除全部目标，并保持机体存活。'],
+      failures: ['机体被击毁', ...(level.escortDuration ? ['企业号被击沉', `连续离开防区 ${level.abandonAfter} 秒`] : []), ...(level.timeLimit ? [`${level.timeLimit} 秒内未完成全部目标`] : [])],
+      rules: level.rules, enemy: `${level.airTotal} 架敌机${level.shipTotal ? `与 ${level.shipTotal} 艘驱逐舰` : ''}${level.commanderWave ? '（含强化指挥机）' : ''}`,
+      threats: level.shipTotal ? '敌机机炮与导弹、驱逐舰防空导弹' : level.enemyMissiles ? '敌机使用机炮与导弹' : '敌机仅使用机炮',
+      steps: [
+        ['四机小队出击', `${level.location}，玩家与三架自主交战僚机协同。`],
+        ['五波海空交战', `每波敌机 ${level.waves.join(' / ')} 架；驱逐舰 ${level.shipWaves.join(' / ')} 艘。清空整波后修复并补满出击挂载。`],
+        [level.escortDuration ? '保护航母撤退' : level.commanderWave ? '切断指挥节点' : '肃清目标', level.escortDuration
+          ? `航母 ${level.carrierHealth} HP；撤离 ${level.retreatDistance / 1000} km / ${level.escortDuration} 秒，防区 ${level.guardRadius / 1000} km。全歼敌人且航母存活并抵达出口后通关。`
+          : level.commanderWave ? `第 ${level.commanderWave} 波击落强化指挥机后，仍需清除全部护航目标。` : '清除全部目标，并保持玩家机体存活。'],
+        ['领取通关奖励', `每次通关 +${level.rewardPoints} 升级点，另计战斗改装点与 XP；在机库升级引擎、火力、防御与机动。`],
       ], radio: level.radio[0]?.text,
     };
   }

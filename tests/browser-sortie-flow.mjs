@@ -51,34 +51,34 @@ try {
   });
   await check('Locked chapters allow all four briefing pages but cannot launch or mutate the campaign', async () => {
     await p.click('[data-category="campaign"]'); await next(p);
-    assert.equal(await p.locator('[data-mission]').count(), 3); await p.click('[data-mission="finale"]'); await next(p);
+    assert.equal(await p.locator('[data-mission]').count(), 10); await p.click('[data-mission="finale"]'); await next(p);
     for (let page = 0; page < 4; page++) { await p.click(`[data-brief-page="${page}"]`); assert.equal((await snapshot(p)).state, 'menu'); }
     assert.equal(await p.locator('[data-flow-action="next"]').isDisabled(), true);
     assert.match(await p.locator('.sortie-blocked').innerText(), /解锁/);
-    assert.equal(await p.evaluate(() => localStorage.getItem('frostline-campaign-v1')), null);
+    assert.equal(await p.evaluate(() => localStorage.getItem('frostline-campaign-v2')), null);
     await p.locator('.sortie-header .flow-back').click(); await p.click('[data-mission="dawn"]'); await shot(p, '03-campaign-selection');
   });
   await check('The four-step briefing launches the actual first chapter only after final confirmation', async () => {
-    await next(p); assert.equal(await p.locator('#sortieTitle').innerText(), '晨雾警报');
+    await next(p); assert.equal(await p.locator('#sortieTitle').innerText(), '演习惊变');
     for (let page = 0; page < 3; page++) { assert.equal((await snapshot(p)).page, page); await next(p); }
     assert.equal((await snapshot(p)).state, 'menu'); await next(p);
-    const s = await snapshot(p); assert.equal(s.state, 'playing'); assert.equal(s.chapter, 'dawn'); assert.equal(s.enemies, 2);
+    const s = await snapshot(p); assert.equal(s.state, 'playing'); assert.equal(s.chapter, 'dawn'); assert.equal(s.enemies, 4);
     assert.equal(s.map, 'north-atlantic'); assert.equal(s.input, true); assert.equal(await p.locator('#sortieFlow').isVisible(), false); assert.equal(s.gl, 0);
   });
   await check('A completed chapter opens next-chapter briefing and its real defense rules before launching', async () => {
     await p.evaluate(() => {
       const { sim, result } = window.__sortieQA;
-      for (let wave = 0; wave < 3 && sim.state === 'playing'; wave++) {
+      for (let wave = 0; wave < 5 && sim.state === 'playing'; wave++) {
         sim.enemies.forEach(e => e.health = 0); sim.update(1 / 60);
         for (let step = 0; step < 300 && !sim.enemies.length && sim.state === 'playing'; step++) sim.update(1 / 60);
       }
       if (sim.state !== 'won') throw Error('Victory fixture did not complete chapter'); result();
     });
     await p.click('#campaignNextBtn'); assert.equal((await snapshot(p)).state, 'menu'); assert.equal((await snapshot(p)).screen, 'briefing');
-    assert.equal(await p.locator('#sortieTitle').innerText(), '舰队上空'); await shot(p, '04-briefing-overview');
-    await next(p); assert.match(await p.locator('.briefing-details').innerText(), /22 秒/); await shot(p, '05-scenario-details');
-    await next(p); assert.match(await p.locator('.deployment-chart').innerText(), /4.5 km/); await shot(p, '06-deployment');
-    await next(p); assert.match(await p.locator('.mission-failure').innerText(), /10 秒.*150 秒/); await shot(p, '07-objectives');
+    assert.equal(await p.locator('#sortieTitle').innerText(), '断后航线'); await shot(p, '04-briefing-overview');
+    await next(p); assert.match(await p.locator('.briefing-details').innerText(), /五波/); await shot(p, '05-scenario-details');
+    await next(p); assert.match(await p.locator('.deployment-chart').innerText(), /6.5 km/); await shot(p, '06-deployment');
+    await next(p); assert.match(await p.locator('.mission-failure').innerText(), /20 秒.*660 秒/); await shot(p, '07-objectives');
   });
   await check('Readiness changes return to the same final briefing; keyboard page navigation and confirmation preserve chapter', async () => {
     await p.click('[data-flow-action="workshop"]'); assert.equal(await p.locator('#workshopPanel').isVisible(), true);
