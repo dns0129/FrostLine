@@ -637,8 +637,10 @@ export class Simulation {
     // Elevator rotates about the aircraft's own wing axis. Its world-space pitch
     // component reverses when inverted; its horizontal component tightens a banked turn.
     // Project the small stability correction too, so it never commands an inverted climb.
-    p.pitchRate = smooth(p.pitchRate, pitch * systems.pitchRate * authority - p.pitch * 0.075 * bankCos, 3.9 * systems.response, dt);
-    p.pitch = clamp(p.pitch + p.pitchRate * bankCos * dt, -1.36, 1.36);
+    p.pitchRate = smooth(p.pitchRate, pitch * systems.pitchRate * authority - Math.sin(p.pitch) * 0.075 * bankCos, 3.9 * systems.response, dt);
+    // Keep the full pitch circle: Euler YXZ and forward() both support
+    // passing through vertical and inverted flight without a hard pitch stop.
+    p.pitch = wrap(p.pitch + p.pitchRate * bankCos * dt);
     const turnLoad = clamp(1 / Math.max(0.22, Math.abs(Math.cos(p.bank))), 1, 4.2);
     const turnRate = 9.81 * turnLoad * bankSin / Math.max(95, p.speed);
     const elevatorTurn = p.pitchRate * bankSin * 0.55;
