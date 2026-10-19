@@ -1,5 +1,6 @@
 // Public F/A-18C and J-16 compatibility and masses; game ranges/handling are scaled for
 // the existing island arena. Sources and approximation boundaries: docs/aircraft-systems.md.
+import { campaignLevel } from './campaign.js';
 const freeze = value => {
   if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
   return value;
@@ -181,9 +182,10 @@ export function effectiveAircraft(aircraftId, profile, loadout, definition = air
 }
 export function sortieReward(profile, sortie) {
   const p = normalizeWorkshop(profile);
-  if (sortie.vehicle === 'destroyer' || ['training', 'naval-training'].includes(sortie.mode) || (!sortie.won && !sortie.kills)) return { profile: p, credits: 0, xp: 0 };
+  if (sortie.vehicle === 'destroyer' || ['training', 'naval-training'].includes(sortie.mode) || (!sortie.won && !sortie.kills)) return { profile: p, credits: 0, xp: 0, completionCredits: 0 };
   const kills = boundedInt(sortie.kills, 10000), score = boundedInt(sortie.score, 10000000);
-  const xp = kills * 100 + (sortie.won ? 300 : 0), credits = 100 + kills * 60 + Math.min(500, Math.floor(score / 20)) + (sortie.won ? 300 : 0);
+  const completionCredits = sortie.won && sortie.mode === 'campaign' ? campaignLevel(sortie.chapter)?.rewardPoints || 0 : 0;
+  const xp = kills * 100 + (sortie.won ? 300 : 0), credits = 100 + kills * 60 + Math.min(500, Math.floor(score / 20)) + (sortie.won ? 300 : 0) + completionCredits;
   p.credits = Math.min(100000000, p.credits + credits); p.xp = Math.min(100000000, p.xp + xp);
-  return { profile: p, credits, xp };
+  return { profile: p, credits, xp, completionCredits };
 }

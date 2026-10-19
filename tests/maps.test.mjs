@@ -7,8 +7,8 @@ import { NAVAL_MODELS } from '../naval-models.js';
 
 test.afterEach(() => setActiveMap(DEFAULT_MAP_ID));
 
-test('five immutable map definitions retain metre scale and stable legacy island imports', () => {
-  assert.deepEqual(MAPS.map(map => map.id), ['north-atlantic', 'ice-ocean', 'city-bay', 'nile-red-sea', 'glacial-sea']);
+test('ten immutable map definitions retain metre scale and stable legacy island imports', () => {
+  assert.deepEqual(MAPS.map(map => map.id), ['north-atlantic', 'ice-ocean', 'city-bay', 'nile-red-sea', 'glacial-sea', 'storm-strait', 'island-chain', 'dusk-gulf', 'volcanic-front', 'polar-night']);
   const reference = ISLANDS;
   for (const map of MAPS) {
     assert.ok(Object.isFrozen(map) && Object.isFrozen(map.islands));

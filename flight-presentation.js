@@ -1,4 +1,4 @@
-const COLLECTIONS = ['enemies', 'missiles', 'tracers', 'particles'];
+const COLLECTIONS = ['enemies', 'allies', 'missiles', 'tracers', 'particles'];
 const VECTORS = ['pos', 'position', 'prev', 'vel'];
 const ANGLES = ['heading', 'pitch', 'bank', 'turretHeading'];
 const SCALARS = [...ANGLES, 'turretPitch', 'rudder', 'speed', 'time'];
@@ -40,7 +40,7 @@ export class FlightPresentation {
     this._sim = sim;
     this._player = sim.player;
     this._records = new WeakMap();
-    this._view = {player: {}, enemies: [], missiles: [], tracers: [], particles: []};
+    this._view = {player: {}, enemies: [], allies: [], missiles: [], tracers: [], particles: []};
     this._step = 0;
     this._capture(sim);
   }

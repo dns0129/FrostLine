@@ -2,7 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { NAVAL_MODELS, makeNavalShip } from './naval-models.js';
 import { getQualityPreset } from './quality.js';
 
-// Scene-only fleets. These IDs never enter combat targeting, scoring or waves.
+// Scene fleets; campaign escort sorties additionally protect US-CVN-65.
 export const DEFAULT_FLEET = Object.freeze([
   Object.freeze({ id: 'US-CVN-65', type: 'enterprise', country: 'US', number: '65', right: 0, aft: 0 }),
   Object.freeze({ id: 'US-DDG-51', type: 'burke', country: 'US', number: '51', right: -300, aft: -320 }),
@@ -125,10 +125,11 @@ export class AmbientFleet {
     time = Number.isFinite(time) ? time : 0;
     for (let i = 0; i < this.ships.length; i++) {
       const { model, wake } = this.ships[i], ship = fleet[i]; if (!ship || ship.id !== this.ships[i].id) continue;
+      model.visible = ship.health === undefined || ship.health > 0;
       const carrier = model.userData.kind === 'carrier', phase = time * .45 + i * .91;
       model.position.copy(ship.pos); model.position.y += Math.sin(phase) * (carrier ? .12 : .2);
       model.rotation.set(Math.sin(phase * .9) * .0018, ship.heading, Math.sin(phase * 1.1) * .0025, 'YXZ');
-      wake.position.copy(ship.pos); wake.position.y = .09; wake.rotation.y = ship.heading; wake.visible = ship.speed > .5;
+      wake.position.copy(ship.pos); wake.position.y = .09; wake.rotation.y = ship.heading; wake.visible = model.visible && ship.speed > .5;
     }
     for (const a of this._wakeResources) a.time.value = time;
   }

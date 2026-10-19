@@ -5,11 +5,11 @@ import { missionBriefing, missionChoices, BRIEFING_PAGES } from '../mission-brie
 import { DEFAULT_MAP_ID } from '../maps.js';
 import { sampleFleetRoute } from '../ambient-fleet.js';
 
-test('each campaign briefing reflects its actual limits, objectives, waves and original geography', () => {
+test('each campaign briefing reflects its actual limits, objectives, waves and chapter geography', () => {
   let progress = normalizeCampaignProgress(null);
   for (const level of CAMPAIGN_LEVELS) {
     const b = missionBriefing({ mode: 'campaign', chapter: level.id, map: 'city-bay', progress });
-    assert.equal(b.map.id, DEFAULT_MAP_ID);
+    assert.equal(b.map.id, level.mapId);
     assert.deepEqual(b.spawn, level.spawn);
     assert.equal(b.description, level.briefing);
     assert.equal(b.time, level.timeLimit ? `${level.timeLimit} 秒` : '不限时');
@@ -19,14 +19,16 @@ test('each campaign briefing reflects its actual limits, objectives, waves and o
   }
 });
 
-test('defense deployment shows the moving fleet initial location and exact failure thresholds', () => {
+test('retreat briefing shows a vulnerable carrier, mixed waves, exit and failure thresholds', () => {
   const b = missionBriefing({ mode: 'campaign', chapter: 'shield' });
   assert.deepEqual(b.fleet, sampleFleetRoute('US', 0));
-  assert.equal(b.radius, 4500);
-  assert.ok(b.failures.includes('连续离开防区 10 秒'));
-  assert.ok(b.failures.includes('150 秒内未完成全部目标'));
-  assert.match(b.steps[1][1], /22 秒/);
-  assert.match(b.steps[2][1], /90 秒.*6 架/);
+  assert.equal(b.radius, 6500); assert.equal(b.rewardPoints, 650); assert.equal(b.wingmen, 3);
+  assert.ok(b.failures.includes('连续离开防区 20 秒'));
+  assert.ok(b.failures.includes('企业号被击沉'));
+  assert.ok(b.failures.includes('660 秒内未完成全部目标'));
+  assert.match(b.enemy, /20 架.*2 艘驱逐舰/);
+  assert.match(b.steps[2][1], /2200 HP.*180 秒/);
+  assert.equal(missionBriefing({ mode: 'campaign', chapter: 'shield', hasAntiShip: false }).canLaunch, false);
 });
 
 test('locked chapters remain readable while launch authorization requires ordered progress and a plane', () => {
@@ -60,5 +62,6 @@ test('missing aircraft anti-ship stores block only sea tasks, without blocking a
   assert.equal(missionBriefing({ mode: 'naval', hasAntiShip: false }).canLaunch, false);
   assert.equal(missionBriefing({ mode: 'naval-training', vehicle: 'j16', hasAntiShip: false }).canLaunch, false);
   assert.equal(missionBriefing({ mode: 'intercept', hasAntiShip: false }).canLaunch, true);
+  assert.equal(missionBriefing({ mode: 'campaign', chapter: 'dawn', hasAntiShip: false }).canLaunch, true);
   assert.equal(missionBriefing({ mode: 'naval', vehicle: 'type052d', hasAntiShip: false }).canLaunch, true);
 });

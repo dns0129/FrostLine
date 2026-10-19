@@ -265,6 +265,62 @@ export const MAPS = freeze([
     palette: { ...palette, rock: '#5b5f63', cliff: '#40454a', talus: '#73766f', mineral: '#8a8981', wetRock: '#2b3236', snow: '#eef4f6', shore: '#d4e8ee', deepWater: '#05202b', shallowWater: '#1c5868' },
     theme: { ...theme, skyZenith: '#2f5f8e', skyHorizon: '#d4dfe4', skyBelowHorizon: '#7f9fae', sunTint: '#ffe2c2', waterDeep: '#041c26', waterShallow: '#15495a', coastShallow: '#2c9eb2', waterFoam: '#e6f3f6', cloudTint: '#eef2f5', cloudCoverage: .3, haze: .64, panoramaMix: .4, fogColor: '#b9ccd6', fogDensity: .0000175, sunColor: '#ffe7cc', sunIntensity: 2.7, exposure: .93, snowLine: 420, snowStrength: .45 },
   },
+  {
+    id: 'storm-strait', name: '风暴海峡', englishName: 'STORM STRAIT', subtitle: '阴云 · 双岸峭壁 · 撤离走廊',
+    description: '灰蓝色云层下，两侧峭壁夹着宽阔的深水撤离走廊。', biome: 'north-atlantic',
+    islands: [
+      { x: -5400, z: -2300, radius: 2700, height: 1240, seed: 71.2 },
+      { x: 5500, z: -4600, radius: 2800, height: 1620, seed: 72.7 },
+      { x: -5900, z: 5200, radius: 2700, height: 870, seed: 73.4 },
+      { x: 5900, z: 5300, radius: 2600, height: 1080, seed: 74.8 },
+      { x: 0, z: -21000, radius: 4700, height: 2460, seed: 75.1, distant: true },
+    ], structures: [], features: [], palette,
+    theme: { ...theme, skyZenith: '#344753', skyHorizon: '#9aaab2', cloudCoverage: .72, cloudTint: '#b8c5cb', sunIntensity: 1.8, panoramaMix: .3, fogColor: '#91a7b2' },
+  },
+  {
+    id: 'island-chain', name: '珊瑚群岛', englishName: 'CORAL CHAIN', subtitle: '海岛 · 浅滩 · 蓝绿外海',
+    description: '十座错落的低矮海岛围绕开阔航道，蓝绿浅滩与外海形成清晰层次。', biome: 'bay',
+    islands: Array.from({ length: 10 }, (_, i) => ({ x: (i % 2 ? 1 : -1) * (3900 + i % 3 * 550), z: -8500 + Math.floor(i / 2) * 3500,
+      radius: 850 + i % 3 * 180, height: 180 + i % 4 * 110, seed: 81.3 + i * 1.7 })),
+    structures: [], features: [], palette: { ...palette, rock: '#829b7b', shore: '#d9d7ad', deepWater: '#073e51', shallowWater: '#42a3a0' },
+    theme: { ...theme, skyZenith: '#347eae', skyHorizon: '#bfdcdb', waterDeep: '#073e51', waterShallow: '#42a3a0', cloudCoverage: .16, snowLine: 4000, snowStrength: 0, panoramaMix: .25 },
+  },
+  {
+    id: 'dusk-gulf', name: '暮色海湾', englishName: 'DUSK GULF', subtitle: '暮光 · 长湾 · 舰队转场',
+    description: '暖色暮光照亮长湾，两岸低丘给舰队转场留下开阔出口。', biome: 'bay',
+    islands: [
+      { x: -5700, z: -3200, radius: 2800, height: 740, seed: 101.4 },
+      { x: 6100, z: -1000, radius: 2900, height: 920, seed: 102.8 },
+      { x: -6100, z: 4900, radius: 2300, height: 430, seed: 103.3 },
+      { x: 5800, z: 6200, radius: 2400, height: 520, seed: 104.9 },
+      { x: -4100, z: -18000, radius: 4400, height: 1560, seed: 105.6, distant: true },
+    ], structures: [], features: [], palette: { ...palette, rock: '#989383', shore: '#d8c7a0' },
+    theme: { ...theme, skyZenith: '#4b597c', skyHorizon: '#dfb59a', sunTint: '#ffc78e', sunColor: '#ffd0a1', waterDeep: '#182f42', waterShallow: '#6a7c80', cloudTint: '#dec3b7', exposure: .9, sunIntensity: 2, panoramaMix: .2, snowLine: 3000, snowStrength: 0 },
+  },
+  {
+    id: 'volcanic-front', name: '黑礁火山海', englishName: 'BASALT FRONT', subtitle: '黑岩 · 火山群峰 · 深水屏障',
+    description: '黑色火山峰与断裂岩岸形成舰队防线，中央深水航道仍可穿行。', biome: 'north-atlantic',
+    islands: [
+      { x: -5800, z: -4400, radius: 2900, height: 2180, seed: 111.5 },
+      { x: 5600, z: -6600, radius: 2700, height: 2440, seed: 112.1 },
+      { x: -4900, z: 4200, radius: 1900, height: 1340, seed: 113.7 },
+      { x: 5800, z: 3700, radius: 2300, height: 1780, seed: 114.3 },
+      { x: 0, z: -19000, radius: 4900, height: 2890, seed: 115.9, distant: true },
+    ], structures: [], features: [], palette: { ...palette, rock: '#565b5b', cliff: '#393e42', talus: '#71706a', shore: '#939888', mineral: '#89877b' },
+    theme: { ...theme, skyZenith: '#3b4c63', skyHorizon: '#b0aca8', cloudCoverage: .58, sunTint: '#ffd3ad', snowLine: 3000, snowStrength: 0, panoramaMix: .2, fogColor: '#9dabb2' },
+  },
+  {
+    id: 'polar-night', name: '极夜海盆', englishName: 'POLAR TWILIGHT', subtitle: '暮蓝天空 · 冰壁 · 核心海域',
+    description: '暮蓝色极地天空下，两侧冰壁与远处雪山围出最后一片核心海域。', biome: 'arctic',
+    islands: [
+      { x: -6100, z: -4400, radius: 2900, height: 180, plateauHeight: 70, shape: 'ice-shelf', seed: 121.2 },
+      { x: 6200, z: -2600, radius: 3000, height: 210, plateauHeight: 85, shape: 'ice-shelf', seed: 122.6 },
+      { x: -5600, z: 5400, radius: 2400, height: 150, plateauHeight: 55, shape: 'ice-shelf', seed: 123.4 },
+      { x: 5900, z: 5200, radius: 2400, height: 170, plateauHeight: 62, shape: 'ice-shelf', seed: 124.8 },
+      { x: -2400, z: -19600, radius: 4400, height: 2670, seed: 125.7, distant: true },
+    ], structures: [], features: [], palette: { ...palette, rock: '#91a7bd', cliff: '#678ca7', snow: '#d3e2ed', shore: '#aecbda' },
+    theme: { ...theme, skyZenith: '#172e52', skyHorizon: '#788fae', skyBelowHorizon: '#536c8c', sunTint: '#a9c8ef', sunColor: '#bbd4fa', waterDeep: '#071b30', waterShallow: '#294e70', cloudTint: '#8ca5c1', cloudCoverage: .38, sunIntensity: 1.6, exposure: .87, snowLine: -55, snowStrength: .94, panoramaMix: .1, fogColor: '#718aa4' },
+  },
 ]);
 
 export function getMap(id = DEFAULT_MAP_ID) {

@@ -242,11 +242,15 @@ export class WorldRenderer {
     }
     this.activeVehicle=destroyer?'destroyer':'aircraft';
     const active=new Set();this.enemyWakes??=new Map();
-    for(const e of (sim.enemies||[])){
+    for(const e of [...(sim.enemies||[]),...(sim.allies||[])]){
       if(e.health<=0)continue;active.add(e.id);let model=this.enemies.get(e.id);
-      const ship=e.kind==='ship', type=e.shipType==='frigate'?'frigate':'patrol';
+      const ship=e.kind==='ship', type=e.shipType==='destroyer'?'destroyer':e.shipType==='frigate'?'frigate':'patrol';
       if(model&&(ship!==(model.userData.kind==='ship')||(ship&&model.userData.shipType!==type))){this._removeEnemy(e.id,model);model=null;}
-      if(!model){model=ship?makeEnemyShip(type):makeJet(this.jetAssets,true);this.enemies.set(e.id,model);this.scene.add(model);}
+      if(!model){
+        model=ship?(type==='destroyer'?makeDestroyer():makeEnemyShip(type)):makeJet(this.jetAssets,!e.allied);
+        if(ship&&type==='destroyer'){model.userData.kind='ship';model.userData.shipType=type;}
+        this.enemies.set(e.id,model);this.scene.add(model);
+      }
       model.position.copy(e.pos);model.visible=!menu;
       if(ship){
         model.userData.update(dt,{...e,time:sim.time});model.position.y+=model.userData.waveHeight;
