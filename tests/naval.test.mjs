@@ -79,14 +79,14 @@ test('default naval-training aim hits the forward target and awards one real sin
   assert.deepEqual(first.pos.toArray(), [0, 0.5, 3240]);
   run(sim, 3, { fire: true });
   assert.equal(sim.kills, 1);
-  assert.equal(sim.hits, 3);
+  assert.equal(sim.hits, 7);
   assert.equal(sim.enemies.length, 1);
   assert.equal(sim.enemies[0].shipType, 'frigate');
   assert.equal(sim.lockProgress, 0);
   assert.equal(sim.state, 'playing');
   assert.ok(sim.player.ammo < DESTROYER.maxAmmo);
   const events = sim.drainEvents();
-  assert.ok(events.some(e => e.type === 'hit' && e.kind === 'ship' && e.damage === 45));
+  assert.ok(events.some(e => e.type === 'hit' && e.kind === 'ship' && e.damage === 38.25));
   assert.ok(events.some(e => e.type === 'kill' && e.kind === 'ship' && e.shipType === 'patrol'));
   assert.ok(events.some(e => e.type === 'toast' && /击沉敌舰/.test(e.text)));
   assert.ok(sim.particles.length > 0);
@@ -104,7 +104,7 @@ test('manually traversing the gun finishes both stationary training ships', () =
   }
   assert.equal(sim.state, 'won');
   assert.equal(sim.kills, 2);
-  assert.equal(sim.hits, 7);
+  assert.equal(sim.hits, 17);
   assert.equal(sim.player.health, DESTROYER.maxHealth);
   assert.equal(sim.player.missiles, DESTROYER.maxMissiles);
   assert.equal(sim.enemies.length, 0);
@@ -225,7 +225,7 @@ test('naval gravity compensation and shell lifetime allow a real three-kilometre
   sim.update(DT, { fire: true });
   assert.equal(sim.tracers[0].maxLife, 4.2);
   run(sim, 3.5);
-  assert.equal(target.health, target.maxHealth - 45);
+  assert.equal(target.health, target.maxHealth - 38.25);
   assert.equal(sim.hits, 1);
 });
 
@@ -240,7 +240,7 @@ test('bounded naval lead intercepts a small vessel crossing at 2.7 kilometres', 
   const start = target.pos.clone();
   run(sim, 3.2);
   assert.ok(target.pos.x > start.x + 40, 'the target actually crosses the firing line while the shell travels');
-  assert.equal(target.health, target.maxHealth - 45);
+  assert.equal(target.health, target.maxHealth - 38.25);
   assert.equal(sim.hits, 1);
   assertSafeHull(target);
 });
@@ -344,7 +344,7 @@ test('all three naval waves resupply the correct ship inventory and end after ni
     sim.update(DT);
     if (wave < 3) {
       assert.equal(sim.state, 'playing');
-      assert.equal(sim.player.health, wave === 1 ? 205 : 300);
+      assert.equal(sim.player.health, wave === 1 ? 205 : 310);
       assert.equal(sim.player.ammo, wave === 1 ? 120 : 220);
       assert.equal(sim.player.missiles, wave === 1 ? 7 : 12);
       run(sim, 4.7);
@@ -398,80 +398,64 @@ test('long naval sessions preserve bounded effects, sea clearance and finite ene
   assert.ok(sim.drainEvents().length <= 100);
 });
 
-test('a naval task with no shells or in-flight friendly fire ends clearly without exploding the player', () => {
+test('naval tasks with empty mounted magazines keep free reserve weapons and never lose for ammunition', () => {
   for (const mode of ['naval', 'naval-training']) {
     const sim = naval(mode); sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.player.health = 230;
-    sim.drainEvents(); sim.update(DT);
-    assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'ammo');
-    assert.equal(sim.player.health, 230);
-    assert.equal(sim.particles.length, 0, 'running out of ammunition does not destroy a healthy vessel');
-    assert.equal(sim.enemies.length, 2);
-    const results = sim.drainEvents().filter(event => event.type === 'result');
-    assert.equal(results.length, 1); assert.equal(results[0].reason, 'ammo');
+    const balance = { ...sim.wallet };
+    sim.drainEvents(); sim.update(DT, { fire: true });
+    assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
+    assert.equal(sim.player.ammo, 0); assert.deepEqual(sim.wallet, balance);
+    assert.equal(sim.shots, 1); assert.ok(sim.tracers.some(t => !t.enemy));
+    assert.ok(!sim.drainEvents().some(e => e.type === 'result'));
   }
 });
 
-test('the last missed naval shot gets its full flight before ammunition failure', () => {
-  const sim = naval('naval-training'); sim.player.ammo = 1; sim.player.antiShipMissiles = 0; sim.player.turretHeading = Math.PI;
-  sim.drainEvents(); sim.update(DT, { fire: true });
-  assert.equal(sim.player.ammo, 0); assert.equal(sim.state, 'playing');
-  assert.ok(sim.tracers.some(shell => !shell.enemy && shell.life > 0));
-  const toast = sim.drainEvents().find(event => event.type === 'toast' && /弹药耗尽/.test(event.text));
-  assert.ok(toast && /等待在途武器命中/.test(toast.text));
-  assert.ok(!/使用导弹/.test(toast.text));
-  run(sim, 3);
-  assert.equal(sim.state, 'playing', 'the mission waits for the final shell rather than ending when inventory reaches zero');
-  run(sim, 1.3);
-  assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'ammo');
-  assert.equal(sim.player.health, 300); assert.equal(sim.particles.length, 0);
+test('a missed shell from an empty reserve does not end the mission and another shot remains available', () => {
+  const sim = naval('naval-training'); sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.player.turretHeading = Math.PI;
+  sim.update(DT, { fire: true }); run(sim, 4.5);
+  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, ''); assert.equal(sim.hits, 0);
+  sim._fireGun(); assert.equal(sim.shots, 2); assert.equal(sim.player.ammo, 0);
+  assert.equal(sim.player.health, DESTROYER.maxHealth);
 });
 
-test('the last naval-training shell can still sink the final target and win', () => {
+test('a free reserve shell can sink the final target and win a training sortie', () => {
   const sim = naval('naval-training'); sim.enemies = [sim.enemies[0]];
-  sim.enemies[0].health = 45; sim.player.ammo = 1; sim.player.antiShipMissiles = 0;
-  sim.update(DT, { fire: true });
-  assert.equal(sim.state, 'playing'); assert.equal(sim.player.ammo, 0);
-  run(sim, 2);
+  sim.enemies[0].health = 38.25; sim.player.ammo = 0; sim.player.antiShipMissiles = 0;
+  sim.update(DT, { fire: true }); run(sim, 2);
   assert.equal(sim.state, 'won'); assert.equal(sim.kills, 1); assert.equal(sim.enemies.length, 0);
-  assert.equal(sim.endReason, ''); assert.equal(sim.player.health, 300);
-  const result = sim.drainEvents().find(event => event.type === 'result');
-  assert.equal(result.won, true); assert.notEqual(result.reason, 'ammo');
+  assert.equal(sim.endReason, ''); assert.equal(sim.player.health, DESTROYER.maxHealth);
+  assert.equal(sim.drainEvents().filter(e => e.type === 'result').length, 1);
 });
 
-test('the final shell can clear a campaign wave and receive ammunition before failure is checked', () => {
+test('a reserve shell clears a combat wave and replenishes only the configured physical inventory', () => {
   const sim = naval(); const target = sim.enemies[0]; sim.enemies = [target];
-  target.health = 45; target.passive = true; target.speed = 0; target.vel.set(0, 0, 0);
-  sim.player.ammo = 1; sim.player.antiShipMissiles = 0; sim.player.health = 150;
+  target.health = 38.25; target.passive = true; target.speed = 0; target.vel.set(0, 0, 0);
+  sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.player.health = 150;
   sim.update(DT, { fire: true }); run(sim, 2);
   assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, ''); assert.equal(sim.kills, 1);
-  assert.equal(sim.player.ammo, 100); assert.equal(sim.player.health, 255);
-  assert.equal(sim.player.antiShipMissiles, 3);
-  assert.ok(sim._waveDelay > 0); assert.equal(sim.enemies.length, 0);
-  run(sim, 4.6);
-  assert.equal(sim.state, 'playing'); assert.equal(sim.wave, 2); assert.equal(sim.enemies.length, 3);
-  assert.ok(!sim.drainEvents().some(event => event.type === 'result'));
+  assert.equal(sim.player.ammo, 100); assert.equal(sim.player.health, 255); assert.equal(sim.player.antiShipMissiles, 3);
+  assert.ok(sim._waveDelay > 0); run(sim, 4.6);
+  assert.equal(sim.wave, 2); assert.equal(sim.enemies.length, 3);
 });
 
-test('a final shell that hits but leaves an enemy alive reports ammunition defeat', () => {
-  const sim = naval('naval-training'); sim.enemies = [sim.enemies[0]]; sim.player.ammo = 1; sim.player.antiShipMissiles = 0;
+test('a reserve shell that damages but does not sink a vessel allows continued fire', () => {
+  const sim = naval('naval-training'); sim.enemies = [sim.enemies[0]]; sim.player.ammo = 0;
   sim.update(DT, { fire: true }); run(sim, 2);
-  assert.equal(sim.hits, 1); assert.equal(sim.enemies[0].health, 75);
-  assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'ammo');
-  assert.equal(sim.player.health, 300);
+  assert.equal(sim.hits, 1); assert.equal(sim.enemies[0].health, sim.enemies[0].maxHealth - 38.25);
+  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
+  sim._fireGun(); assert.equal(sim.shots, 2); assert.equal(sim.player.ammo, 0);
 });
 
-test('ammunition outcomes reset on restart and legacy aircraft ammunition rules stay compatible', () => {
-  const sim = naval('naval-training'); sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.update(DT);
-  assert.equal(sim.endReason, 'ammo');
+test('restarts restore physical inventories and hull destruction still loses with unlimited basic ammo', () => {
+  const sim = naval('naval-training');
   for (const vehicle of ['aircraft', 'destroyer']) {
     sim.start('training', 'normal', vehicle); sim.player.ammo = 0;
-    assert.equal(sim.endReason, '');
     run(sim, 2, { fire: true });
-    assert.equal(sim.state, 'playing'); assert.equal(sim.player.missiles, vehicle === 'destroyer' ? 12 : 6);
+    assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
+    assert.ok(sim.shots > 1); assert.equal(sim.player.ammo, 0);
   }
-  sim.start('naval-training'); sim._damagePlayer(300);
-  assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'health');
-  assert.ok(sim.particles.length > 0, 'physical hull destruction keeps its explosion');
+  sim.start('naval-training'); sim._damagePlayer(DESTROYER.maxHealth);
+  assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'health'); assert.ok(sim.particles.length > 0);
 });
 
 test('naval defeat, pause and restart preserve original aircraft and destroyer modes', () => {
@@ -486,12 +470,12 @@ test('naval defeat, pause and restart preserve original aircraft and destroyer m
     sim.start(mode, 'normal', 'aircraft');
     assert.equal(sim.mode, mode); assert.equal(sim.vehicle, 'aircraft');
     assert.ok(sim.enemies.every(e => e.kind === 'aircraft' && e.pos.y > 400));
-    assert.equal(sim.player.pos.y, 1100); assert.equal(sim.player.maxHealth, 100);
+    assert.equal(sim.player.pos.y, 1100); assert.equal(sim.player.maxHealth, 200);
     assert.equal(sim.player.turretHeading, undefined); assert.equal(sim.kills, 0);
     assert.equal(sim.tracers.length, 0); assert.equal(sim.particles.length, 0);
     sim.start(mode, 'easy', 'destroyer');
     assert.equal(sim.player.turretPitch, 0.3);
     assert.ok(sim.enemies.every(e => e.kind === 'aircraft'));
-    assert.equal(sim.player.health, 300);
+    assert.equal(sim.player.health, 600);
   }
 });

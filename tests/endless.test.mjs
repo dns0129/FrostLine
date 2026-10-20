@@ -6,7 +6,7 @@ import { STORES } from '../aircraft-systems.js';
 test('endless grows beyond six enemies and ramps enemy capabilities from easy to hard', () => {
   const sim = new Simulation();
   sim.start('free', 'hard');
-  assert.equal(sim.settings.enemyHealth, 85);
+  assert.equal(sim.settings.enemyHealth, 170);
   assert.equal(sim.enemies.length, 2);
   let lastHealth = 0, lastTurn = 0, lastInterval = Infinity;
   for (let wave = 1; wave <= 12; wave++) {
@@ -20,7 +20,7 @@ test('endless grows beyond six enemies and ramps enemy capabilities from easy to
     sim._updateMission(4.5);
     assert.equal(sim.state, 'playing');
   }
-  assert.equal(lastHealth, 110);
+  assert.equal(lastHealth, 220);
   assert.equal(lastTurn, 0.35);
   assert.equal(lastInterval, 14);
 });

@@ -28,8 +28,8 @@ test('a fresh intercept exposes usable state and reachable targets', () => {
   assert.equal(sim.state, 'playing');
   assert.equal(sim.wave, 1);
   assert.equal(sim.enemies.length, 2);
-  assert.equal(sim.player.health, 100);
-  assert.ok(sim.enemies.every(e => e.pos.distanceTo(sim.player.pos) < 1600));
+  assert.equal(sim.player.health, 200);
+  assert.ok(sim.enemies.every(e => e.pos.distanceTo(sim.player.pos) >= 3800 && e.pos.distanceTo(sim.player.pos) < 5500));
   assert.ok(sim.drainEvents().some(e => e.type === 'wave'));
   assert.equal(sim.drainEvents().length, 0);
 });
@@ -195,7 +195,7 @@ test('AI incoming missile is telegraphed and one flare burst breaks its homing',
   assert.ok(sim.missiles[0].decoy);
   assert.equal(sim.deployFlare(), false);
   run(sim, 3.2);
-  assert.equal(sim.player.health, 100);
+  assert.equal(sim.player.health, 200);
   assert.ok(sim.missiles.every(m => !m.enemy));
 });
 
@@ -236,11 +236,11 @@ test('terrain impact is recoverable; repeated damage eventually ends the sortie'
   sim.player.vel.set(0, -100, -150);
   sim.update(DT);
   assert.equal(sim.state, 'playing');
-  assert.equal(sim.player.health, 65);
+  assert.equal(sim.player.health, 165);
   assert.ok(sim.player.pos.y >= 30);
   sim.update(DT);
-  assert.equal(sim.player.health, 65, 'one collision does not damage again on the next frame');
-  for (let i = 0; i < 2; i++) {
+  assert.equal(sim.player.health, 165, 'one collision does not damage again on the next frame');
+  for (let i = 0; i < 5; i++) {
     run(sim, 2.5);
     sim.player.pos.y = 1;
     sim.player.vel.y = -100;
@@ -277,7 +277,7 @@ test('training targets remain harmless even with a direct firing solution', () =
   target.missileTimer = 0;
   target.burstCooldown = 0;
   run(sim, 20);
-  assert.equal(sim.player.health, 100);
+  assert.equal(sim.player.health, 200);
   assert.equal(sim.incoming, 0);
   assert.equal(sim.threat, 0);
   assert.ok(sim.tracers.every(t => !t.enemy));

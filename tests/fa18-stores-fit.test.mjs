@@ -236,6 +236,8 @@ test('parked and flight stores follow real missile launch, pause and wave resupp
     assert.equal(countStores(parked), 6); assert.equal(countStores(flight), 6);
     const profile = normalizeWorkshop(null); profile.loadouts.fa18c = FIT_LOADOUT.map(slot => ({ ...slot }));
     const sim = new Simulation(7331); sim.configureAircraft(profile, 'fa18c'); sim.start('intercept', 'easy');
+    sim.enemies[0].pos.copy(sim.player.pos).add(new THREE.Vector3(0, 0, -1800));
+    sim.enemies[0].passive = true;
     for (let frame = 0; frame < 90; frame++) sim.update(1 / 60);
     assert.equal(sim.lockProgress, 1); assert.ok(sim.lockTarget?.health > 0);
     assert.equal(sim.launchMissile(), true); assert.equal(sim.player.missiles, 5);

@@ -1,6 +1,8 @@
 // Public F/A-18C and J-16 compatibility and masses; game ranges/handling are scaled for
 // the existing island arena. Sources and approximation boundaries: docs/aircraft-systems.md.
 import { campaignLevel } from './campaign.js';
+import { PLAYER_DAMAGE_SCALE, normalizeEconomy, pilotLevel, UPGRADE_PILOT_LEVELS, boundedCurrency } from './combat-economy.js';
+export { PILOT_XP, pilotLevel } from './combat-economy.js';
 const freeze = value => {
   if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
   return value;
@@ -27,7 +29,7 @@ export const AIRCRAFT = freeze({
   fa18c: {
     id: 'fa18c', name: 'F/A-18C 大黄蜂', shortName: '大黄蜂', role: '标准多用途战斗机', gun: 'M61A1',
     real: { emptyKg: 10455, internalFuelKg: 4930, maxTakeoffKg: 23537, maxPayloadKg: 6215, cannonRounds: 578, engineThrustKN: 157.4 },
-    base: { health: 100, flares: 6, thrust: 43, boostThrust: 31, maxSpeed: 300, boostSpeed: 320, rollRate: 1.8, pitchRate: .64, gunDamage: 24, gunInterval: .078 },
+    base: { health: 200, flares: 6, thrust: 43, boostThrust: 31, maxSpeed: 300, boostSpeed: 320, rollRate: 1.8, pitchRate: .64, gunDamage: 24, gunInterval: .078 },
     // Station weight ceilings are deliberately conservative game envelopes,
     // not a claim to reproduce the aircraft's certified stores-clearance tables.
     stations: [
@@ -56,7 +58,7 @@ export const AIRCRAFT = freeze({
   j16: {
     id: 'j16', name: '歼-16', shortName: '歼-16', role: '重型多用途战斗机', gun: 'GSh-30-1',
     real: { emptyKg: 17700, internalFuelKg: 9400, maxTakeoffKg: 35000, maxPayloadKg: 8000, cannonRounds: 150, engineThrustKN: 270 },
-    base: { health: 125, flares: 8, thrust: 42, boostThrust: 33, maxSpeed: 305, boostSpeed: 330, rollRate: 1.6, pitchRate: .6, gunDamage: 40, gunInterval: .11 },
+    base: { health: 250, flares: 8, thrust: 42, boostThrust: 33, maxSpeed: 305, boostSpeed: 330, rollRate: 1.6, pitchRate: .6, gunDamage: 40, gunInterval: .11 },
     stations: [
       { id: 1, name: '左外翼', x: -6.43, position: [-6.43, .11, 4.6], limitKg: 150, allowed: { pl10: 1 } },
       { id: 2, name: '左内翼', x: -4.81, position: [-4.81, -.04, 3.68], limitKg: 1000, allowed: { pl10: 1, pl15: 1, yj83k: 1 } },
@@ -138,27 +140,26 @@ export const UPGRADE_TRACKS = freeze({
   defense: { name: '防御', detail: '增加机体耐久、减伤和诱饵持续时间。' },
   maneuver: { name: '机动性能', detail: '提高滚转、俯仰响应和低速控制。' },
 });
-export const UPGRADE_COSTS = freeze([300, 600, 1000, 1600, 2400]);
-export const PILOT_XP = freeze([0, 500, 1500, 3500, 7000]);
-export const pilotLevel = xp => PILOT_XP.filter(threshold => threshold <= xp).length;
+export const UPGRADE_COSTS = freeze([300, 700, 1400, 2400, 3800]);
 export function normalizeWorkshop(value) {
   const levels = Object.fromEntries(Object.keys(UPGRADE_TRACKS).map(id => [id, boundedInt(value?.levels?.[id], 5)]));
   const loadouts = Object.fromEntries(Object.keys(AIRCRAFT).map(id => [id, normalizeLoadout(value?.loadouts?.[id], id)]));
-  return { version: 1, credits: value ? boundedInt(value.credits, 100000000) : 1200, xp: boundedInt(value?.xp, 100000000), levels, loadouts };
+  const economy = normalizeEconomy(value);
+  return { version: 2, ...economy, credits: economy.silver, xp: boundedInt(value?.xp, 100000000), levels, loadouts };
 }
 export function upgradeAvailability(profile, track) {
   const p = normalizeWorkshop(profile), level = p.levels[track];
   if (!Object.hasOwn(UPGRADE_TRACKS, track)) return { allowed: false, reason: '未知升级项目。' };
   if (level >= 5) return { allowed: false, reason: '已满级', cost: 0 };
   const cost = UPGRADE_COSTS[level];
-  if (pilotLevel(p.xp) < level + 1) return { allowed: false, cost, reason: `需要指挥官 ${level + 1} 级` };
-  if (p.credits < cost) return { allowed: false, cost, reason: '改装点不足' };
+  if (pilotLevel(p.xp) < UPGRADE_PILOT_LEVELS[level]) return { allowed: false, cost, reason: `需要指挥官 ${UPGRADE_PILOT_LEVELS[level]} 级` };
+  if (p.silver < cost) return { allowed: false, cost, reason: '银币不足' };
   return { allowed: true, cost, reason: '' };
 }
 export function purchaseUpgrade(profile, track) {
   const p = normalizeWorkshop(profile), check = upgradeAvailability(p, track);
   if (!check.allowed) return { ok: false, profile: p, reason: check.reason };
-  p.credits -= check.cost; p.levels[track] += 1;
+  p.silver -= check.cost; p.credits = p.silver; p.levels[track] += 1;
   return { ok: true, profile: p };
 }
 // All aircraft use their own base values, with the same technology multipliers.
@@ -176,16 +177,22 @@ export function effectiveAircraft(aircraftId, profile, loadout, definition = air
     fuelCapacity: r.internalFuelKg + summary.fuelKg, fuelRate: 1 - l.engine * .025,
     rollRate: b.rollRate * (1 + l.maneuver * .055) * handling, pitchRate: b.pitchRate * (1 + l.maneuver * .05) * handling,
     stallSpeed: 94 * (1 - l.maneuver * .012) / Math.sqrt(massFactor), response: 1 + l.maneuver * .055,
-    damageMultiplier: 1 + l.firepower * .055, gunDamage: b.gunDamage * (1 + l.firepower * .055),
+    damageMultiplier: PLAYER_DAMAGE_SCALE * (1 + l.firepower * .055), gunDamage: b.gunDamage * PLAYER_DAMAGE_SCALE * (1 + l.firepower * .055),
     gunInterval: b.gunInterval / (1 + l.firepower * .025), cooling: 1 + l.firepower * .07, lockFactor: 1 / (1 + l.firepower * .06),
   };
 }
 export function sortieReward(profile, sortie) {
-  const p = normalizeWorkshop(profile);
-  if (sortie.vehicle === 'destroyer' || ['training', 'naval-training'].includes(sortie.mode) || (!sortie.won && !sortie.kills)) return { profile: p, credits: 0, xp: 0, completionCredits: 0 };
+  const p = normalizeWorkshop(profile), levelBefore = pilotLevel(p.xp);
+  const empty = { profile: p, credits: 0, silver: 0, gold: 0, xp: 0, completionCredits: 0, levelBefore, levelAfter: levelBefore };
+  if (['training', 'naval-training'].includes(sortie.mode) || (!sortie.won && !sortie.kills)) return empty;
   const kills = boundedInt(sortie.kills, 10000), score = boundedInt(sortie.score, 10000000);
-  const completionCredits = sortie.won && sortie.mode === 'campaign' ? campaignLevel(sortie.chapter)?.rewardPoints || 0 : 0;
-  const xp = kills * 100 + (sortie.won ? 300 : 0), credits = 100 + kills * 60 + Math.min(500, Math.floor(score / 20)) + (sortie.won ? 300 : 0) + completionCredits;
-  p.credits = Math.min(100000000, p.credits + credits); p.xp = Math.min(100000000, p.xp + xp);
-  return { profile: p, credits, xp, completionCredits };
+  const chapter = sortie.mode === 'campaign' ? campaignLevel(sortie.chapter) : null;
+  const completionCredits = sortie.won ? chapter?.rewardPoints || 0 : 0;
+  const xp = kills * 100 + (sortie.won ? 400 : 0);
+  const silver = 100 + kills * 60 + Math.min(500, Math.floor(score / 20)) + (sortie.won ? 300 : 0) + completionCredits;
+  const gold = sortie.mode === 'free' ? Math.floor(boundedInt(sortie.wavesCleared, 10000) / 3) * 2
+    : sortie.won ? chapter ? 10 + chapter.number * 2 : 8 : 0;
+  p.silver = boundedCurrency(p.silver + silver); p.credits = p.silver;
+  p.gold = boundedCurrency(p.gold + gold); p.xp = boundedCurrency(p.xp + xp);
+  return { profile: p, credits: silver, silver, gold, xp, completionCredits, levelBefore, levelAfter: pilotLevel(p.xp) };
 }

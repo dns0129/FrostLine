@@ -49,7 +49,7 @@ test('surface radar needs 1.5 continuous seconds and a launch consumes only surf
   const m = sim.missiles[0];
   assert.equal(m.kind, 'anti-ship'); assert.equal(m.weapon, 'anti-ship'); assert.equal(m.enemy, false);
   assert.equal(m.targetId, sim.targetId); assert.equal(m.dir.y, 1); assert.equal(m.pitch, Math.PI / 2);
-  assert.equal(m.maxLife, 30); assert.equal(m.damage, 280);
+  assert.equal(m.maxLife, 30); assert.equal(m.damage, 238);
   assert.ok(sim.drainEvents().some(event => event.type === 'missile' && event.weapon === 'anti-ship'));
 });
 
@@ -195,8 +195,10 @@ test('VLS turns smoothly into fifteen-metre cruise and reaches a rear target nea
     assert.ok(Math.abs(m.dir.length() - 1) < 1e-8);
     if (frame === 5 * 60) { assert.ok(m.pos.y >= 12 && m.pos.y <= 18); checkedCruise = true; }
   }
-  assert.ok(checkedCruise); assert.equal(sim.kills, 1); assert.equal(sim.state, 'won');
-  assert.ok(sim.time < 30); assert.equal(sim.player.missiles, 12);
+  assert.ok(checkedCruise); assert.equal(target.health, target.maxHealth - 238);
+  assert.equal(sim.launchAntiShipMissile(), true); run(sim, 28);
+  assert.equal(sim.kills, 1); assert.equal(sim.state, 'won');
+  assert.ok(sim.time < 60); assert.equal(sim.player.missiles, 12);
 });
 
 test('sideways moving and receding rear surface targets are intercepted from all-around radar contacts', () => {
@@ -208,9 +210,9 @@ test('sideways moving and receding rear surface targets are intercepted from all
     sim.targetId = target.id; target.pos.copy(sim.player.pos).add(position); target.vel.copy(velocity);
     target.speed = velocity.length(); target.heading = heading; target.turretHeading = heading;
     lock(sim); assert.equal(sim.launchAntiShipMissile(), true);
-    run(sim, 28);
+    run(sim, 1.6); assert.equal(sim.launchAntiShipMissile(), true); run(sim, 28);
     assert.equal(sim.kills, 1); assert.equal(sim.state, 'won');
-    assert.ok(sim.drainEvents().some(event => event.type === 'hit' && event.damage === 280 && event.weapon === 'anti-ship'));
+    assert.ok(sim.drainEvents().some(event => event.type === 'hit' && event.damage === 238 && event.weapon === 'anti-ship'));
   }
 });
 
@@ -219,9 +221,9 @@ test('the first maritime hull physically struck blocks an ASm without changing i
   selected.pos.set(0, 0.5, 1000); blocker.pos.set(0, 0.5, 2400);
   lock(sim); assert.equal(sim.launchAntiShipMissile(), true); const m = sim.missiles[0];
   run(sim, 12);
-  assert.equal(selected.health, selected.maxHealth); assert.ok(blocker.health <= 0);
+  assert.equal(selected.health, selected.maxHealth); assert.equal(blocker.health, blocker.maxHealth - 238);
   assert.equal(m.targetId, selected.id, 'a physical collision does not silently switch the selected attack target');
-  assert.equal(sim.kills, 1); assert.equal(sim.missiles.length, 0);
+  assert.equal(sim.kills, 0); assert.equal(sim.missiles.length, 0);
 });
 
 test('a vanished or dead target ends its missile and cannot redirect it to another vessel', () => {
@@ -239,11 +241,12 @@ test('a vanished or dead target ends its missile and cannot redirect it to anoth
   }
 });
 
-test('empty surface inventory gives accurate guidance and cannot spend SAM stock', () => {
+test('free surface reserve remains usable after mounted stock reaches zero without spending SAM stock', () => {
   const sim = naval(); lock(sim); sim.player.antiShipMissiles = 0;
-  assert.equal(sim.launchAntiShipMissile(), false); assert.equal(sim.player.missiles, 12);
-  assert.ok(sim.drainEvents().some(event => event.type === 'toast' && /反舰导弹已耗尽/.test(event.text)));
-  assert.equal(sim.missiles.length, 0);
+  const wallet = {...sim.wallet};
+  assert.equal(sim.launchAntiShipMissile(), true); assert.equal(sim.player.missiles, 12);
+  assert.equal(sim.player.antiShipMissiles, 0); assert.deepEqual(sim.wallet, wallet);
+  assert.equal(sim.missiles.length, 1);
 });
 
 test('all three real naval waves can be completed with ASm and replenish three up to six', () => {
@@ -256,7 +259,7 @@ test('all three real naval waves can be completed with ASm and replenish three u
     assert.ok(sim.player.antiShipMissiles >= 0 && sim.player.antiShipMissiles <= 6);
   }
   assert.equal(sim.state, 'won'); assert.equal(sim.kills, 9); assert.equal(sim.wave, 3);
-  assert.equal(sim.player.antiShipMissiles, 2); assert.equal(sim.player.missiles, 12); assert.equal(sim.player.ammo, 240);
+  assert.equal(sim.player.antiShipMissiles, 0); assert.equal(sim.player.missiles, 12); assert.equal(sim.player.ammo, 240);
   assert.ok(sim.player.health > 0); assert.ok(sim.score > 2000);
 });
 
@@ -273,20 +276,21 @@ test('surface resupply uses its own cap and restarting into aircraft restores it
   assert.equal(sim.missiles.length, 0);
 });
 
-test('exhausted cannon inventory remains playable with ASm but SAM does not count as sea ammunition', () => {
+test('empty mounted inventories remain playable with the free reserve for each compatible weapon', () => {
   const sim = naval(); sim.player.ammo = 0;
   run(sim, 2); assert.equal(sim.state, 'playing');
   assert.equal(sim.player.antiShipMissiles, 6); assert.equal(sim.launchAntiShipMissile(), true);
-  run(sim, 5); assert.equal(sim.kills, 1); assert.equal(sim.state, 'playing');
+  run(sim, 5); assert.equal(sim.kills, 0); assert.ok(sim.enemies[0].health < sim.enemies[0].maxHealth); assert.equal(sim.state, 'playing');
   sim.player.antiShipMissiles = 0; sim.update(DT);
-  assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'ammo');
-  assert.equal(sim.player.missiles, 12); assert.equal(sim.player.health, 300);
+  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
+  assert.equal(sim.launchAntiShipMissile(), true); sim._fireGun();
+  assert.equal(sim.player.missiles, 12); assert.equal(sim.player.health, 600); assert.equal(sim.player.ammo, 0);
 });
 
 test('the final in-flight ASm postpones failure and can win or clear a wave for resupply', () => {
   for (const mode of ['naval-training', 'naval']) {
     const sim = naval(mode); const target = sim.enemies[0]; sim.enemies = [target];
-    target.passive = true; target.speed = 0; target.vel.set(0, 0, 0);
+    target.passive = true; target.speed = 0; target.vel.set(0, 0, 0); target.health = 238;
     sim.player.ammo = 0; sim.player.antiShipMissiles = 1;
     lock(sim); assert.equal(sim.launchAntiShipMissile(), true);
     assert.equal(sim.player.antiShipMissiles, 0);

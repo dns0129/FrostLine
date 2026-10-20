@@ -106,7 +106,7 @@ try {
         assert.equal((await snapshot(page)).state, 'lost');
         assert.ok((await page.locator('#resultDescription').innerText()).includes('企业号被击沉'));
         assert.equal((await snapshot(page)).progress.completed.shield, undefined);
-        await page.click('#againBtn'); await draw(page); assert.equal((await snapshot(page)).carrier, 2200);
+        await page.click('#againBtn'); await draw(page); assert.equal((await snapshot(page)).carrier, 4400);
         await page.screenshot({ path: new URL('03-carrier-retreat.png', out).pathname });
       });
       await check('Pause freezes carrier movement, wingmen and mission time', async () => {
@@ -132,7 +132,7 @@ try {
       await clearFixture(page); const after = await snapshot(page);
       assert.equal(after.airKills, level.airTotal); assert.equal(after.shipKills, level.shipTotal);
       assert.ok(after.progress.completed[level.id]); assert.ok(after.credits >= before + level.rewardPoints);
-      assert.match(await page.locator('#resultDescription').innerText(), new RegExp(`通关奖励 ${level.rewardPoints} 点`));
+      assert.match(await page.locator('#resultDescription').innerText(), new RegExp(`通关奖励 ${level.rewardPoints} 银币`));
       await page.evaluate(() => window.__campaignQA.result()); assert.equal((await snapshot(page)).credits, after.credits);
       metrics[level.id] = after;
       if (level.number < 10) { await page.click('#campaignNextBtn'); assert.equal((await snapshot(page)).state, 'menu');

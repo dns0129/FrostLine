@@ -27,7 +27,7 @@ test('retreat briefing shows a vulnerable carrier, mixed waves, exit and failure
   assert.ok(b.failures.includes('企业号被击沉'));
   assert.ok(b.failures.includes('660 秒内未完成全部目标'));
   assert.match(b.enemy, /20 架.*2 艘驱逐舰/);
-  assert.match(b.steps[2][1], /2200 HP.*180 秒/);
+  assert.match(b.steps[2][1], /4400 HP.*180 秒/);
   assert.equal(missionBriefing({ mode: 'campaign', chapter: 'shield', hasAntiShip: false }).canLaunch, false);
 });
 
