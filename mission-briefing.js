@@ -13,7 +13,7 @@ export const SORTIE_MODES = Object.freeze([
 export function missionChoices(category, vehicle = 'aircraft') {
   const ship = isShipVehicle(vehicle);
   if (category === 'campaign') return CAMPAIGN_LEVELS.map(level => ({ id: level.id, title: level.title,
-    subtitle: `${getMap(level.mapId).name} · ${level.subtitle} · +${level.rewardPoints} 点` }));
+    subtitle: `${getMap(level.mapId).name} · ${level.subtitle} · +${level.rewardPoints} 银币` }));
   if (category === 'training') return [
     { id: 'training', title: ship ? '初次出航' : '初次升空', subtitle: ship ? '航行与对空训练' : '飞行与空空训练' },
     { id: 'naval-training', title: ship ? '舰炮训练' : '反舰训练', subtitle: '两艘静止靶舰 · 熟悉对海操作' },
@@ -33,7 +33,6 @@ export function missionBriefing({ mode = 'intercept', chapter = 'dawn', vehicle 
   const area = getMap(level ? level.mapId : map);
   let blocked = level && !campaignUnlocked(progress, level.id) ? '完成前一章后解锁出击，可先阅读全部简报。' : '';
   if (mode === 'campaign' && ship) blocked = `${CAMPAIGN_TITLE}是战机战役，请返回机库选择战机。`;
-  if ((naval || level?.shipTotal) && !ship && !hasAntiShip) blocked = '本关有水面目标，需要反舰导弹，请返回机库整备。';
   const common = { mode, chapter: level?.id, map: area, ship, naval, training, blocked, canLaunch: !blocked,
     location: level?.location || area.subtitle, recommended: level ? '战斗机' : ship ? '驱逐舰' : '战斗机',
     spawn: level?.spawn || [0, ship ? 18 : naval ? 450 : 1100, 4000],
@@ -50,7 +49,7 @@ export function missionBriefing({ mode = 'intercept', chapter = 'dawn', vehicle 
       threats: level.shipTotal ? '敌机机炮与导弹、驱逐舰防空导弹' : level.enemyMissiles ? '敌机使用机炮与导弹' : '敌机仅使用机炮',
       steps: [
         ['四机小队出击', `${level.location}，玩家与三架自主交战僚机协同。`],
-        ['五波海空交战', `每波敌机 ${level.waves.join(' / ')} 架；驱逐舰 ${level.shipWaves.join(' / ')} 艘。清空整波后修复并补满出击挂载。`],
+        ['五波海空交战', `每波敌机 ${level.waves.join(' / ')} 架；驱逐舰 ${level.shipWaves.join(' / ')} 艘。清空整波后修复并补满武器并重置补充冷却。`],
         [level.escortDuration ? '保护航母撤退' : level.commanderWave ? '切断指挥节点' : '肃清目标', level.escortDuration
           ? `航母 ${level.carrierHealth} HP；撤离 ${level.retreatDistance / 1000} km / ${level.escortDuration} 秒，防区 ${level.guardRadius / 1000} km。全歼敌人且航母存活并抵达出口后通关。`
           : level.commanderWave ? `第 ${level.commanderWave} 波击落强化指挥机后，仍需清除全部护航目标。` : '清除全部目标，并保持玩家机体存活。'],
@@ -69,7 +68,7 @@ export function missionBriefing({ mode = 'intercept', chapter = 'dawn', vehicle 
     description: training ? '训练无任务倒计时；完成全部靶标后结束。敌方靶标不主动攻击，训练不发放改装奖励。' : endless ? '首波 2 架，每波增加 1 架；敌方装甲、转向和火力从简单逐步提升，第 10 波达到困难。清空整波后全量补给，4.5 秒后下一波进入，无波数与时间限制。' : '三波交战，敌方数量依次为 2、3、4。清除每波后等待补给与下一波到达。',
     time: '不限时', objectives,
     failures: [`${ship ? '舰体' : '机体'}被击毁`],
-    rules: training ? '静止靶舰 / 被动靶机 · 训练免耗币且不发奖励' : endless ? '清波后机体完全修复，导弹按出击挂载补满，热诱弹、机炮弹药与燃油补满 · 生存计分' : '三波交战 · 波次间补给 · 基础弹免费无限',
+    rules: training ? '静止靶舰 / 被动靶机 · 训练免耗币且不发奖励' : endless ? '清波后机体完全修复，武器补充冷却重置，热诱弹、机炮弹匣与燃油补满 · 生存计分' : '三波交战 · 波次间补给 · 基础弹免费无限',
     enemy: endless ? '持续增援的敌机' : `${total} ${naval ? '艘' : '架'}${target}`,
     threats: training ? '训练目标不会主动攻击' : naval ? '敌舰舰炮威胁' : '敌机按难度追击、迂回或规避 · 约 4 km 外入场',
     steps: [['进入任务区域', `${area.name} · ${area.subtitle}`], [training ? '熟悉操作' : '分批交战', naval ? ship ? '舰炮射击，或锁定后发射反舰导弹。' : '保持对海锁定，使用反舰导弹。' : ship ? '转舵航行，雷达锁定后发射防空导弹。' : '追踪目标，使用机炮与空空导弹。'], [endless ? '挑战纪录' : '完成任务', endless ? '持续迎敌，取得更高生存分数。' : `清除全部${target}，保持${ship ? '舰体' : '机体'}存活。`]],

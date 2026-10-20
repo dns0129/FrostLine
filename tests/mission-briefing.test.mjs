@@ -58,9 +58,9 @@ test('quick and training tasks describe real target totals, saved maps and selec
   assert.equal(BRIEFING_PAGES.length, 4);
 });
 
-test('missing aircraft anti-ship stores block only sea tasks, without blocking a ship', () => {
-  assert.equal(missionBriefing({ mode: 'naval', hasAntiShip: false }).canLaunch, false);
-  assert.equal(missionBriefing({ mode: 'naval-training', vehicle: 'j16', hasAntiShip: false }).canLaunch, false);
+test('cancelled hardpoint saves cannot block sea tasks with infinite basic anti-ship weapons', () => {
+  assert.equal(missionBriefing({ mode: 'naval', hasAntiShip: false }).canLaunch, true);
+  assert.equal(missionBriefing({ mode: 'naval-training', vehicle: 'j16', hasAntiShip: false }).canLaunch, true);
   assert.equal(missionBriefing({ mode: 'intercept', hasAntiShip: false }).canLaunch, true);
   assert.equal(missionBriefing({ mode: 'campaign', chapter: 'dawn', hasAntiShip: false }).canLaunch, true);
   assert.equal(missionBriefing({ mode: 'naval', vehicle: 'type052d', hasAntiShip: false }).canLaunch, true);

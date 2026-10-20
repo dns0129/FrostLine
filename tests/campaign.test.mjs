@@ -40,7 +40,7 @@ test('first sortie requires exactly five waves totaling twenty aircraft and refi
   for (const slot of sim.player.stores) if (slot.store !== 'tank') slot.count = 0;
   sim.player.ammo = 20; sim.player.health = 55;
   clearBatch(sim); assert.equal(sim.state, 'playing'); assert.equal(sim.wave, 1);
-  assert.equal(sim.player.health, 80); assert.equal(sim.player.ammo, 340);
+  assert.equal(sim.player.health, 80); assert.equal(sim.player.ammo, 60);
   assert.deepEqual(sim.player.stores, sim.player.configuredStores);
   for (let wave = 2; wave <= 5; wave++) {
     nextBatch(sim); assert.equal(sim.wave, wave); assert.equal(sim.enemies.length, 4);
@@ -96,7 +96,7 @@ test('actual enemy shell and guided missile hits damage the carrier independentl
 });
 
 test('a player aircraft can physically lock, launch and sink the new hostile destroyer', () => {
-  const sim = new Simulation(); sim.startCampaign('shield', 'easy');
+  const sim = new Simulation(); sim.configureAircraft(normalizeWorkshop({version:3,ownedWeapons:{missile:['basic','gold']}})); sim.startCampaign('shield', 'easy');
   sim.setAmmoGrade('missile', 'gold');
   const ship = sim.enemies.find(e => e.kind === 'ship');
   ship.pos.set(0, .5, 2500); ship.vel.set(0, 0, 0); ship.passive = true;

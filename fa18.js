@@ -50,7 +50,7 @@ export async function loadFA18Assets(missiles = null) {
     templates: storeTemplates(missiles, ['aim9', 'aim120', 'aim7', 'harpoon']),
     dispose() {
       if (disposed) return; disposed = true;
-      disposeAirframeObjects(gltf.scene); armament.dispose();
+      disposeAirframeObjects(gltf.scene, this.cleanScene); armament.dispose();
     },
   };
 }

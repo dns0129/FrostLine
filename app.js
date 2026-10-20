@@ -9,10 +9,10 @@ import { FlightInput } from './input.js';
 import { FlightAudio } from './audio.js';
 import { BaseScene } from './base-scene.js';
 import { OWNED_VEHICLES, vehicleById, aircraftIdFor } from './vehicle-catalog.js';
-import { STORES, normalizeWorkshop, sortieReward, effectiveAircraft } from './aircraft-systems.js';
-import { HangarWorkshop } from './hangar-workshop.js';
+import { normalizeWorkshop, sortieReward } from './aircraft-systems.js';
+import { HangarWorkshop, renderWeaponShop } from './hangar-workshop.js';
 import { CAMPAIGN_TITLE, CAMPAIGN_SAVE_KEY, CAMPAIGN_LEVELS, campaignLevel, normalizeCampaignProgress, campaignUnlocked, recordCampaignWin, recommendedCampaignLevel, campaignObjectiveText } from './campaign.js';
-import { AMMO_GRADES, AMMO_ORDER, ammoGrade, ammoPrice, PLAYER_DAMAGE_SCALE } from './combat-economy.js';
+import { ammoGrade, purchaseWeapon, equipWeapon } from './combat-economy.js';
 import { DEFAULT_MAP_ID, getMap } from './maps.js';
 import { normalizeQuality } from './quality.js';
 
@@ -37,7 +37,7 @@ const isShip=()=>isShipVehicle(selectedVehicle);
 const isNaval=(mode=selectedMode)=>mode==='naval'||mode==='naval-training';
 const isTraining=(mode=selectedMode)=>mode==='training'||mode==='naval-training';
 const aircraftId=()=>aircraftIdFor(selectedVehicle)||'fa18c';
-const hasAntiShip=()=>workshopProfile.loadouts[aircraftId()].some(s=>STORES[s.store]?.kind==='anti-ship'&&s.count>0);
+const hasAntiShip=()=>true;
 
 // Hornet records keep their original keys; other airframes and the destroyer are separate.
 const recordKey=()=>selectedMode==='campaign'?`campaign-${selectedCampaignId}`:isShip()?`${selectedVehicle}-${selectedMode}`:aircraftId()==='fa18c'?selectedMode:`${aircraftId()}-${selectedMode}`;
@@ -73,7 +73,6 @@ function selectVehicle(vehicle){selectedVehicle=VEHICLES.includes(vehicle)?vehic
 function syncBaseVehicle(){
  syncWallet();
  const vehicle=vehicleById(selectedVehicle,workshopProfile,navalReadiness);baseScene.setVehicle(selectedVehicle);
- if(!isShip())baseScene.jet.userData.setLoadout(workshopProfile.loadouts[aircraftId()]);
  document.body.classList.toggle('aircraft-anti-ship',!isShip()&&hasAntiShip());
  $('ownedVehicleName').textContent=vehicle.name;
  $('ownedVehicleCode').innerHTML=`${vehicle.code} <span>${vehicle.english}</span>`;
@@ -84,7 +83,7 @@ function syncBaseVehicle(){
  $('launchVehicleRole').textContent=vehicle.role;
  $('ownedVehicleWeapons').textContent=vehicle.weapons;
  $('ownedVehicleStats').replaceChildren(...vehicle.stats.map(([label,value,unit])=>{const row=document.createElement('div');const dt=document.createElement('dt');dt.textContent=label;const dd=document.createElement('dd');dd.append(document.createTextNode(value+' '));const small=document.createElement('small');small.textContent=unit;dd.append(small);row.append(dt,dd);return row;}));
- $('navalWorkshopBtn').hidden=!isShip();navalWorkshop.setShip(isShip()?selectedVehicle:'destroyer');
+ $('navalWorkshopBtn').hidden=!isShip();navalWorkshop.setShip(isShip()?selectedVehicle:'destroyer');navalWorkshop.setWeaponProfile(workshopProfile);
  $('baseViewLabel').textContent=isShip()?'海军基地 / BERTH 02':'机库 / HANGAR 01';
  document.querySelectorAll('[data-base]').forEach(button=>{const active=button.dataset.base===(isShip()?'destroyer':'aircraft');button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active);});
  $('baseViewport').setAttribute('aria-label',`${vehicle.code} ${vehicle.name} 3D 展示：拖动旋转，滚轮或双指缩放，方向键旋转，Home 回正`);
@@ -137,8 +136,8 @@ function result(){
  if(endingShown)return;
  captureCombatWallet();
  endingShown=true;input.active=false;input.reset();sound.silence();const won=sim.state==='won';records[recordKey()]=Math.max(records[recordKey()]||0,sim.score);save('frostline-records',records);
- $('resultEyebrow').textContent=won?'MISSION COMPLETE':'SORTIE ENDED';$('resultTitle').textContent=won?(isTraining()?'训练完成':isNaval()?'海峡已肃清':'空域已肃清'):sim.endReason==='ammo'?'对舰弹药耗尽':'本次出击结束';
- $('resultDescription').textContent=won?(isTraining()?(isNaval()?'两艘靶舰已击沉。准备进入海战实战。':'你已掌握目标追踪。准备进入实战。'):(isShip()?'你守住了北境的海域。':'你守住了北境的天空。')):sim.endReason==='ammo'?'舰炮与反舰导弹已耗尽，在途弹药全部结算后仍有敌舰存活。重新出击，合理分配两类武器。':(isShip()?'整理舰炮与航行经验，准备下一次出航。':'每一次升空，都会让下一次飞行更从容。');
+ $('resultEyebrow').textContent=won?'MISSION COMPLETE':'SORTIE ENDED';$('resultTitle').textContent=won?(isTraining()?'训练完成':isNaval()?'海峡已肃清':'空域已肃清'):'本次出击结束';
+ $('resultDescription').textContent=won?(isTraining()?(isNaval()?'两艘靶舰已击沉。准备进入海战实战。':'你已掌握目标追踪。准备进入实战。'):(isShip()?'你守住了北境的海域。':'你守住了北境的天空。')):(isShip()?'整理舰炮与航行经验，准备下一次出航。':'每一次升空，都会让下一次飞行更从容。');
  $('resultScore').textContent=String(sim.score).padStart(5,'0');$('resultKills').textContent=`${sim.kills} / ${Math.min(100,Math.round(sim.hits/Math.max(1,sim.shots)*100))}%`;
  $('resultTime').textContent=`${String(Math.floor(sim.time/60)).padStart(2,'0')}:${String(Math.floor(sim.time%60)).padStart(2,'0')}`;
  $('campaignNextBtn').hidden=true;
@@ -157,7 +156,12 @@ function result(){
 function syncWallet(){
  const balance=`${workshopProfile.silver.toLocaleString()} 银币 · ${workshopProfile.gold.toLocaleString()} 金币`;
  $('baseWallet').textContent=balance;$('combatWallet').textContent=balance;
- for(const kind of ['gun','missile']){const training=isTraining()&&sim.state!=='menu',tier=training?'basic':sim.state==='playing'||sim.state==='paused'?sim.ammoTiers[kind]:workshopProfile.ammoTiers[kind];const id=kind==='gun'?'gunGradeBtn':'missileGradeBtn';const grade=ammoGrade(kind,tier);$(id).textContent=`${kind==='gun'?'炮':'弹'} ${grade.short} · ${training?'训练免费':grade.cost?grade.cost+(grade.currency==='gold'?'金':'银'):'免费'}`;$(id).title=grade.name+' · '+ammoPrice(kind,tier);$(id).disabled=training;}
+ for(const kind of ['gun','missile']){
+   const active=sim.state==='playing'||sim.state==='paused',tier=active?sim.ammoTiers[kind]:workshopProfile.ammoTiers[kind],grade=ammoGrade(kind,tier),id=kind==='gun'?'gunGradeBtn':'missileGradeBtn';
+   const status=kind==='gun'&&active?(sim.gunReloadCooldown>0?`补充 ${sim.gunReloadCooldown.toFixed(1)}s`:`${sim.player.ammo} / ∞`):'无限';
+   $(id).textContent=`${grade.short} · ${status}`;$(id).title=`${grade.name} · 已拥有，局内开火不扣币 · 点击切换已购武器`;
+   $(id).disabled=workshopProfile.ownedWeapons[kind].length<2;
+ }
 }
 function captureCombatWallet(){
  if(sim.state==='menu'||!sim.wallet)return;
@@ -165,20 +169,25 @@ function captureCombatWallet(){
  save('frostline-workshop-v1',workshopProfile);workshop.profile=workshopProfile;syncWallet();
 }
 function setAmmoSelection(kind,tier){
- if(!Object.hasOwn(AMMO_GRADES,kind)||!Object.hasOwn(AMMO_GRADES[kind],tier))return;
  captureCombatWallet();
- workshopProfile=normalizeWorkshop({...workshopProfile,ammoTiers:{...workshopProfile.ammoTiers,[kind]:tier}});
+ const equipped=equipWeapon(workshopProfile,kind,tier);if(!equipped.ok){toast(equipped.reason);return;}
+ workshopProfile=normalizeWorkshop(equipped.profile);
  if(sim.state==='playing'||sim.state==='paused')sim.setAmmoGrade(kind,tier);
  save('frostline-workshop-v1',workshopProfile);workshop.profile=workshopProfile;syncWallet();
 }
 function renderArsenal(){
  $('arsenalWallet').textContent=`银币 ${workshopProfile.silver.toLocaleString()}　金币 ${workshopProfile.gold.toLocaleString()}`;
- const stats=effectiveAircraft(aircraftId(),workshopProfile),shipStats=SHIPS[selectedVehicle];
- $('arsenalChoices').innerHTML=['missile','gun'].map(kind=>{const base=kind==='gun'?(isShip()?shipStats.gunDamage*PLAYER_DAMAGE_SCALE:stats.gunDamage):(isShip()?shipStats.samDamage*PLAYER_DAMAGE_SCALE:STORES[workshopProfile.loadouts[aircraftId()].find(s=>STORES[s.store]?.kind==='anti-air')?.store||'aim9'].damage*stats.damageMultiplier);return `<section><h3>${kind==='gun'?'机炮 / 舰炮弹药':'导弹弹药 · 空空与反舰通用等级'}</h3><div class="ammo-grade-grid">${AMMO_ORDER.map(tier=>{const grade=ammoGrade(kind,tier);return `<button data-ammo-kind="${kind}" data-ammo-grade="${tier}" aria-pressed="${workshopProfile.ammoTiers[kind]===tier}"><strong>${grade.name}</strong><span>伤害 ×${grade.multiplier}${kind==='gun'?'':'（当前空空弹）'} · ${Math.round(base*grade.multiplier*10)/10}</span><small>${ammoPrice(kind,tier)}</small></button>`;}).join('')}</div></section>`;}).join('');
+ renderWeaponShop($('arsenalChoices'),workshopProfile,{aircraftId:aircraftId(),shipId:isShip()?selectedVehicle:null,onChange:(kind,tier,action)=>{
+   const result=action==='purchase'?purchaseWeapon(workshopProfile,kind,tier):equipWeapon(workshopProfile,kind,tier);
+   if(!result.ok){toast(result.reason);return;}
+   workshopProfile=normalizeWorkshop(result.profile);save('frostline-workshop-v1',workshopProfile);workshop.setProfile(workshopProfile);syncBaseVehicle();renderArsenal();
+   toast(`${ammoGrade(kind,tier).name}${action==='purchase'?'已永久购买并装备':'已装备'} · 局内开火不扣币`);
+ }});
 }
 $('arsenalBtn').addEventListener('click',()=>{returnPanel=null;renderArsenal();panel('arsenalPanel');});
-$('arsenalChoices').addEventListener('click',event=>{const button=event.target.closest('[data-ammo-grade]');if(button){setAmmoSelection(button.dataset.ammoKind,button.dataset.ammoGrade);renderArsenal();$('arsenalChoices').querySelector(`[data-ammo-kind="${button.dataset.ammoKind}"][data-ammo-grade="${button.dataset.ammoGrade}"]`).focus();}});
-for(const kind of ['gun','missile'])$(kind==='gun'?'gunGradeBtn':'missileGradeBtn').addEventListener('click',()=>{if(sim.state==='playing')setAmmoSelection(kind,AMMO_ORDER[(AMMO_ORDER.indexOf(sim.ammoTiers[kind])+1)%AMMO_ORDER.length]);});
+for(const kind of ['gun','missile'])$(kind==='gun'?'gunGradeBtn':'missileGradeBtn').addEventListener('click',()=>{
+ if(sim.state==='playing'){const owned=workshopProfile.ownedWeapons[kind];setAmmoSelection(kind,owned[(owned.indexOf(sim.ammoTiers[kind])+1)%owned.length]);}
+});
 $('navalWorkshopBtn').addEventListener('click',()=>{returnPanel=null;navalWorkshop.render();panel('navalWorkshopPanel');});
 $('workshopBtn').addEventListener('click',()=>{returnPanel=null;workshop.render();panel('workshopPanel');});
 $('airWeaponBtn').addEventListener('click',()=>{if(sim.state==='playing'){sim.cycleAirWeapon();readouts(performance.now());}});
@@ -210,10 +219,10 @@ function readouts(now){
  const p=sim.player,heading=(360-p.heading*180/Math.PI)%360;
  $('speedValue').textContent=Math.round(p.speed*1.94384);$('altValue').textContent=isShip()?Math.round(p.turretPitch*180/Math.PI):Math.round(p.pos.y);$('gValue').textContent=isShip()?`舵 ${Math.round(Math.abs(p.rudder||0)*100)}% ${(p.rudder||0)>0?'左':(p.rudder||0)<0?'右':''}`:`${p.g.toFixed(1)} G · 油 ${Math.round(p.fuelKg/p.systems.fuelCapacity*100)}%`;$('headingValue').textContent=`${String(Math.round(heading)).padStart(3,'0')}° ${['N','E','S','W'][Math.round(heading/90)%4]}`;
  const hp=clamp(p.health/(p.maxHealth||100)*100,0,100);$('healthValue').textContent=`${Math.ceil(p.health)} / ${p.maxHealth} HP`;$('healthBar').style.width=`${hp}%`;$('healthBar').style.background=hp<35?'#edac80':'#c9f3d2';$('heatValue').textContent=`${Math.round(p.heat*100)}%`;$('heatBar').style.width=`${p.heat*100}%`;
- $('ammoValue').textContent='∞';$('antiShipValue').textContent=sim.hasWeapon('anti-ship')?'∞':'—';$('missileValue').textContent=sim.hasWeapon('anti-air')?'∞':'—';syncWallet();$('flareValue').textContent=String(p.flares).padStart(2,'0');$('killsValue').textContent=sim.kills;$('scoreValue').textContent=String(sim.score).padStart(5,'0');$('throttleValue').textContent=p.boost?(isShip()?'全速':'AB · 加力'):`${Math.round(p.throttle*100)}%`;if(document.activeElement!==$('throttle'))$('throttle').value=p.throttle*100;
+ $('ammoValue').textContent=sim.gunReloadCooldown>0?`${sim.gunReloadCooldown.toFixed(1)}s`:`${p.ammo}/∞`;$('antiShipValue').textContent=sim.hasWeapon('anti-ship')?'∞':'—';$('missileValue').textContent=sim.hasWeapon('anti-air')?'∞':'—';syncWallet();$('flareValue').textContent=String(p.flares).padStart(2,'0');$('killsValue').textContent=sim.kills;$('scoreValue').textContent=String(sim.score).padStart(5,'0');$('throttleValue').textContent=p.boost?(isShip()?'全速':'AB · 加力'):`${Math.round(p.throttle*100)}%`;if(document.activeElement!==$('throttle'))$('throttle').value=p.throttle*100;
  $('waveInfo').textContent=isTraining()?`TRAINING / ${(isNaval()?2:3)-sim.enemies.length} OF ${isNaval()?2:3}`:`WAVE ${String(sim.wave).padStart(2,'0')}${selectedMode==='intercept'||selectedMode==='naval'?' / 03':''}`;$('objective').textContent=sim.enemies.length?`${isShip()&&selectedMode==='training'?'初次出航':modeNames[selectedMode]} · 剩余 ${sim.enemies.length} ${isNaval()?'艘':'架'}`:isShip()?'海域清理中 · 准备补给':'空域清理中 · 准备补给';
  const warning=sim.incoming>0?(isShip()?'导弹来袭 · 诱饵 + 转舵':'导弹来袭 · 热焰弹 + 转向'):p.warning||(p.overheated?(isShip()?'舰炮过热 · 松开扳机':'机炮过热 · 松开扳机'):'');$('warning').hidden=!warning;$('warning').textContent=warning;
- const selectedTarget=sim.enemies.find(e=>e.id===sim.targetId),surfaceTarget=selectedTarget?.kind==='ship',asProgress=sim.antiShipLockProgress||0,samCooldown=sim.missileCooldown||0,asCooldown=sim.antiShipCooldown||0;const samText=samCooldown>0?`冷却 ${samCooldown.toFixed(1)}s`:surfaceTarget?'仅对空':sim.lockProgress>=1?'已锁定':sim.lockProgress>0?`锁定 ${Math.round(sim.lockProgress*100)}%`:'等待空中目标';const asText=asCooldown>0?`冷却 ${asCooldown.toFixed(1)}s`:!surfaceTarget?'等待海上目标':asProgress>=1?'已锁定':asProgress>0?`锁定 ${Math.round(asProgress*100)}%`:'未锁定';$('touchLock').textContent=samText;$('samLockStatus').textContent=samText;$('touchAntiShipLock').textContent=asText;$('antiShipStatus').textContent=asText;$('touchMissile').classList.toggle('ready',sim.lockProgress>=1&&sim.hasWeapon('anti-air')&&samCooldown===0);$('touchAntiShip').classList.toggle('ready',asProgress>=1&&sim.hasWeapon('anti-ship')&&asCooldown===0);
+ const selectedTarget=sim.enemies.find(e=>e.id===sim.targetId),surfaceTarget=selectedTarget?.kind==='ship',asProgress=sim.antiShipLockProgress||0,samCooldown=sim.missileCooldown||0,asCooldown=sim.antiShipCooldown||0;const samText=samCooldown>0?`补充 ${samCooldown.toFixed(1)}s`:surfaceTarget?'仅对空':sim.lockProgress>=1?'已锁定':sim.lockProgress>0?`锁定 ${Math.round(sim.lockProgress*100)}%`:'等待空中目标';const asText=asCooldown>0?`补充 ${asCooldown.toFixed(1)}s`:!surfaceTarget?'等待海上目标':asProgress>=1?'已锁定':asProgress>0?`锁定 ${Math.round(asProgress*100)}%`:'未锁定';$('touchLock').textContent=samText;$('samLockStatus').textContent=samText;$('touchAntiShipLock').textContent=asText;$('antiShipStatus').textContent=asText;$('touchMissile').classList.toggle('ready',sim.lockProgress>=1&&sim.hasWeapon('anti-air')&&samCooldown===0);$('touchAntiShip').classList.toggle('ready',asProgress>=1&&sim.hasWeapon('anti-ship')&&asCooldown===0);
  if(sim.mode==='campaign'){$('objective').textContent=campaignObjectiveText(sim);$('waveInfo').textContent=`${campaignLevel(sim.campaignId).number}/10关 · 波次 ${sim.wave}/5 · 友机 ${sim.allies.length+1}/4`;}
  $('shipSystemsHud').hidden=!isShip()||!p.modules;
  if(isShip()&&p.modules){$('shipSystemsName').textContent=SHIPS[p.shipId].name;for(const id of ['engine','radar','weapons']){const max=p.shipSystems.modules[id];$('shipModule-'+id).value=p.modules[id]/max;$('shipModuleText-'+id).textContent=`${Math.round(p.modules[id])}/${max}`;}$('ciwsHud').textContent=`近防炮 ${Math.round(p.ciwsHeat*100)}% · 拦截 ${p.interceptions}${p.ciwsOverheated?' · 冷却中':''}`;}

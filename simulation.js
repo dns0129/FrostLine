@@ -4,8 +4,8 @@ export { DESTROYER } from './ship-systems.js';
 import { terrainHeight, setActiveMap } from './world-math.js';
 import { createDefaultFleet, updateDefaultFleet } from './ambient-fleet.js';
 import { CAMPAIGN_LEVELS, campaignLevel } from './campaign.js';
-import { aircraftById, STORES, normalizeWorkshop, normalizeLoadout, effectiveAircraft, storeRange, primaryAirWeapon } from './aircraft-systems.js';
-import { AMMO_GRADES, spendAmmunition, PLAYER_DAMAGE_SCALE } from './combat-economy.js';
+import { aircraftById, STORES, normalizeWorkshop, effectiveAircraft, primaryAirWeapon, airWeaponsFor, antiShipWeaponFor } from './aircraft-systems.js';
+import { AMMO_GRADES, ownsWeapon, GUN_MAGAZINE, PLAYER_DAMAGE_SCALE } from './combat-economy.js';
 import { aiProfile, airSpawnPosition, flightPlan } from './enemy-ai.js';
 
 const TAU = Math.PI * 2;
@@ -267,6 +267,7 @@ const DIFFICULTY = {
 export class Simulation {
   get missileCooldown() { return Math.max(0, this._missileTimer); }
   get antiShipCooldown() { return Math.max(0, this._antiShipMissileTimer); }
+  get gunReloadCooldown() { return Math.max(0, this._gunReloadTimer); }
 
   constructor(seed = 7331) {
     this.seed = seed >>> 0;
@@ -293,76 +294,50 @@ export class Simulation {
 
   get airWeapon() { return STORES[this.player.selectedAirWeapon] || STORES.aim9; }
 
-  hasWeapon(kind) {
-    return this.vehicle === 'destroyer' || this.player.configuredStores.some(s => s.count > 0 && STORES[s.store]?.kind === kind);
-  }
+  hasWeapon(kind) { return kind === 'anti-air' || kind === 'anti-ship'; }
 
   setAmmoGrade(kind, tier) {
-    if (!Object.hasOwn(AMMO_GRADES, kind) || !Object.hasOwn(AMMO_GRADES[kind], tier)) return false;
+    if (!ownsWeapon(this.workshop, kind, tier)) return false;
     this.ammoTiers[kind] = tier; this.workshop.ammoTiers[kind] = tier;
     return true;
   }
 
-  _chargeAmmo(kind) {
-    const training = this.mode === 'training' || this.mode === 'naval-training';
-    const paid = spendAmmunition(this.wallet, kind, this.ammoTiers[kind], training);
-    this.wallet = paid.wallet;
-    this.workshop.silver = this.workshop.credits = this.wallet.silver; this.workshop.gold = this.wallet.gold;
-    if (paid.fallback) {
-      this.setAmmoGrade(kind, 'basic');
-      this._emit('toast', { text: `${kind === 'gun' ? '机炮' : '导弹'}余额不足，已自动切换免费基础弹。` });
-    }
-    if (paid.grade.cost || paid.fallback) this._emit('wallet', { ...this.wallet, ammoTiers: { ...this.ammoTiers } });
-    return paid;
+  _weaponRound(kind) {
+    const tier = ownsWeapon(this.workshop, kind, this.ammoTiers[kind]) ? this.ammoTiers[kind] : 'basic';
+    return { tier, grade: AMMO_GRADES[kind][tier] };
   }
 
   cycleAirWeapon() {
     if (this.vehicle === 'destroyer') return false;
-    const types = Object.keys(STORES).filter(id => STORES[id].kind === 'anti-air'
-      && this.player.configuredStores.some(s => s.store === id && s.count > 0));
-    if (!types.length) return false;
+    const types = airWeaponsFor(this.aircraftId);
     this.player.selectedAirWeapon = types[(types.indexOf(this.player.selectedAirWeapon) + 1) % types.length];
     this.lockProgress = 0; this.lockTarget = null; this._lockAnnounced = false;
     return true;
   }
 
   _refreshAircraftStores() {
-    const p = this.player;
-    const remaining = p.stores.map(s => s.count > 0 ? s : { station: s.station, store: null, count: 0 });
-    const stats = effectiveAircraft(this.aircraftId, this.workshop, remaining);
-    p.systems = stats; p.missiles = stats.air; p.antiShipMissiles = stats.sea;
-    if (!p.configuredStores.some(s => s.store === p.selectedAirWeapon && s.count > 0)) {
-      p.selectedAirWeapon = p.configuredStores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || primaryAirWeapon(this.aircraftId);
-      this.lockProgress = 0; this.lockTarget = null;
-    }
+    // Kept as a migration boundary for old simulation snapshots. Hardpoint
+    // counts and loadouts no longer affect weapons, weight or performance.
+    this.player.stores = []; this.player.configuredStores = [];
+    this.player.systems = effectiveAircraft(this.aircraftId, this.workshop);
   }
 
   _consumeAircraftStore(kind) {
-    const p = this.player, candidates = p.stores.filter(s => s.count > 0 && STORES[s.store]?.kind === kind
-      && (kind !== 'anti-air' || s.store === p.selectedAirWeapon));
-    const stations = aircraftById(this.aircraftId).stations;
-    candidates.sort((a, b) => Math.abs(p.systems.moment - STORES[a.store].massKg * stations.find(s => s.id === a.station).x)
-      - Math.abs(p.systems.moment - STORES[b.store].massKg * stations.find(s => s.id === b.station).x));
-    const slot = candidates[0] || p.configuredStores.find(s => s.count > 0 && STORES[s.store]?.kind === kind
-      && (kind !== 'anti-air' || s.store === p.selectedAirWeapon));
-    if (!slot) return null;
-    const result = { station: slot.station, store: slot.store };
-    if (candidates.length) slot.count -= 1;
-    this._refreshAircraftStores(); return result;
+    return { store: kind === 'anti-air' ? this.player.selectedAirWeapon : antiShipWeaponFor(this.aircraftId) };
   }
 
-  _refillAircraftStores(full = false) {
-    const p = this.player;
-    for (const kind of ['anti-air', 'anti-ship']) {
-      let budget = full ? Infinity : 3;
-      for (const configured of p.configuredStores) {
-        if (STORES[configured.store]?.kind !== kind) continue;
-        const slot = p.stores.find(s => s.station === configured.station);
-        const count = Math.min(budget, configured.count - slot.count);
-        slot.count += count; budget -= count;
-      }
-    }
-    this._refreshAircraftStores();
+  _refillAircraftStores() { this._refillWeapons(); }
+
+  _refillWeapons() {
+    this.player.ammo = this.player.maxGunMagazine;
+    this.player.missiles = this.player.antiShipMissiles = 1;
+    this._gunReloadTimer = this._gunTimer = this._missileTimer = this._antiShipMissileTimer = 0;
+  }
+
+  _beginGunReload() {
+    if (this._gunReloadTimer > 0) return;
+    this._gunReloadTimer = this._gunReloadTotal = this._weaponRound('gun').grade.reload;
+    this._emit('toast', { text: `${this.vehicle === 'destroyer' ? '舰炮' : '机炮'}正在补充 · ${this._gunReloadTimer} 秒后自动就绪` });
   }
 
   _reset(vehicle = 'aircraft') {
@@ -401,13 +376,15 @@ export class Simulation {
       this._shipDamageIndex=0;
     }
     else {
-      const stores = normalizeLoadout(this.workshop.loadouts[this.aircraftId], this.aircraftId);
+      const stores = [];
       const stats = effectiveAircraft(this.aircraftId, this.workshop, stores);
       Object.assign(this.player, { aircraftId: this.aircraftId, systems: stats, stores,
-        configuredStores: stores.map(s => ({ ...s })), selectedAirWeapon: stores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || primaryAirWeapon(this.aircraftId),
+        configuredStores: [], selectedAirWeapon: primaryAirWeapon(this.aircraftId),
         maxHealth: stats.maxHealth, health: stats.maxHealth, ammo: stats.maxAmmo,
         missiles: stats.air, antiShipMissiles: stats.sea, flares: stats.maxFlares, fuelKg: stats.fuelCapacity });
     }
+    this.player.maxGunMagazine = GUN_MAGAZINE[this.vehicle];
+    this.player.ammo = this.player.maxGunMagazine; this.player.missiles = this.player.antiShipMissiles = 1;
     this._lastShipWater = { pos: this.player.pos.clone(), heading: 0 };
     this.enemies = [];
     this.allies = [];
@@ -432,7 +409,7 @@ export class Simulation {
     this.incoming = 0;
     this.shots = 0;
     this.hits = 0;
-    this._gunTimer = 0;
+    this._gunTimer = this._gunReloadTimer = this._gunReloadTotal = 0;
     this._gunAimFlightTime = 0;
     this._missileTimer = 0;
     this._antiShipMissileTimer = 0;
@@ -739,6 +716,13 @@ export class Simulation {
     this._gunTimer -= dt;
     this._missileTimer = Math.max(0, this._missileTimer - dt);
     this._antiShipMissileTimer = Math.max(0, this._antiShipMissileTimer - dt);
+    this.player.missiles = this._missileTimer > 0 ? 0 : 1;
+    this.player.antiShipMissiles = this._antiShipMissileTimer > 0 ? 0 : 1;
+    if (this.player.ammo <= 0 && this._gunReloadTimer <= 0) this._beginGunReload();
+    if (this._gunReloadTimer > 0) {
+      this._gunReloadTimer = Math.max(0, this._gunReloadTimer - dt);
+      if (this._gunReloadTimer === 0) { this.player.ammo = this.player.maxGunMagazine; this._emit('toast', { text: '武器补充完成 · 可以继续开火' }); }
+    }
     this._flareTimer = Math.max(0, this._flareTimer - dt);
     this._groundGrace = Math.max(0, this._groundGrace - dt);
     this._targetManualTime = Math.max(0, this._targetManualTime - dt);
@@ -1166,7 +1150,7 @@ export class Simulation {
     const aircraft = this.vehicle !== 'destroyer';
     if ((aircraft && !this.hasWeapon('anti-ship')) || !target || target.kind !== 'ship' || target.health <= 0
       || !this.enemies.includes(target) || target.id !== this.targetId
-      || !(target.pos.distanceTo(this.player.pos) <= (aircraft ? storeRange(this.player.configuredStores, 'anti-ship') : this.shipSystems.antiShipRadarRange))) return false;
+      || !(target.pos.distanceTo(this.player.pos) <= (aircraft ? STORES[antiShipWeaponFor(this.aircraftId)].range : this.shipSystems.antiShipRadarRange))) return false;
     if (aircraft && forward(this.player.heading, this.player.pitch).dot(target.pos.clone().sub(this.player.pos).normalize()) < Math.cos(Math.PI / 4)) return false;
     const radar = this.player.pos.clone().add(new THREE.Vector3(0, aircraft ? 0 : 16, 0));
     const contact = target.pos.clone().add(new THREE.Vector3(0, Number.isFinite(target.aimHeight) ? target.aimHeight : 5, 0));
@@ -1203,10 +1187,12 @@ export class Simulation {
   _fireGun() {
     const p = this.player;
     const ship = this.vehicle === 'destroyer';
-    if (this.state !== 'playing' || this._gunTimer > 0 || p.overheated || (ship && !this._shipWeaponsReady())) return;
-    const round = this._chargeAmmo('gun');
+    if (this.state !== 'playing' || this._gunTimer > 0 || this._gunReloadTimer > 0 || p.overheated || (ship && !this._shipWeaponsReady())) return;
+    if (p.ammo <= 0) { this._beginGunReload(); return; }
+    const round = this._weaponRound('gun');
     this._gunTimer = ship ? this.shipSystems.gunInterval : p.systems.gunInterval;
     p.ammo = Math.max(0, p.ammo - 1);
+    if (p.ammo === 0) this._beginGunReload();
     this.shots += 1;
     p.heat = Math.min(1, p.heat + (ship ? this.shipSystems.gunHeat : 0.043));
     if (p.heat >= 0.98) {
@@ -1307,10 +1293,6 @@ export class Simulation {
       this._emit('toast', { text: '防空只对空 · 对舰用反舰导弹或舰炮' });
       return false;
     }
-    if (!this.hasWeapon('anti-air')) {
-      this._emit('toast', { text: '未配置空空导弹挂载，请返回机库整备。' });
-      return false;
-    }
     const ship = this.vehicle === 'destroyer';
     if(ship&&!this._shipWeaponsReady())return false;
     if(ship&&this.missiles.filter(m=>!m.enemy&&m.shipLaunched&&m.weapon==='anti-air'&&m.life>0).length>=this.shipSystems.samChannels){this._emit('toast',{text:'防空交战通道已占满 · 等待在途拦截完成'});return false;}
@@ -1325,18 +1307,18 @@ export class Simulation {
     }
     const slot = ship ? null : this._consumeAircraftStore('anti-air');
     if (!ship && !slot) return false;
-    if (ship) this.player.missiles = Math.max(0, this.player.missiles - 1);
-    this._missileTimer = ship ? this.shipSystems.samInterval : .75;
-    const round = this._chargeAmmo('missile');
+    const round = this._weaponRound('missile');
+    this.player.missiles = 0;
+    this._missileTimer = Math.max(ship ? this.shipSystems.samInterval : .75, round.grade.reload * (ship ? this.shipSystems.airReloadFactor : 1));
     this._addMissile(this.player, false, target.id, slot);
     Object.assign(this.missiles.at(-1), { damage: (this.missiles.at(-1).damage || 125) * (ship ? PLAYER_DAMAGE_SCALE : 1) * round.grade.multiplier, ammoGrade: round.tier });
     this._emit('missile', { enemy: false, id: target.id, vehicle: this.vehicle, kind: this.player.kind, weapon: 'anti-air' });
     return true;
   }
 
-  _aircraftLaunchPosition(slot) {
-    const station = aircraftById(this.aircraftId).stations.find(s => s.id === slot.station);
-    return this.player.pos.clone().add(new THREE.Vector3(...station.position)
+  _aircraftLaunchPosition() {
+    // Arcade internal launch: no external rack or station inventory.
+    return this.player.pos.clone().add(new THREE.Vector3(this._nextId % 2 ? 1.5 : -1.5, -1.3, -4)
       .applyEuler(new THREE.Euler(this.player.pitch, this.player.heading, this.player.bank, 'YXZ')));
   }
 
@@ -1379,9 +1361,9 @@ export class Simulation {
     }
     const slot = this.vehicle === 'destroyer' ? null : this._consumeAircraftStore('anti-ship');
     if (this.vehicle !== 'destroyer' && !slot) return false;
-    if (!slot) this.player.antiShipMissiles = Math.max(0, this.player.antiShipMissiles - 1);
-    this._antiShipMissileTimer = this.vehicle==='destroyer'?this.shipSystems.antiShipInterval:1.4;
-    const round = this._chargeAmmo('missile');
+    const round = this._weaponRound('missile');
+    this.player.antiShipMissiles = 0;
+    this._antiShipMissileTimer = Math.max(this.vehicle === 'destroyer' ? this.shipSystems.antiShipInterval : 1.4, round.grade.reload * 1.5 * (this.vehicle === 'destroyer' ? this.shipSystems.seaReloadFactor : 1));
     this._addAntiShipMissile(target, slot);
     Object.assign(this.missiles.at(-1), { damage: this.missiles.at(-1).damage * (slot ? 1 : PLAYER_DAMAGE_SCALE) * round.grade.multiplier, ammoGrade: round.tier });
     this._emit('missile', { enemy: false, id: target.id, vehicle: this.vehicle, kind: 'anti-ship', weapon: 'anti-ship' });
@@ -1655,9 +1637,7 @@ export class Simulation {
       const full = this.mode === 'free';
       p.health = full ? p.maxHealth : Math.min(p.maxHealth, p.health + (ship ? 105 : 35));
       if(ship&&p.modules)p.modules={...this.shipSystems.modules};
-      p.ammo = Math.min(ship ? this.shipSystems.maxAmmo : p.systems.maxAmmo, p.ammo + (full ? Infinity : ship ? 100 : 320));
-      if (ship) { p.missiles = Math.min(this.shipSystems.maxMissiles, p.missiles + (full ? Infinity : 6)); p.antiShipMissiles = Math.min(this.shipSystems.maxAntiShipMissiles, p.antiShipMissiles + (full ? Infinity : 3)); }
-      else { this._refillAircraftStores(full); p.fuelKg = full ? p.systems.fuelCapacity : Math.min(p.systems.fuelCapacity, p.fuelKg + 700); }
+      if (!ship) p.fuelKg = full ? p.systems.fuelCapacity : Math.min(p.systems.fuelCapacity, p.fuelKg + 700);
       p.flares = Math.min((ship?this.shipSystems.maxFlares:p.systems?.maxFlares || 6) + (this.difficulty === 'easy' ? 2 : 0), p.flares + (full ? Infinity : 3));
       if (full) {
         // End the cleared wave's weapon effects before delivering fresh supplies.
@@ -1666,6 +1646,7 @@ export class Simulation {
         this.incoming = this.threat = 0;
         this._missileTimer = this._antiShipMissileTimer = this._flareTimer = this._gunTimer = 0;
       }
+      this._refillWeapons();
       p.heat = 0;
       p.overheated = false;
       this._lowAmmoAnnounced = false;
@@ -1702,10 +1683,10 @@ export class Simulation {
       if (this._waveDelay < 0) {
         this._waveDelay = 4.5;
         const p = this.player;
-        p.health = Math.min(p.maxHealth, p.health + 25); p.ammo = Math.min(p.systems.maxAmmo, p.ammo + 320);
-        this._refillAircraftStores(true); p.fuelKg = Math.min(p.systems.fuelCapacity, p.fuelKg + 1000);
+        p.health = Math.min(p.maxHealth, p.health + 25);
+        this._refillWeapons(); p.fuelKg = Math.min(p.systems.fuelCapacity, p.fuelKg + 1000);
         p.flares = Math.min(p.systems.maxFlares + (this.difficulty === 'easy' ? 2 : 0), p.flares + 3);
-        p.heat = 0; p.overheated = false; this._lowAmmoAnnounced = false;
+        this._refillWeapons(); p.heat = 0; p.overheated = false; this._lowAmmoAnnounced = false;
         for (const ally of this.allies) { ally.health = Math.min(ally.maxHealth, ally.health + 25); ally.seaMissiles = 1; }
         this._emit('toast', { text: '塔台：本批目标已清除。修复与补给完成，准备迎击下一批。' });
       }

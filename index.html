@@ -17,9 +17,9 @@
   <nav class="base-tabs" aria-label="基地设施"><button data-base="aircraft" class="selected" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2 8 7 5v2l-7-2-1 5h-2l-1-5-7 2v-2l7-5Z"/></svg>机库<span>HANGAR</span></button><button data-base="destroyer" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14h18l-3 5H7l-4-5Zm5-2V8h9v4M12 8V3m-3 2h7M3 21q3-2 6 0t6 0t6 0"/></svg>海军基地<span>NAVAL BASE</span></button></nav>
   <div class="base-account"><span class="status-dot"></span><span>本地指挥官<small>2 架飞机 · 3 艘战舰</small></span></div>
   <button id="navalWorkshopBtn" class="workshop-open" hidden>武器战备</button>
-  <button id="arsenalBtn" class="workshop-open">弹药 / 钱包</button>
+  <button id="arsenalBtn" class="workshop-open">武器商店</button>
   <span id="baseWallet" class="base-wallet" aria-live="polite"></span>
-  <button id="workshopBtn" class="workshop-open plane-only">挂载 / 升级</button>
+  <button id="workshopBtn" class="workshop-open plane-only">武器 / 升级</button>
   <button id="settingsBtn" class="icon-btn" aria-label="设置">⚙</button>
  </header>
  <section class="base-dossier" aria-labelledby="ownedVehicleName">
@@ -31,7 +31,7 @@
   <p class="base-description" id="ownedVehicleDescription">经典双发多用途战斗机。驾驶大黄蜂升空，执行拦截、训练与战役任务。</p>
   <div class="dossier-heading">载具性能 <span>SPECIFICATIONS</span></div>
   <dl class="base-stats" id="ownedVehicleStats"></dl>
-  <div class="base-loadout"><span>标准装备 / LOADOUT</span><p id="ownedVehicleWeapons"></p></div>
+  <div class="base-loadout"><span>作战武器 / ARMORY</span><p id="ownedVehicleWeapons"></p></div>
  </section>
  <div id="baseViewport" role="region" tabindex="0" aria-label="3D 载具展示：拖动旋转，滚轮或双指缩放，方向键旋转，Home 回正"></div>
  <div class="base-view-tools"><span id="baseViewLabel">机库 / HANGAR 01</span><div><button id="baseRotateLeft" aria-label="向左旋转载具">↶</button><button id="baseReset" aria-label="回正载具展示">回正视角</button><button id="baseRotateRight" aria-label="向右旋转载具">↷</button></div><small>拖动环绕 · 滚轮 / 双指缩放</small></div>
@@ -77,32 +77,21 @@
    <p class="naval-balance-note">血量、护甲、装载量、伤害、冷却与射程均为 Frost Line 游戏参数，不代表实舰性能。</p><p id="navalWorkshopStatus" role="status"></p>
   </section>
  <section id="arsenalPanel" class="panel arsenal-panel" role="dialog" aria-modal="true" aria-labelledby="arsenalTitle" hidden>
-  <div class="panel-top"><span class="eyebrow">AMMUNITION & WALLET</span><button class="close-panel" aria-label="关闭弹药中心">×</button></div>
-  <h2 id="arsenalTitle">弹药与双币钱包</h2><p class="panel-intro">基础弹免费无限；强化弹消耗银币，精锐弹消耗金币。仅成功开火时按发扣币，余额不足自动切回基础弹。训练免费。</p>
+  <div class="panel-top"><span class="eyebrow">HANGAR WEAPON SHOP</span><button class="close-panel" aria-label="关闭武器商店">×</button></div>
+  <h2 id="arsenalTitle">武器商店</h2><p class="panel-intro">机库一次购买，永久拥有。局内导弹与机炮弹药无限，补充需要等待冷却，开火不再扣币。</p>
   <div id="arsenalWallet" class="arsenal-wallet" aria-live="polite"></div>
   <div id="arsenalChoices" class="arsenal-choices"></div>
-  <p class="workshop-note">银币来自实战战果与通关，可购买弹药和升级技术。金币来自任务通关，无尽模式每完成三波另获 2 金币。两种货币均在游戏内获得，没有充值功能。旧改装点已按 1:1 转为银币，原等级与挂载保留。</p>
+  <p class="workshop-note">银币来自实战战果与通关，可永久购买武器和升级技术。金币来自任务通关，无尽模式每完成三波另获 2 金币。两种货币均在游戏内获得，没有充值功能。旧改装点已按 1:1 转为银币，原等级保留，旧版选中的武器自动解锁。</p>
   <button class="close-panel primary">完成配置 ↗</button>
  </section>
  <section id="workshopPanel" class="panel workshop-panel" role="dialog" aria-modal="true" aria-labelledby="workshopTitle" hidden>
   <div class="panel-top"><span class="eyebrow" id="workshopEyebrow">HORNET / AIRCRAFT WORKSHOP</span><button class="close-panel" aria-label="关闭改装中心">×</button></div>
-  <div class="workshop-heading"><div><h2 id="workshopTitle">挂载与升级</h2><p id="workshopAircraft">F/A-18C 大黄蜂 · 标准多用途战斗机</p></div><div class="workshop-wallet"><strong id="workshopCredits"></strong><span id="workshopRank"></span></div></div>
+  <div class="workshop-heading"><div><h2 id="workshopTitle">武器商店与升级</h2><p id="workshopAircraft">F/A-18C 大黄蜂 · 标准多用途战斗机</p></div><div class="workshop-wallet"><strong id="workshopCredits"></strong><span id="workshopRank"></span></div></div>
   <div class="workshop-experience"><progress id="workshopXpBar" max="1" value="0" aria-label="指挥官经验进度"></progress><span id="workshopXp"></span></div>
   <div class="workshop-layout">
-   <section class="loadout-editor" aria-labelledby="loadoutTitle"><div class="workshop-section-title"><h3 id="loadoutTitle">任务挂载</h3><span id="workshopStationCount">9 个挂点</span></div>
-    <div id="loadoutPresets" class="loadout-presets" role="group" aria-label="推荐挂载"></div>
-    <svg class="hardpoint-map" data-aircraft="fa18c" viewBox="0 0 510 100" role="img" aria-label="挂点示意：从左翼尖 1 到右翼尖 9，中线为 5；4 和 6 在机身两侧">
-     <path d="m255 6 13 32 165 34-2 9-161-22-6 27h-18l-6-27L79 81l-2-9 165-34Z" fill="#8caaa522" stroke="#8caaa570"/>
-     <g fill="#e8c591" font-size="12" text-anchor="middle"><text x="38" y="88">1</text><text x="110" y="83">2</text><text x="172" y="71">3</text><text x="232" y="48">4</text><text x="255" y="97">5</text><text x="278" y="48">6</text><text x="338" y="71">7</text><text x="400" y="83">8</text><text x="472" y="88">9</text></g>
-    </svg>
-    <svg class="hardpoint-map" data-aircraft="j16" viewBox="0 0 510 100" role="img" aria-label="挂点示意：1 和 8 为外翼，2 和 7 为内翼，3 和 6 在进气道下，4、5 为两发之间的前后串列挂点；翼尖为固定电子战吊舱" hidden>
-     <path d="m255 3 8 22 14 8 150 38 12 2v8l-14 1-132-14 4 22 24 8v4h-38l-10-8h-36l-10 8h-38v-4l24-8 4-22-132 14-14-1v-8l12-2 150-38 14-8Z" fill="#8caaa522" stroke="#8caaa570"/>
-     <g fill="#e8c591" font-size="12" text-anchor="middle"><text x="42" y="91">1</text><text x="96" y="86">2</text><text x="210" y="62">3</text><text x="255" y="47">4</text><text x="255" y="95">5</text><text x="300" y="62">6</text><text x="414" y="86">7</text><text x="468" y="91">8</text></g>
-    </svg>
-    <div id="hardpointGrid" class="hardpoint-grid"></div>
-    <dl class="loadout-totals"><div><dt>外挂重量</dt><dd id="loadoutMass"></dd></div><div><dt>起飞重量</dt><dd id="loadoutTakeoff"></dd></div></dl>
-    <p id="loadoutInventory" class="loadout-inventory"></p><p id="loadoutWarning" class="loadout-warning" role="status"></p>
-    <p class="workshop-note" id="loadoutNote">翼尖仅挂 AIM-9；AIM-120 可在翼下双联；鱼叉仅挂翼下，副油箱占用内翼或中心线。重载与不对称挂载会降低机动响应。</p>
+   <section class="hangar-armory" aria-labelledby="loadoutTitle"><div class="workshop-section-title"><h3 id="loadoutTitle">机库武器商店</h3><span>购买一次 · 永久拥有</span></div>
+    <p class="workshop-note">基础武器免费拥有，强化武器使用银币，精锐武器使用金币。所有武器局内无限，不使用挂架。机炮弹匣自动补满，导弹发射后倒计时补充。</p>
+    <div id="hangarWeaponShop"></div>
    </section>
    <section class="upgrade-editor" aria-labelledby="upgradeTitle"><div class="workshop-section-title"><h3 id="upgradeTitle">航空技术升级</h3><span>全机型通用</span></div><div id="upgradeTracks" class="upgrade-tracks"></div>
     <p class="workshop-note">各项 5 级。实战击落、击沉与完成任务可获得银币和 XP，通关另获金币；训练不发奖励。指挥官共 30 级，技术第 1–5 阶分别在指挥官 1 / 3 / 5 / 8 / 12 级开放。升级按机型基础性能计算，所有飞机共享技术等级，当前拥有 2 架。</p>
@@ -111,7 +100,7 @@
   <footer class="workshop-footer"><p id="workshopStatus" role="status"></p><button class="close-panel workshop-done">完成配置 ↗</button></footer>
   <p class="workshop-note"><span id="workshopSourceNote">兼容性与公开重量参考现实 F/A-18C；单挂点重量上限、飞行响应、升级增益和射程采用游戏参数。</span><a href="./docs/aircraft-systems.md" target="_blank" rel="noopener">参数与来源</a></p>
  </section>
- <section id="guidePanel" class="panel" hidden><div class="panel-top"><span class="eyebrow">PILOT HANDBOOK</span><button class="close-panel" aria-label="关闭">×</button></div><h2>掌握你的载具</h2><p class="panel-intro">先倾斜机翼，再带杆转弯。保持速度，才能保持优势。</p><div class="guide-grid"><div><h3>PC 键鼠</h3><dl><dt>W / S · ↑ / ↓</dt><dd>压杆 / 拉杆</dd><dt>A / D · ← / →</dt><dd>向左 / 向右滚转</dd><dt>Q / E</dt><dd>方向舵微调</dd><dt>空格 / 鼠标左键</dt><dd>持续机炮射击</dd><dt>F / R / X / Tab</dt><dd>空空 / 反舰 / 诱饵 / 切换目标</dd><dt>Shift / Ctrl</dt><dd>加力 / 减速板</dd><dt>鼠标滚轮</dt><dd>拉近 / 拉远追尾镜头</dd><dt>− / + · C · Esc</dt><dd>油门 / 视角 / 暂停</dd></dl></div><div><h3>手机触控</h3><p>建议横屏。左下摇杆控制滚转与俯仰；右下持续按住机炮，同时操纵飞机。</p><p>拖动油门条改变推力，按住「加力」迅速增速。</p><h3>交战技巧</h3><p>把敌机带入瞄准圈，保持约 1 秒获得导弹锁定。机炮要瞄准敌机前方的提前量圆点。</p><p>导弹来袭时，释放热焰弹并转向。低速会失速，俯冲或加力恢复速度。</p></div></div><div class="ship-guide"><h3>驱逐舰 · D-21 霜卫</h3><p>先推油门起航；A/D 或 ←/→ 转舵，−/+ 调整油门，Ctrl 紧急减速。J/L 左右转炮，W/S 抬炮/压炮，空格或鼠标左键开炮。舰外视角中，舰炮跟随屏幕中央准星瞄准。鼠标右键拖动转动视角，准星对准敌舰后按空格或鼠标左键开炮；J/L、W/S 可微调视角，滚轮缩放，V 回正到舰艉。</p><p>手机在画面空白处滑动瞄准，中央准星对准敌舰后按住「开火」；双指捏合缩放，点击「回正」返回舰艉。左摇杆转舵，油门条控制航速，可以同时转舵、拖动视角和持续开火。舰桥视角保留右摇杆与 J/L、W/S 手动瞄炮。点击「换目标」切换雷达目标；空中目标锁定后按 F 或「防空」发射防空导弹；敌舰持续锁定 1.5 秒后按 R 或「反舰」发射反舰导弹。两类导弹有独立库存和冷却。X /「诱饵」干扰来袭导弹。C /「舰桥」切换舰桥与自由跟随视角，返回时保留观察角度。避开岛屿，油门归零会缓慢停船。</p><p>海战选择「海峡歼敌」或「舰炮训练」。转动视角，将中央准星对准敌舰或提前量圆点；等待「舰炮就绪」后开炮。舰炮会逐渐转向，转炮期间的小圈显示实际落点方向；Tab /「换目标」可选择下一艘。敌舰会机动并用舰炮反击，转舵规避来袭炮弹。防空导弹用于空中目标；海上目标可用舰炮或反舰导弹。反舰雷达范围为 5.5 公里，岛屿会阻挡锁定与导弹飞行。</p></div><button id="guideTrain" class="primary">进入飞行训练 <span>↗</span></button></section>
+ <section id="guidePanel" class="panel" hidden><div class="panel-top"><span class="eyebrow">PILOT HANDBOOK</span><button class="close-panel" aria-label="关闭">×</button></div><h2>掌握你的载具</h2><p class="panel-intro">先倾斜机翼，再带杆转弯。保持速度，才能保持优势。</p><div class="guide-grid"><div><h3>PC 键鼠</h3><dl><dt>W / S · ↑ / ↓</dt><dd>压杆 / 拉杆</dd><dt>A / D · ← / →</dt><dd>向左 / 向右滚转</dd><dt>Q / E</dt><dd>方向舵微调</dd><dt>空格 / 鼠标左键</dt><dd>持续机炮射击</dd><dt>F / R / X / Tab</dt><dd>空空 / 反舰 / 诱饵 / 切换目标</dd><dt>Shift / Ctrl</dt><dd>加力 / 减速板</dd><dt>鼠标滚轮</dt><dd>拉近 / 拉远追尾镜头</dd><dt>− / + · C · Esc</dt><dd>油门 / 视角 / 暂停</dd></dl></div><div><h3>手机触控</h3><p>建议横屏。左下摇杆控制滚转与俯仰；右下持续按住机炮，同时操纵飞机。</p><p>拖动油门条改变推力，按住「加力」迅速增速。</p><h3>交战技巧</h3><p>把敌机带入瞄准圈，保持约 1 秒获得导弹锁定。机炮要瞄准敌机前方的提前量圆点。</p><p>导弹来袭时，释放热焰弹并转向。低速会失速，俯冲或加力恢复速度。</p></div></div><div class="ship-guide"><h3>驱逐舰 · D-21 霜卫</h3><p>先推油门起航；A/D 或 ←/→ 转舵，−/+ 调整油门，Ctrl 紧急减速。J/L 左右转炮，W/S 抬炮/压炮，空格或鼠标左键开炮。舰外视角中，舰炮跟随屏幕中央准星瞄准。鼠标右键拖动转动视角，准星对准敌舰后按空格或鼠标左键开炮；J/L、W/S 可微调视角，滚轮缩放，V 回正到舰艉。</p><p>手机在画面空白处滑动瞄准，中央准星对准敌舰后按住「开火」；双指捏合缩放，点击「回正」返回舰艉。左摇杆转舵，油门条控制航速，可以同时转舵、拖动视角和持续开火。舰桥视角保留右摇杆与 J/L、W/S 手动瞄炮。点击「换目标」切换雷达目标；空中目标锁定后按 F 或「防空」发射防空导弹；敌舰持续锁定 1.5 秒后按 R 或「反舰」发射反舰导弹。两类导弹均可无限补充，有独立补充冷却。X /「诱饵」干扰来袭导弹。C /「舰桥」切换舰桥与自由跟随视角，返回时保留观察角度。避开岛屿，油门归零会缓慢停船。</p><p>海战选择「海峡歼敌」或「舰炮训练」。转动视角，将中央准星对准敌舰或提前量圆点；等待「舰炮就绪」后开炮。舰炮会逐渐转向，转炮期间的小圈显示实际落点方向；Tab /「换目标」可选择下一艘。敌舰会机动并用舰炮反击，转舵规避来袭炮弹。防空导弹用于空中目标；海上目标可用舰炮或反舰导弹。反舰雷达范围为 5.5 公里，岛屿会阻挡锁定与导弹飞行。</p></div><button id="guideTrain" class="primary">进入飞行训练 <span>↗</span></button></section>
  <section id="settingsPanel" class="panel narrow" hidden><div class="panel-top"><span class="eyebrow">FLIGHT CONFIGURATION</span><button class="close-panel" aria-label="关闭">×</button></div><h2>作战设置</h2><label class="setting-row"><span>作战难度<small>影响追击、包抄、规避、反应和火力</small></span><select id="difficultySetting"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">王牌</option></select></label><label class="setting-row"><span>画面质量<small id="qualityDescription">自动适配设备性能。</small></span><select id="qualitySetting" aria-describedby="qualityDescription"><option value="auto">自动适配</option><option value="low">标清</option><option value="high">高清</option><option value="ultra">超清</option></select></label><label class="setting-row"><span>跟随镜头距离<small>左侧拉近 · 右侧拉远，作战中也可滚轮或舰船双指缩放</small></span><input id="cameraDistanceSetting" aria-label="跟随镜头距离" type="range" min="78" max="140" value="100"></label><label class="setting-row"><span>音效<small>引擎、舰炮与锁定提示</small></span><input id="soundSetting" type="checkbox" checked></label><label class="setting-row"><span>触控俯仰反转<small>开启后向上推杆变为抬头</small></span><input id="invertSetting" type="checkbox"></label><p class="save-note">设置自动保存在这台设备。难度在下一次出击生效。</p></section>
  <section id="pausePanel" class="panel narrow" hidden><span class="eyebrow">FLIGHT PAUSED</span><h2>暂离航线</h2><p class="panel-intro">战场已暂停，准备好后继续。</p><button id="resumeBtn" class="primary">继续作战 <span>↗</span></button><button id="pauseGuideBtn" class="wide secondary">操作指南</button><button id="restartBtn" class="wide secondary">重新出击</button><button id="exitBtn" class="text-btn">返回基地</button></section>
  <section id="resultPanel" class="panel narrow" hidden><span class="eyebrow" id="resultEyebrow">MISSION COMPLETE</span><h2 id="resultTitle">空域已肃清</h2><p id="resultDescription" class="panel-intro">你守住了北境的天空。</p><div class="result-stats"><div><small>任务得分</small><strong id="resultScore">00000</strong></div><div><small id="resultKillsLabel">击落 / 机炮命中率</small><strong id="resultKills">0 / 0%</strong></div><div><small>作战时间</small><strong id="resultTime">00:00</strong></div></div><button id="campaignNextBtn" class="primary" hidden>下一章简报 ↗</button><button id="againBtn" class="primary">再次出击 <span>↗</span></button><button id="resultExitBtn" class="text-btn">返回基地</button></section>

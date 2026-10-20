@@ -1,15 +1,37 @@
-import { AIRCRAFT, STORES, presetsFor, UPGRADE_TRACKS, presetLoadout, loadoutSummary, validateLoadout,
+import { AIRCRAFT, UPGRADE_TRACKS,
   normalizeWorkshop, pilotLevel, effectiveAircraft, upgradeAvailability, purchaseUpgrade } from './aircraft-systems.js';
 
-import { pilotProgress } from './combat-economy.js';
+import { pilotProgress, AMMO_ORDER, ammoGrade, ammoPrice, ownsWeapon, purchaseWeapon, equipWeapon, PLAYER_DAMAGE_SCALE } from './combat-economy.js';
+import { SHIPS } from './ship-systems.js';
 
 const $ = id => document.getElementById(id);
 const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
-// Header copy per airframe; the source note distinguishes published figures from estimates.
-const WORKSHOP_COPY = {
-  fa18c: { eyebrow: 'HORNET / AIRCRAFT WORKSHOP', source: '兼容性与公开重量参考现实 F/A-18C；单挂点重量上限、飞行响应、升级增益和射程采用游戏参数。' },
-  j16: { eyebrow: 'J-16 / AIRCRAFT WORKSHOP', source: '歼-16 无官方公开参数，重量与挂点为公开估计值及模型挂架；单挂点上限、飞行响应、升级增益和射程采用游戏参数。' },
-};
+// The same shop appears inside the hangar and at the naval base.
+export function renderWeaponShop(root, profile, { aircraftId = 'fa18c', shipId = null, onChange = () => {} } = {}) {
+  const stats = effectiveAircraft(aircraftId, profile), ship = SHIPS[shipId];
+  root.replaceChildren(...['missile', 'gun'].map(kind => {
+    const section = element('section', 'weapon-shop-section');
+    section.append(element('h3', '', kind === 'missile' ? '导弹系统 · 空空 / 防空 / 反舰' : '机炮系统 · 机炮 / 舰炮'));
+    const grid = element('div', 'ammo-grade-grid');
+    for (const tier of AMMO_ORDER) {
+      const grade = ammoGrade(kind, tier), owned = ownsWeapon(profile, kind, tier), selected = profile.ammoTiers[kind] === tier;
+      const card = element('article', 'weapon-shop-card' + (selected ? ' equipped' : ''));
+      const base = kind === 'gun' ? ship ? ship.gunDamage * PLAYER_DAMAGE_SCALE : stats.gunDamage
+        : (ship ? ship.samDamage : 125) * (ship ? PLAYER_DAMAGE_SCALE : stats.damageMultiplier);
+      card.dataset.weaponKind = kind; card.dataset.weaponTier = tier;
+      card.append(element('strong', '', grade.name), element('span', '', `伤害 ×${grade.multiplier} · ${Math.round(base * grade.multiplier * 10) / 10}`),
+        element('span', '', kind === 'gun' ? `弹匣打空后 ${grade.reload} 秒补满 · 局内无限` : `基础补充：空空 ${grade.reload} 秒 / 反舰 ${grade.reload * 1.5} 秒`),
+        element('small', '', owned ? '已永久拥有 · 开火不扣币' : ammoPrice(kind, tier)));
+      const affordable = !grade.cost || profile[grade.currency] >= grade.cost;
+      const button = element('button', 'weapon-shop-action', selected ? '已装备' : owned ? '装备' : affordable ? `购买 · ${grade.cost} ${grade.currency === 'silver' ? '银币' : '金币'}` : `${grade.currency === 'silver' ? '银币' : '金币'}不足 · ${grade.cost}`);
+      button.dataset.weaponAction = owned ? 'equip' : 'purchase'; button.dataset.weaponKind = kind; button.dataset.weaponTier = tier;
+      button.disabled = selected || !owned && !affordable; button.setAttribute('aria-pressed', String(selected));
+      button.addEventListener('click', () => onChange(kind, tier, owned ? 'equip' : 'purchase'));
+      card.append(button); grid.append(card);
+    }
+    section.append(grid); return section;
+  }));
+}
 export class HangarWorkshop {
   constructor(profile, onChange) {
     this.profile = normalizeWorkshop(profile); this.onChange = onChange;
@@ -30,57 +52,21 @@ export class HangarWorkshop {
     this.render();
     $('workshopStatus').textContent = this.saved ? message + ' · 已保存' : message + ' · 浏览器存储不可用，关闭页面后将丢失';
   }
-  commitLoadout(loadout) {
-    const check = validateLoadout(loadout, this.aircraftId);
-    if (!check.valid) { $('workshopStatus').textContent = check.errors.join(' '); return; }
-    this.commit({ ...this.profile, loadouts: { ...this.profile.loadouts, [this.aircraftId]: loadout } }, '挂载已更新');
-  }
   render() {
-    const p = this.profile, aircraft = AIRCRAFT[this.aircraftId], slots = p.loadouts[this.aircraftId];
-    const stats = effectiveAircraft(this.aircraftId, p), summary = loadoutSummary(slots, this.aircraftId), level = pilotLevel(p.xp);
-    const copy = WORKSHOP_COPY[this.aircraftId];
-    $('workshopEyebrow').textContent = copy.eyebrow; $('workshopSourceNote').textContent = copy.source;
+    const p = this.profile, aircraft = AIRCRAFT[this.aircraftId], stats = effectiveAircraft(this.aircraftId, p), level = pilotLevel(p.xp);
+    $('workshopEyebrow').textContent = 'HANGAR / WEAPONS & TECHNOLOGY';
+    $('workshopSourceNote').textContent = '武器伤害、无限补充与冷却均为游戏参数，飞机外形和重量参考公开资料。';
     $('workshopAircraft').textContent = `${aircraft.name} · ${aircraft.role}`;
-    $('workshopStationCount').textContent = `${aircraft.stations.length} 个挂点`; $('loadoutNote').textContent = aircraft.workshopNote;
-    // SVG elements have no `hidden` property; toggle the attribute itself.
-    document.querySelectorAll('.hardpoint-map').forEach(map => map.toggleAttribute('hidden', map.dataset.aircraft !== this.aircraftId));
-    // Rebuild preset buttons only when the airframe changes, so a click keeps focus.
-    if (this.presetAircraft !== this.aircraftId) $('loadoutPresets').replaceChildren(...Object.entries(presetsFor(this.aircraftId)).map(([id, preset]) => {
-      const button = element('button', 'workshop-preset', preset.name); button.dataset.preset = id;
-      button.addEventListener('click', () => this.commitLoadout(presetLoadout(id, this.aircraftId)));
-      return button;
-    }));
-    this.presetAircraft = this.aircraftId;
+    renderWeaponShop($('hangarWeaponShop'), p, { aircraftId: this.aircraftId, onChange: (kind, tier, action) => {
+      const result = action === 'purchase' ? purchaseWeapon(this.profile, kind, tier) : equipWeapon(this.profile, kind, tier);
+      if (result.ok) this.commit(result.profile, `${ammoGrade(kind, tier).name}${action === 'purchase' ? '已永久购买并装备' : '已装备'}`);
+      else $('workshopStatus').textContent = result.reason;
+    } });
     $('workshopRank').textContent = `指挥官 ${level} 级`;
     $('workshopCredits').textContent = `${p.silver.toLocaleString()} 银币 · ${p.gold.toLocaleString()} 金币`;
     const xp = pilotProgress(p.xp);
     $('workshopXp').textContent = xp.needed ? `本级 ${xp.current} / ${xp.needed} XP · 距下一级 ${xp.remaining} XP` : `${p.xp} XP · 指挥官已满 30 级`;
     $('workshopXpBar').value = xp.fraction;
-    const focused = document.activeElement?.dataset?.station;
-    $('hardpointGrid').replaceChildren(...aircraft.stations.map(station => {
-      const item = slots.find(s => s.station === station.id), row = element('div', 'hardpoint-row');
-      const label = element('label', 'hardpoint-label'); label.htmlFor = `station-${station.id}`;
-      label.append(element('b', '', String(station.id).padStart(2, '0')), document.createTextNode(station.name));
-      const select = element('select', 'hardpoint-select'); select.id = label.htmlFor; select.dataset.station = station.id;
-      select.add(new Option('空挂', 'empty'));
-      for (const [id, max] of Object.entries(station.allowed)) for (let count = 1; count <= max; count++) {
-        select.add(new Option(`${STORES[id].short} × ${count}${count === 2 ? ' · 双联挂架' : ''}`, `${id}:${count}`));
-      }
-      select.value = item.store ? `${item.store}:${item.count}` : 'empty';
-      select.addEventListener('change', () => {
-        const [store, quantity] = select.value.split(':');
-        const updated = slots.map(s => s.station === station.id ? { station: s.station, store: store === 'empty' ? null : store, count: store === 'empty' ? 0 : Number(quantity) } : { ...s });
-        this.commitLoadout(updated);
-      });
-      const hint = item.store ? STORES[item.store].guidance : Object.keys(station.allowed).map(id => STORES[id].short).join(' / ');
-      row.append(label, select, element('small', '', hint)); return row;
-    }));
-    if (focused) $(`station-${focused}`)?.focus();
-    $('loadoutMass').textContent = `${Math.round(summary.payloadKg).toLocaleString()} / ${aircraft.real.maxPayloadKg.toLocaleString()} kg`;
-    $('loadoutTakeoff').textContent = `${Math.round(summary.takeoffKg).toLocaleString()} / ${aircraft.real.maxTakeoffKg.toLocaleString()} kg`;
-    $('loadoutInventory').textContent = `空空 ${summary.air} · 反舰 ${summary.sea} · ${aircraft.gun} ${stats.maxAmmo} 发`;
-    $('loadoutWarning').textContent = summary.warning || '挂点与起飞重量检查通过';
-    $('loadoutWarning').classList.toggle('unbalanced', !!summary.warning);
     $('upgradeTracks').replaceChildren(...Object.entries(UPGRADE_TRACKS).map(([id, track]) => {
       const current = p.levels[id], check = upgradeAvailability(p, id), next = effectiveAircraft(this.aircraftId, { ...p, levels: { ...p.levels, [id]: Math.min(5, current + 1) } });
       const row = element('article', 'upgrade-track');

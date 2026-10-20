@@ -91,10 +91,10 @@ test('parked and airborne J-16 share resources, hide gear in flight and place pl
   for (let i = 0; i < 30; i++) parked.userData.update(1 / 60, { boost: true, throttle: 1 });
   assert.equal(parked.userData.exhaust.visible, false);
   const visible = []; flight.userData.stores.traverse(o => { if (o.userData.store && o.visible) visible.push(`${o.userData.station}:${o.userData.store}`); });
-  assert.deepEqual(visible, ['1:pl10', '2:yj83k', '3:pl15', '4:pl15', '5:pl15', '6:pl15', '7:yj83k', '8:pl10']);
+  assert.deepEqual(visible, []); assert.equal(fuselage(flight).geometry.userData.removedPylons,4); let hardware=0; flight.traverse(o=>{if(/pylon|launch_rail/.test(o.name))hardware++;}); assert.equal(hardware,0);
 });
 
-test('every J-16 store, YJ-83K included, shares the asset-owned real-scale templates', () => {
+test('J-16 keeps launched-missile templates shared without attaching them to a player aircraft', () => {
   const jet = makeJ16(j16Assets, jetAssets), shared = new Set();
   for (const template of Object.values(j16Assets.templates)) template.traverse(o => { if (o.geometry) shared.add(o.geometry).add(o.material); });
   const used = new Set(); let sharedDisposed = 0, meshes = 0;
@@ -102,7 +102,7 @@ test('every J-16 store, YJ-83K included, shares the asset-owned real-scale templ
     if (!o.isMesh) return;
     meshes++; assert.ok(shared.has(o.geometry) && shared.has(o.material), `${o.name} is shared`); used.add(o.geometry);
   });
-  assert.ok(meshes > 0);
+  assert.equal(meshes,0); assert.ok(j16Assets.templates.pl15&&j16Assets.templates.pl10&&j16Assets.templates.yj83k);
   used.forEach(g => g.addEventListener('dispose', () => sharedDisposed++));
   jet.userData.dispose(); jet.userData.dispose();
   assert.equal(sharedDisposed, 0, 'an aircraft instance never disposes the shared store templates');

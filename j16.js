@@ -53,7 +53,7 @@ export function prepareJ16Assets(gltfScene, sourceMetadata, missiles = null) {
     storeModels: missiles ? 'real-scale' : 'baked' };
   let disposed = false;
   return { scene, metadata, templates,
-    dispose() { if (disposed) return; disposed = true; disposeAirframeObjects(scene, ...Object.values(bakedTemplates)); } };
+    dispose() { if (disposed) return; disposed = true; disposeAirframeObjects(scene, this.cleanScene, ...Object.values(bakedTemplates)); } };
 }
 
 export async function loadJ16Assets(missiles = null) {

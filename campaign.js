@@ -12,7 +12,7 @@ const chapters = [
     radio: [{ at: 0, text: '企业号：演习终止！苍隼四机小队，迎击五波共二十架不明敌机！' }, { at: 20, text: '苍隼二号：我们负责牵制，你保持攻击窗口。小队战果共同计入任务。' }] },
   { id: 'shield', title: '断后航线', subtitle: '保护航母撤退', mapId: 'storm-strait', location: '风暴海峡 · 航母撤离走廊', tag: 'WITHDRAWAL',
     story: '舰队转向风暴海峡，两艘不明驱逐舰从侧翼逼近，空袭也紧随而至。企业号需要时间撤出危险水道。你的小队必须同时清除水面封锁与空中威胁，让航母抵达安全海域。',
-    briefing: '五波共二十架敌机和两艘驱逐舰交替进入战区。驱逐舰与部分攻击机优先攻击航母，其他敌机牵制小队。企业号有独立耐久，沿二点四公里撤离航线航行一百八十秒。击退全部敌人、航母存活且抵达出口后通关；需要携带反舰导弹。',
+    briefing: '五波共二十架敌机和两艘驱逐舰交替进入战区。驱逐舰与部分攻击机优先攻击航母，其他敌机牵制小队。企业号有独立耐久，沿二点四公里撤离航线航行一百八十秒。击退全部敌人、航母存活且抵达出口后通关；反舰导弹可无限补充。',
     waves: [4, 4, 4, 4, 4], shipWaves: [1, 0, 1, 0, 0], escortDuration: 180, retreatDistance: 2400, carrierHealth: 4400,
     guardRadius: 6500, abandonAfter: 20, timeLimit: 660, rewardPoints: 650, parTime: 420,
     ending: '企业号驶出风暴海峡，受损甲板开始抢修。敌舰的通信记录指向一片偏离民用航线的群岛。为了让舰队安全返航，苍隼小队接到追查命令。',
@@ -71,7 +71,7 @@ export const CAMPAIGN_LEVELS = freeze(chapters.map((chapter, i) => {
     spawn: [0, 1100 + i * 35, 4000], airTotal: air, shipTotal: sea,
     objectives: [`清除五波共 ${air} 架敌机${sea ? `与 ${sea} 艘驱逐舰` : ''}`,
       chapter.escortDuration ? `保护企业号存活，完成 ${chapter.escortDuration} 秒撤离航程` : chapter.commanderWave ? '击落强化指挥机及其全部护航目标' : '保持机体存活，协同僚机清除战区'],
-    rules: `玩家 + 三架僚机 · 五波清敌 · 波次间修复并补满出击挂载${chapter.escortDuration ? ` · 航母 ${chapter.carrierHealth} HP · 离区 ${chapter.abandonAfter} 秒失败` : ''} · 通关 +${chapter.rewardPoints} 银币`,
+    rules: `玩家 + 三架僚机 · 五波清敌 · 波次间修复并重置武器补充${chapter.escortDuration ? ` · 航母 ${chapter.carrierHealth} HP · 离区 ${chapter.abandonAfter} 秒失败` : ''} · 通关 +${chapter.rewardPoints} 银币`,
     radio: chapter.radio || [{ at: 0, text: `指挥部：苍隼小队，进入${chapter.location}。${chapter.subtitle}，注意海空协同威胁。` }],
   };
 }));

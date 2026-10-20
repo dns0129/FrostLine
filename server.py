@@ -21,7 +21,7 @@ GAME_FILES = frozenset({
     "sortie-flow.js", "mission-briefing.js", "sortie-flow.css", "combat-economy.js", "enemy-ai.js",
     "ship-systems.js", "playable-ships.js", "naval-workshop.js", "index.html", "style.css", "app.js", "input.js", "audio.js",
     "campaign.js", "base-scene.js", "vehicle-catalog.js", "destroyer.js", "naval-models.js", "ambient-fleet.js", "ship-camera.js", "simulation.js", "renderer.js", "world-math.js", "sw.js",
-    "aircraft-systems.js", "aircraft-stores.js", "hangar-workshop.js", "docs/aircraft-systems.md",
+    "aircraft-systems.js", "aircraft-stores.js", "hangar-workshop.js", "docs/aircraft-systems.md", "docs/combat-economy.md", "docs/campaign.md", "docs/naval-systems.md", "docs/sortie-flow.md",
     "aircraft.js", "fa18.js", "assets/models/fa18c.metadata.json", "assets/models/f18-source/F-A-18C-rebuilt-v2.blend",
     "imported-airframe.js", "j16.js", "assets/models/j16.metadata.json",
     "missile-models.js", "assets/models/missiles/missiles-game.metadata.json", "assets/models/j16-source/J-16.blend", "assets/models/j16-source/COPYING",

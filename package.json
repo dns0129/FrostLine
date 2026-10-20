@@ -1,6 +1,6 @@
 {
   "name": "frostline-air-combat",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "type": "module",
   "private": true,
   "description": "原创离线单机空战游戏，支持 PC 与手机",

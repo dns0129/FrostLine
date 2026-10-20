@@ -43,12 +43,11 @@ test('duplicate/missing stations and corrupt saves safely fall back without muta
   assert.equal(normalizeWorkshop(null).credits,1200);
 });
 
-test('heavy stores and unbalanced stores reduce maneuver authority while tanks add real usable game fuel', () => {
+test('legacy heavy and asymmetric loadouts do not change the clean-airframe flight model', () => {
   const clean = effectiveAircraft('fa18c', profile('clean')), sea = effectiveAircraft('fa18c', profile('sea'));
-  assert.ok(clean.rollRate > sea.rollRate); assert.ok(clean.thrust > sea.thrust); assert.ok(clean.dragCoefficient < sea.dragCoefficient);
-  assert.equal(sea.fuelCapacity - clean.fuelCapacity,1000);
+  assert.deepEqual(clean, sea); assert.equal(clean.payloadKg, 0); assert.equal(clean.fuelCapacity, AIRCRAFT.fa18c.real.internalFuelKg);
   const p = profile('clean'); p.loadouts.fa18c[2] = {station:3,store:'tank',count:1};
-  assert.ok(loadoutSummary(p.loadouts.fa18c).warning); assert.ok(effectiveAircraft('fa18c',p).rollRate < clean.rollRate);
+  assert.deepEqual(effectiveAircraft('fa18c',p),clean);
 });
 
 for (const track of ['engine','firepower','defense','maneuver']) test(`${track}: tier gates, exact costs, five-level cap and no free duplicate upgrade`, () => {
@@ -94,9 +93,9 @@ test('defense and firepower change real damage, HP, flares and cannon damage', (
 test('mixed air weapon selection enables medium/long range while near-range stores cannot lock the same target', () => {
   const sim=new Simulation();sim.start('training');fixedAirTarget(sim,5000);
   run(sim,1.5);assert.equal(sim.lockProgress,0);assert.equal(sim.launchMissile(),false);
-  assert.equal(sim.cycleAirWeapon(),true);assert.equal(sim.player.selectedAirWeapon,'aim120');run(sim,1.2);assert.equal(sim.lockProgress,1);
+  assert.equal(sim.cycleAirWeapon(),true);assert.equal(sim.cycleAirWeapon(),true);assert.equal(sim.player.selectedAirWeapon,'aim120');run(sim,1.2);assert.equal(sim.lockProgress,1);
   const inventory=sim.player.missiles, surface=sim.player.antiShipMissiles;assert.equal(sim.launchMissile(),true);
-  const missile=sim.missiles[0];assert.equal(missile.store,'aim120');assert.ok([2,4,6,8].includes(missile.station));
+  const missile=sim.missiles[0];assert.equal(missile.store,'aim120');assert.equal(missile.station,undefined);
   assert.equal(sim.player.missiles,inventory-1);assert.equal(sim.player.antiShipMissiles,surface);assert.equal(sim.antiShipCooldown,0);
   assert.equal(sim.launchMissile(),false);assert.ok(missile.life>STORES.aim9.life);
 });
@@ -112,21 +111,22 @@ test('AIM-7 requires maintained radar tracking while AIM-120 keeps its launched 
 
 test('aircraft Harpoon locks a sea target, launches without VLS, and scores a real sinking', () => {
   const sim=new Simulation();sim.configureAircraft(profile('sea'));sim.start('naval-training','normal','aircraft');
-  assert.equal(sim.vehicle,'aircraft');assert.equal(sim.player.antiShipMissiles,4);
+  assert.equal(sim.vehicle,'aircraft');assert.equal(sim.player.antiShipMissiles,1);
   sim._updatePlayer=()=>{};sim._updateEnemies=()=>{};run(sim,1.6);assert.equal(sim.antiShipLockProgress,1);
   const air=sim.player.missiles;assert.equal(sim.launchMissile(),false);assert.equal(sim.launchAntiShipMissile(),true);
-  assert.equal(sim.player.antiShipMissiles,3);assert.equal(sim.player.missiles,air);assert.equal(sim.missileCooldown,0);
-  assert.equal(sim.missiles[0].shipLaunched,false);assert.equal(sim.missiles[0].verticalLaunch,0);assert.ok([2,3,7,8].includes(sim.missiles[0].station));
+  assert.equal(sim.player.antiShipMissiles,0);assert.equal(sim.player.missiles,air);assert.equal(sim.missileCooldown,0);
+  assert.equal(sim.missiles[0].shipLaunched,false);assert.equal(sim.missiles[0].verticalLaunch,0);assert.equal(sim.missiles[0].station,undefined);
   run(sim,12);assert.equal(sim.kills,0);assert.equal(sim.launchAntiShipMissile(),true);run(sim,12);assert.ok(sim.kills>=1);assert.ok(sim.drainEvents().some(e=>e.type==='hit'&&e.weapon==='anti-ship'));
 });
 
-test('wave supply respects selected stores and capacities and never creates unconfigured Harpoons', () => {
+test('wave supply resets automatic refills and never restores cancelled hardpoints', () => {
   const sim=new Simulation();sim.configureAircraft(profile('air'));sim.start('intercept');
-  for(const slot of sim.player.stores)slot.count=0;sim._refreshAircraftStores();assert.equal(sim.player.missiles,0);
-  sim.enemies.forEach(e=>e.health=0);sim.update(1/60);assert.equal(sim.player.missiles,3);assert.equal(sim.player.antiShipMissiles,0);
-  for(let n=0;n<8;n++)sim._refillAircraftStores();assert.equal(sim.player.missiles,12);
-  for(const slot of sim.player.stores)assert.ok(slot.count<=sim.player.configuredStores.find(s=>s.station===slot.station).count);
-  sim.configureAircraft(profile('clean'));sim.startCampaign('dawn');assert.equal(sim.player.missiles,2);assert.equal(sim.player.antiShipMissiles,0);
+  sim.player.ammo=0;sim._missileTimer=4;sim._gunReloadTimer=2;
+  sim.enemies.forEach(e=>e.health=0);sim.update(1/60);
+  assert.equal(sim.player.ammo,60);assert.equal(sim.missileCooldown,0);assert.equal(sim.gunReloadCooldown,0);
+  assert.deepEqual(sim.player.stores,[]);assert.equal(sim.hasWeapon('anti-ship'),true);
+  for(let n=0;n<8;n++)sim._refillAircraftStores();assert.equal(sim.player.missiles,1);
+  sim.configureAircraft(profile('clean'));sim.startCampaign('dawn');assert.equal(sim.player.missiles,1);assert.equal(sim.player.antiShipMissiles,1);
 });
 
 test('reward accounting pays real air and naval combat while rejecting training and no-kill failures', () => {
@@ -185,46 +185,45 @@ test('shared technology levels apply to the J-16 base values without changing it
 
 test('a configured J-16 sortie flies its own airframe, PL-15 range and station launch points', () => {
   const sim = j16Sim('air'); assert.equal(sim.vehicle, 'aircraft'); assert.equal(sim.player.aircraftId, 'j16');
-  assert.equal(sim.player.ammo, 150); assert.equal(sim.player.health, 250); assert.equal(sim.player.missiles, 8);
+  assert.equal(sim.player.ammo, 60); assert.equal(sim.player.health, 250); assert.equal(sim.player.missiles, 1);
   assert.equal(sim.player.selectedAirWeapon, 'pl10');
   fixedAirTarget(sim, 7000); run(sim, 1.5); assert.equal(sim.lockProgress, 0);
   assert.equal(sim.cycleAirWeapon(), true); assert.equal(sim.player.selectedAirWeapon, 'pl15'); run(sim, 1.3); assert.equal(sim.lockProgress, 1);
   assert.equal(sim.launchMissile(), true); const missile = sim.missiles[0];
-  assert.equal(missile.store, 'pl15'); assert.equal(missile.maxSpeed, STORES.pl15.speed); assert.ok([2, 3, 4, 5, 6, 7].includes(missile.station));
-  const station = AIRCRAFT.j16.stations.find(s => s.id === missile.station);
-  assert.ok(missile.pos.distanceTo(sim.player.pos.clone().add(new THREE.Vector3(...station.position))) < 1e-6);
-  sim._fireGun(); assert.equal(sim.tracers.at(-1).damage, 34); assert.equal(sim.player.ammo, 149);
+  assert.equal(missile.store, 'pl15'); assert.equal(missile.maxSpeed, STORES.pl15.speed); assert.equal(missile.station, undefined);
+  assert.ok(missile.pos.distanceTo(sim.player.pos) < 6, 'internal launch clears the aircraft without an external rack');
+  sim._fireGun(); assert.equal(sim.tracers.at(-1).damage, 34); assert.equal(sim.player.ammo, 59);
 });
 
 test('J-16 YJ-83K uses its own range, speed and damage and sinks a real target', () => {
-  const sim = j16Sim('sea', 'naval-training'); assert.equal(sim.player.antiShipMissiles, 2);
+  const sim = j16Sim('sea', 'naval-training'); assert.equal(sim.player.antiShipMissiles, 1);
   assert.ok(sim.drainEvents().some(e => e.text?.includes('歼-16对海出击')));
   sim._updatePlayer = () => {}; sim._updateEnemies = () => {};
   const target = sim.enemies.find(e => e.id === sim.targetId) || sim.enemies[0]; sim.targetId = target.id;
   target.pos.copy(sim.player.pos).add(new THREE.Vector3(0, -sim.player.pos.y + .5, -7300));
   run(sim, 1.6); assert.equal(sim.antiShipLockProgress, 1, 'YJ-83K locks beyond the 7 km Harpoon range');
   assert.equal(sim.launchAntiShipMissile(), true); const missile = sim.missiles[0];
-  assert.equal(missile.store, 'yj83k'); assert.equal(missile.maxSpeed, 290); assert.equal(missile.damage, 212.5); assert.ok([2, 7].includes(missile.station));
-  run(sim, 40); assert.equal(sim.kills, 0); assert.equal(sim.launchAntiShipMissile(), true); run(sim, 40); assert.ok(sim.kills >= 1); assert.equal(sim.player.antiShipMissiles, 0);
+  assert.equal(missile.store, 'yj83k'); assert.equal(missile.maxSpeed, 290); assert.equal(missile.damage, 212.5); assert.equal(missile.station, undefined);
+  run(sim, 40); assert.equal(sim.kills, 0); assert.equal(sim.launchAntiShipMissile(), true); run(sim, 40); assert.ok(sim.kills >= 1); assert.equal(sim.player.antiShipMissiles, 1);
 });
 
 test('J-16 wave supply only restores configured stores and its own cannon capacity', () => {
   const sim = j16Sim('multirole', 'intercept');
   for (const slot of sim.player.stores) slot.count = 0; sim._refreshAircraftStores(); sim.player.ammo = 0;
   sim.enemies.forEach(e => e.health = 0); sim.update(1 / 60);
-  assert.equal(sim.player.missiles, 3); assert.equal(sim.player.antiShipMissiles, 2); assert.equal(sim.player.ammo, 150);
+  assert.equal(sim.player.missiles, 1); assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.player.ammo, 60);
   for (const slot of sim.player.stores) assert.ok(slot.count <= sim.player.configuredStores.find(s => s.station === slot.station).count);
 });
 
 test('campaign chapters fly whichever aircraft the player configured', () => {
   const sim = new Simulation(); sim.configureAircraft(j16Profile('clean'), 'j16'); sim.startCampaign('dawn');
-  assert.equal(sim.player.aircraftId, 'j16'); assert.equal(sim.player.missiles, 2); assert.equal(sim.player.ammo, 150);
-  sim.configureAircraft(profile('clean')); sim.startCampaign('dawn'); assert.equal(sim.player.aircraftId, 'fa18c'); assert.equal(sim.player.ammo, 578);
+  assert.equal(sim.player.aircraftId, 'j16'); assert.equal(sim.player.missiles, 1); assert.equal(sim.player.ammo, 60);
+  sim.configureAircraft(profile('clean')); sim.startCampaign('dawn'); assert.equal(sim.player.aircraftId, 'fa18c'); assert.equal(sim.player.ammo, 60);
 });
 
 test('an empty J-16 air-to-air inventory still reports a J-16 weapon, not the Hornet AIM-9M', () => {
   const sim = j16Sim('air'); for (const slot of sim.player.stores) if (STORES[slot.store]?.kind === 'anti-air') slot.count = 0;
-  sim._refreshAircraftStores(); assert.equal(sim.player.missiles, 0); assert.equal(sim.player.selectedAirWeapon, 'pl10');
+  sim._refreshAircraftStores(); assert.equal(sim.player.missiles, 1); assert.equal(sim.player.selectedAirWeapon, 'pl10');
   const hornet = new Simulation(); hornet.configureAircraft(profile('clean')); hornet.start('training');
   for (const slot of hornet.player.stores) slot.count = 0; hornet._refreshAircraftStores(); assert.equal(hornet.player.selectedAirWeapon, 'aim9');
 });

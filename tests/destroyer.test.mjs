@@ -42,7 +42,7 @@ test('a destroyer starts afloat, stopped, supplied and facing the existing -Z co
   assert.equal(sim.player.throttle, 0);
   assert.equal(sim.player.health, DESTROYER.maxHealth);
   assert.equal(sim.player.maxHealth, DESTROYER.maxHealth);
-  assert.equal(sim.player.missiles, DESTROYER.maxMissiles);
+  assert.equal(sim.player.missiles, 1);
   assert.equal(sim.player.turretPitch, 0.3);
   assert.equal(sim.player.turretHeading, sim.player.heading);
   assert.ok(sim.enemies.every(e => e.pos.y >= 600));
@@ -125,7 +125,7 @@ test('shells leave the model turret mount along turret bearing, not ship bearing
   const tracer = sim.tracers[0];
   assert.ok(tracer.vel.clone().normalize().dot(direction) > 0.999995);
   assert.ok(tracer.pos.distanceTo(mount.clone().addScaledVector(direction, 14)) < 0.03);
-  assert.equal(p.ammo, DESTROYER.maxAmmo - 1);
+  assert.equal(p.ammo, 11);
   assert.ok(sim.drainEvents().some(event => event.type === 'fire' && event.kind === 'destroyer'));
 });
 
@@ -329,7 +329,7 @@ test('a complete ship training sortie defeats all three real moving aircraft', (
   }
   assert.equal(sim.state, 'won');
   assert.equal(sim.kills, 3);
-  assert.equal(sim.player.missiles, DESTROYER.maxMissiles - 6);
+  assert.equal(sim.player.missiles, 0);
   assert.equal(sim.player.health, DESTROYER.maxHealth);
   assert.equal(sim.player.pos.y, DESTROYER.waterline);
 });
@@ -343,8 +343,8 @@ test('all three intercept waves resupply the ship to its own caps and produce a 
     sim.update(DT);
     if (wave < 3) {
       assert.equal(sim.player.health, DESTROYER.maxHealth);
-      assert.equal(sim.player.ammo, DESTROYER.maxAmmo);
-      assert.equal(sim.player.missiles, DESTROYER.maxMissiles);
+      assert.equal(sim.player.ammo, 12);
+      assert.equal(sim.player.missiles, 1);
       run(sim, 4.7);
     }
   }
@@ -364,8 +364,8 @@ test('ship destruction ends the mission and restart restores clean aircraft defa
   assert.equal(sim.player.kind, 'aircraft');
   assert.equal(sim.player.maxHealth, 200);
   assert.equal(sim.player.health, 200);
-  assert.equal(sim.player.ammo, 578);
-  assert.equal(sim.player.missiles, 6);
+  assert.equal(sim.player.ammo, 60);
+  assert.equal(sim.player.missiles, 1);
   assert.equal(sim.player.pos.y, 1100);
   assert.equal(sim.player.speed, 185);
   assert.equal(sim.player.turretHeading, undefined);

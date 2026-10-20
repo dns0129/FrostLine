@@ -8,7 +8,7 @@ const dist = join(site, 'dist');
 const files = ['combat-economy.js','enemy-ai.js','sortie-flow.js','mission-briefing.js','sortie-flow.css','ship-systems.js','playable-ships.js','naval-workshop.js',
   'maps.js', 'quality.js', 'map-scenery.js', 'icebergs.js', 'sea-ice.js', 'fa18-armament.js',
   'index.html', 'style.css', 'app.js', 'input.js', 'audio.js',
-  'campaign.js', 'base-scene.js', 'vehicle-catalog.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md', 'destroyer.js', 'naval-models.js', 'ambient-fleet.js', 'ship-camera.js', 'simulation.js', 'flight-presentation.js', 'chase-camera.js', 'speed-effects.js', 'renderer.js', 'terrain.js',
+  'campaign.js', 'base-scene.js', 'vehicle-catalog.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md', 'docs/combat-economy.md', 'docs/campaign.md', 'docs/naval-systems.md', 'docs/sortie-flow.md', 'destroyer.js', 'naval-models.js', 'ambient-fleet.js', 'ship-camera.js', 'simulation.js', 'flight-presentation.js', 'chase-camera.js', 'speed-effects.js', 'renderer.js', 'terrain.js',
   'aircraft.js', 'fa18.js', 'assets/models/fa18c.glb', 'assets/models/fa18c.metadata.json', 'assets/models/f18-source/F-A-18C-rebuilt-v2.blend',
   'imported-airframe.js', 'j16.js', 'assets/models/j16.glb', 'assets/models/j16.metadata.json', 'assets/models/j16-source/J-16.blend', 'assets/models/j16-source/COPYING',
   'missile-models.js', 'assets/models/missiles/missiles-game.glb', 'assets/models/missiles/missiles-game.metadata.json',

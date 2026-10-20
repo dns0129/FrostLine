@@ -28,6 +28,7 @@ const wing = { aim9: 1, aim7: 1, aim120: 2, harpoon: 1 };
 export const AIRCRAFT = freeze({
   fa18c: {
     id: 'fa18c', name: 'F/A-18C 大黄蜂', shortName: '大黄蜂', role: '标准多用途战斗机', gun: 'M61A1',
+    weapons: ['aim9', 'aim7', 'aim120', 'harpoon'],
     real: { emptyKg: 10455, internalFuelKg: 4930, maxTakeoffKg: 23537, maxPayloadKg: 6215, cannonRounds: 578, engineThrustKN: 157.4 },
     base: { health: 200, flares: 6, thrust: 43, boostThrust: 31, maxSpeed: 300, boostSpeed: 320, rollRate: 1.8, pitchRate: .64, gunDamage: 24, gunInterval: .078 },
     // Station weight ceilings are deliberately conservative game envelopes,
@@ -57,6 +58,7 @@ export const AIRCRAFT = freeze({
   // The wingtip ECM pods are fixed airframe equipment, not configurable stations.
   j16: {
     id: 'j16', name: '歼-16', shortName: '歼-16', role: '重型多用途战斗机', gun: 'GSh-30-1',
+    weapons: ['pl10', 'pl15', 'yj83k'],
     real: { emptyKg: 17700, internalFuelKg: 9400, maxTakeoffKg: 35000, maxPayloadKg: 8000, cannonRounds: 150, engineThrustKN: 270 },
     base: { health: 250, flares: 8, thrust: 42, boostThrust: 33, maxSpeed: 305, boostSpeed: 330, rollRate: 1.6, pitchRate: .6, gunDamage: 40, gunInterval: .11 },
     stations: [
@@ -81,7 +83,9 @@ export const AIRCRAFT = freeze({
 export const aircraftById = id => AIRCRAFT[id] || AIRCRAFT.fa18c;
 export const DEFAULT_AIRCRAFT_ID = 'fa18c';
 // The HUD weapon shown once no air-to-air store is left: the airframe's first compatible type.
-export const primaryAirWeapon = aircraftId => aircraftById(aircraftId).stations.flatMap(s => Object.keys(s.allowed)).find(id => STORES[id].kind === 'anti-air');
+export const airWeaponsFor = aircraftId => aircraftById(aircraftId).weapons.filter(id => STORES[id].kind === 'anti-air');
+export const antiShipWeaponFor = aircraftId => aircraftById(aircraftId).weapons.find(id => STORES[id].kind === 'anti-ship');
+export const primaryAirWeapon = aircraftId => airWeaponsFor(aircraftId)[0];
 // Kept for existing callers: the F/A-18C preset table. New code uses presetsFor().
 export const LOADOUT_PRESETS = AIRCRAFT.fa18c.presets;
 export const presetsFor = aircraftId => aircraftById(aircraftId).presets;
@@ -145,7 +149,7 @@ export function normalizeWorkshop(value) {
   const levels = Object.fromEntries(Object.keys(UPGRADE_TRACKS).map(id => [id, boundedInt(value?.levels?.[id], 5)]));
   const loadouts = Object.fromEntries(Object.keys(AIRCRAFT).map(id => [id, normalizeLoadout(value?.loadouts?.[id], id)]));
   const economy = normalizeEconomy(value);
-  return { version: 2, ...economy, credits: economy.silver, xp: boundedInt(value?.xp, 100000000), levels, loadouts };
+  return { version: 3, ...economy, credits: economy.silver, xp: boundedInt(value?.xp, 100000000), levels, loadouts };
 }
 export function upgradeAvailability(profile, track) {
   const p = normalizeWorkshop(profile), level = p.levels[track];
@@ -166,7 +170,9 @@ export function purchaseUpgrade(profile, track) {
 // The definition parameter supports new airframes without adding aircraft-specific upgrade logic.
 export function effectiveAircraft(aircraftId, profile, loadout, definition = aircraftById(aircraftId)) {
   const p = normalizeWorkshop(profile), b = definition.base, r = definition.real;
-  const summary = loadoutSummary(loadout || p.loadouts[aircraftId], aircraftId), l = p.levels;
+  // Hardpoints remain only as a parser for old saves and source-asset references.
+  // Gameplay always uses the clean airframe; legacy loadouts cannot change it.
+  const summary = { payloadKg: 0, takeoffKg: r.emptyKg + r.internalFuelKg, drag: 0, moment: 0, air: 1, sea: 1, fuelKg: 0, warning: '' }, l = p.levels;
   const massFactor = 1 / (1 + summary.payloadKg / (r.emptyKg + r.internalFuelKg) * .65);
   const handling = massFactor / (1 + summary.drag * .2 + Math.abs(summary.moment) / 25000);
   return { ...summary, aircraftId,
