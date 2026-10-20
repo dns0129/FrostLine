@@ -18,20 +18,20 @@ function holdShips(sim, targets = sim.enemies) {
 }
 function lock(sim) { run(sim, 1.6); assert.equal(sim.antiShipLockProgress, 1); }
 
-test('destroyers carry six surface missiles and the standard multirole aircraft carries two', () => {
+test('destroyers carry independent infinite air and surface launchers without hardpoint counts', () => {
   for (const mode of ['naval', 'naval-training', 'intercept', 'training', 'free']) {
     const sim = new Simulation(); sim.start(mode, 'normal', 'destroyer');
-    assert.equal(sim.player.antiShipMissiles, 6); assert.equal(DESTROYER.maxAntiShipMissiles, 6);
+    assert.equal(sim.player.antiShipMissiles, 1); assert.equal(DESTROYER.maxAntiShipMissiles, 6);
     assert.equal(sim.antiShipLockProgress, 0); assert.equal(sim.antiShipLockTarget, null); assert.equal(sim.antiShipTargetId, null);
     assert.equal(sim.antiShipCooldown, 0); assert.equal(sim.missileCooldown, 0);
   }
   const aircraft = new Simulation(); aircraft.start('training');
-  assert.equal(aircraft.player.antiShipMissiles, 2);
+  assert.equal(aircraft.player.antiShipMissiles, 1);
   assert.equal(aircraft.launchAntiShipMissile(), false);
   assert.equal(aircraft.missiles.length, 0);
 });
 
-test('surface radar needs 1.5 continuous seconds and a launch consumes only surface stock', () => {
+test('surface radar needs 1.5 continuous seconds and a launch starts only the surface refill timer', () => {
   const sim = naval();
   assert.equal(sim.launchAntiShipMissile(), false);
   run(sim, 0.7);
@@ -43,8 +43,8 @@ test('surface radar needs 1.5 continuous seconds and a launch consumes only surf
   assert.equal(sim.antiShipLockProgress, 1);
   assert.equal(sim.lockProgress, 0); assert.equal(sim.lockTarget, null);
   assert.equal(sim.launchAntiShipMissile(), true);
-  assert.equal(sim.player.antiShipMissiles, 5); assert.equal(sim.player.missiles, 12); assert.equal(sim.player.ammo, 240);
-  assert.equal(sim.antiShipCooldown, 1.4); assert.equal(sim.missileCooldown, 0);
+  assert.equal(sim.player.antiShipMissiles, 0); assert.equal(sim.player.missiles, 1); assert.equal(sim.player.ammo, 12);
+  assert.equal(sim.antiShipCooldown, 7.5); assert.equal(sim.missileCooldown, 0);
   assert.equal(sim.launchAntiShipMissile(), false);
   const m = sim.missiles[0];
   assert.equal(m.kind, 'anti-ship'); assert.equal(m.weapon, 'anti-ship'); assert.equal(m.enemy, false);
@@ -90,33 +90,33 @@ test('SAM and ASm type selection, inventory and cooldowns remain independent', (
   const boat = surface.enemies[0]; holdShips(surface, [boat, plane]);
   surface.targetId = plane.id; surface._updateLock(1.3); surface._updateAntiShipLock(1.6);
   assert.equal(surface.lockProgress, 1); assert.equal(surface.antiShipLockProgress, 0);
-  assert.equal(surface.launchAntiShipMissile(), false); assert.equal(surface.player.antiShipMissiles, 6);
+  assert.equal(surface.launchAntiShipMissile(), false); assert.equal(surface.player.antiShipMissiles, 1);
   assert.ok(surface.drainEvents().some(event => event.type === 'toast' && /反舰只对海/.test(event.text)));
   assert.equal(surface.launchMissile(), true);
-  assert.equal(surface.missileCooldown, 0.75); assert.equal(surface.player.missiles, 11);
+  assert.equal(surface.missileCooldown, 5); assert.equal(surface.player.missiles, 0);
   surface.cycleTarget(); surface._updateLock(1.6); surface._updateAntiShipLock(1.6);
   assert.equal(surface.antiShipLockProgress, 1); assert.equal(surface.lockProgress, 0);
   assert.equal(surface.launchAntiShipMissile(), true, 'SAM cooldown does not delay the separate surface launcher');
-  assert.equal(surface.player.antiShipMissiles, 5); assert.equal(surface.missileCooldown, 0.75);
+  assert.equal(surface.player.antiShipMissiles, 0); assert.equal(surface.missileCooldown, 5);
   assert.equal(surface.launchMissile(), false);
   surface._missileTimer = 0; surface.targetId = plane.id;
   surface._updateLock(1.3); surface._updateAntiShipLock(1.6);
   assert.equal(surface.launchMissile(), true, 'ASm cooldown does not delay the separate air launcher');
-  assert.equal(surface.antiShipCooldown, 1.4);
+  assert.equal(surface.antiShipCooldown, 7.5);
 });
 
 test('cooldown getters freeze while paused, decay independently and reset on restart', () => {
   const sim = naval(); lock(sim); assert.equal(sim.launchAntiShipMissile(), true);
   sim._missileTimer = 0.75;
   sim.state = 'paused'; run(sim, 5);
-  assert.equal(sim.antiShipCooldown, 1.4); assert.equal(sim.missileCooldown, 0.75);
+  assert.equal(sim.antiShipCooldown, 7.5); assert.equal(sim.missileCooldown, 0.75);
   assert.equal(sim.launchAntiShipMissile(), false);
   sim.state = 'playing'; run(sim, 0.5);
-  assert.ok(sim.antiShipCooldown > 0.88 && sim.antiShipCooldown < 0.92);
+  assert.ok(sim.antiShipCooldown > 6.98 && sim.antiShipCooldown < 7.02);
   assert.ok(sim.missileCooldown > 0.23 && sim.missileCooldown < 0.27);
   sim.start('naval-training');
   assert.equal(sim.antiShipCooldown, 0); assert.equal(sim.missileCooldown, 0);
-  assert.equal(sim.player.antiShipMissiles, 6); assert.equal(sim.antiShipLockProgress, 0);
+  assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.antiShipLockProgress, 0);
 });
 
 test('out-of-range and stale surface contacts lose all lock immediately', () => {
@@ -133,7 +133,7 @@ test('out-of-range and stale surface contacts lose all lock immediately', () => 
     if (sim.antiShipLockTarget) assert.ok(sim.antiShipLockProgress <= DT / 1.5 + 1e-12);
     else assert.equal(sim.antiShipLockProgress, 0);
     assert.notEqual(sim.antiShipLockTarget, target);
-    assert.equal(sim.launchAntiShipMissile(), false); assert.equal(sim.player.antiShipMissiles, 6);
+    assert.equal(sim.launchAntiShipMissile(), false); assert.equal(sim.player.antiShipMissiles, 1);
   }
 });
 
@@ -151,7 +151,7 @@ test('launch revalidates identity, kind, distance, live membership and progress 
     const sim = naval(); lock(sim);
     invalidate(sim, sim.antiShipLockTarget);
     assert.equal(sim.launchAntiShipMissile(), false);
-    assert.equal(sim.player.antiShipMissiles, 6); assert.equal(sim.missiles.length, 0);
+    assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.missiles.length, 0);
   }
 });
 
@@ -166,7 +166,7 @@ test('an island blocks acquisition and a newly blocked full lock cannot launch',
   target.pos.set(-2000, 0.5, -3700); lock(sim);
   target.pos.set(-7400, 0.5, -3700);
   assert.equal(sim.launchAntiShipMissile(), false, 'LOS is tested at launch rather than trusting the preceding frame');
-  assert.equal(sim.antiShipLockProgress, 0); assert.equal(sim.player.antiShipMissiles, 6);
+  assert.equal(sim.antiShipLockProgress, 0); assert.equal(sim.player.antiShipMissiles, 1);
 });
 
 test('physical sea-skimming guidance cannot fly through an island after launch', () => {
@@ -198,7 +198,7 @@ test('VLS turns smoothly into fifteen-metre cruise and reaches a rear target nea
   assert.ok(checkedCruise); assert.equal(target.health, target.maxHealth - 238);
   assert.equal(sim.launchAntiShipMissile(), true); run(sim, 28);
   assert.equal(sim.kills, 1); assert.equal(sim.state, 'won');
-  assert.ok(sim.time < 60); assert.equal(sim.player.missiles, 12);
+  assert.ok(sim.time < 60); assert.equal(sim.player.missiles, 1);
 });
 
 test('sideways moving and receding rear surface targets are intercepted from all-around radar contacts', () => {
@@ -210,7 +210,7 @@ test('sideways moving and receding rear surface targets are intercepted from all
     sim.targetId = target.id; target.pos.copy(sim.player.pos).add(position); target.vel.copy(velocity);
     target.speed = velocity.length(); target.heading = heading; target.turretHeading = heading;
     lock(sim); assert.equal(sim.launchAntiShipMissile(), true);
-    run(sim, 1.6); assert.equal(sim.launchAntiShipMissile(), true); run(sim, 28);
+    run(sim, 7.6); assert.equal(sim.launchAntiShipMissile(), true); run(sim, 28);
     assert.equal(sim.kills, 1); assert.equal(sim.state, 'won');
     assert.ok(sim.drainEvents().some(event => event.type === 'hit' && event.damage === 238 && event.weapon === 'anti-ship'));
   }
@@ -244,47 +244,46 @@ test('a vanished or dead target ends its missile and cannot redirect it to anoth
 test('free surface reserve remains usable after mounted stock reaches zero without spending SAM stock', () => {
   const sim = naval(); lock(sim); sim.player.antiShipMissiles = 0;
   const wallet = {...sim.wallet};
-  assert.equal(sim.launchAntiShipMissile(), true); assert.equal(sim.player.missiles, 12);
+  assert.equal(sim.launchAntiShipMissile(), true); assert.equal(sim.player.missiles, 1);
   assert.equal(sim.player.antiShipMissiles, 0); assert.deepEqual(sim.wallet, wallet);
   assert.equal(sim.missiles.length, 1);
 });
 
-test('all three real naval waves can be completed with ASm and replenish three up to six', () => {
+test('all three real naval waves can be completed using automatically replenished ASm', () => {
   const sim = naval('naval', 'easy');
-  for (let frame = 0; frame < 90 * 60 && sim.state === 'playing'; frame++) {
+  for (let frame = 0; frame < 180 * 60 && sim.state === 'playing'; frame++) {
     sim.update(DT);
     if (sim.antiShipLockProgress === 1 && !sim.missiles.some(m => m.weapon === 'anti-ship' && m.targetId === sim.targetId)) {
       if (sim.launchAntiShipMissile()) sim.cycleTarget();
     }
-    assert.ok(sim.player.antiShipMissiles >= 0 && sim.player.antiShipMissiles <= 6);
+    assert.ok(sim.player.antiShipMissiles >= 0 && sim.player.antiShipMissiles <= 1);
   }
   assert.equal(sim.state, 'won'); assert.equal(sim.kills, 9); assert.equal(sim.wave, 3);
-  assert.equal(sim.player.antiShipMissiles, 0); assert.equal(sim.player.missiles, 12); assert.equal(sim.player.ammo, 240);
+  assert.equal(sim.player.antiShipMissiles, 0); assert.equal(sim.player.missiles, 1); assert.equal(sim.player.ammo, 12);
   assert.ok(sim.player.health > 0); assert.ok(sim.score > 2000);
 });
 
 test('surface resupply uses its own cap and restarting into aircraft restores its configured surface inventory', () => {
   const sim = naval('naval'); sim.player.antiShipMissiles = 1; sim.player.missiles = 0;
   sim.enemies.forEach(e => { e.health = 0; }); sim.update(DT);
-  assert.equal(sim.player.antiShipMissiles, 4); assert.equal(sim.player.missiles, 6);
+  assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.player.missiles, 1);
   run(sim, 4.7); sim.player.antiShipMissiles = 5; sim.enemies.forEach(e => { e.health = 0; }); sim.update(DT);
-  assert.equal(sim.player.antiShipMissiles, 6);
+  assert.equal(sim.player.antiShipMissiles, 1);
   sim.start('training');
-  assert.equal(sim.player.antiShipMissiles, 2); assert.equal(sim.antiShipLockProgress, 0);
+  assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.antiShipLockProgress, 0);
   assert.equal(sim.antiShipLockTarget, null); assert.equal(sim.antiShipTargetId, null);
   assert.equal(sim.antiShipCooldown, 0); assert.equal(sim.launchAntiShipMissile(), false);
   assert.equal(sim.missiles.length, 0);
 });
 
-test('empty mounted inventories remain playable with the free reserve for each compatible weapon', () => {
+test('empty magazines replenish after cooldown while missiles remain separately available', () => {
   const sim = naval(); sim.player.ammo = 0;
-  run(sim, 2); assert.equal(sim.state, 'playing');
-  assert.equal(sim.player.antiShipMissiles, 6); assert.equal(sim.launchAntiShipMissile(), true);
-  run(sim, 5); assert.equal(sim.kills, 0); assert.ok(sim.enemies[0].health < sim.enemies[0].maxHealth); assert.equal(sim.state, 'playing');
-  sim.player.antiShipMissiles = 0; sim.update(DT);
-  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
-  assert.equal(sim.launchAntiShipMissile(), true); sim._fireGun();
-  assert.equal(sim.player.missiles, 12); assert.equal(sim.player.health, 600); assert.equal(sim.player.ammo, 0);
+  run(sim, 2); assert.equal(sim.state, 'playing'); assert.equal(sim.player.ammo, 0);
+  assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.launchAntiShipMissile(), true);
+  run(sim, 5); assert.equal(sim.kills, 0); assert.ok(sim.enemies[0].health < sim.enemies[0].maxHealth);
+  assert.equal(sim.player.ammo,12); assert.equal(sim.launchAntiShipMissile(),false);
+  run(sim, 2.6); assert.equal(sim.launchAntiShipMissile(),true); sim._fireGun();
+  assert.equal(sim.player.missiles,1); assert.equal(sim.player.ammo,11); assert.equal(sim.endReason,'');
 });
 
 test('the final in-flight ASm postpones failure and can win or clear a wave for resupply', () => {
@@ -297,7 +296,7 @@ test('the final in-flight ASm postpones failure and can win or clear a wave for 
     run(sim, 0.5); assert.equal(sim.state, 'playing');
     run(sim, 5); assert.equal(sim.kills, 1);
     if (mode === 'naval-training') assert.equal(sim.state, 'won');
-    else { assert.equal(sim.state, 'playing'); assert.equal(sim.player.antiShipMissiles, 3); assert.equal(sim.player.ammo, 100); }
+    else { assert.equal(sim.state, 'playing'); assert.equal(sim.player.antiShipMissiles, 1); assert.equal(sim.player.ammo, 12); }
     assert.equal(sim.endReason, '');
   }
 });

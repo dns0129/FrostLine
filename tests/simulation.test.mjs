@@ -214,8 +214,8 @@ test('intercept has three waves, resupplies between them and ends after nine kil
       assert.equal(sim.state, 'playing');
       if (wave === 1) {
         assert.equal(sim.player.health, 75);
-        assert.equal(sim.player.ammo, 420);
-        assert.equal(sim.player.missiles, 3);
+        assert.equal(sim.player.ammo, 60);
+        assert.equal(sim.player.missiles, 1);
       }
       run(sim, 4.7);
     }
@@ -260,7 +260,7 @@ test('restarting clears prior combat state and restores consumables', () => {
   assert.equal(sim.time, 0);
   assert.equal(sim.shots, 0);
   assert.equal(sim.kills, 0);
-  assert.equal(sim.player.ammo, 578);
+  assert.equal(sim.player.ammo, 60);
   assert.equal(sim.player.flares, 8);
   assert.equal(sim.tracers.length, 0);
   assert.equal(sim.particles.length, 0);

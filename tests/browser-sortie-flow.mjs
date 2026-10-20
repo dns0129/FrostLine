@@ -113,15 +113,16 @@ try {
     }
     await shot(p, '08-original-naval-base');
   });
-  await check('Missing anti-ship stores block sortie; real workshop presets restore readiness without losing the task', async () => {
-    await p.click('[data-vehicle="aircraft"]'); await p.click('#workshopBtn'); await p.click('[data-preset="clean"]');
-    await p.locator('#workshopPanel .close-panel').first().click(); await p.click('#startBtn');
+  await check('Infinite basic weapons allow sea tasks; buying in the hangar returns to the same final briefing', async () => {
+    await p.click('[data-vehicle="aircraft"]'); await p.click('#startBtn');
     await p.click('[data-category="quick"]'); await next(p); await p.click('[data-mission="naval"]'); await next(p); await p.click('[data-brief-page="3"]');
-    assert.equal(await p.locator('[data-flow-action="next"]').isDisabled(),true); assert.match(await p.locator('.sortie-blocked').innerText(),/反舰导弹/);
-    await p.click('[data-flow-action="workshop"]'); await p.click('[data-preset="multirole"]'); await p.locator('#workshopPanel .close-panel').first().click();
+    assert.equal(await p.locator('[data-flow-action="next"]').isEnabled(),true);
+    await p.click('[data-flow-action="workshop"]'); assert.equal(await p.locator('#hardpointGrid').count(),0);
+    await p.click('#hangarWeaponShop button[data-weapon-kind="gun"][data-weapon-tier="silver"]'); await p.locator('#workshopPanel .close-panel').first().click();
     assert.equal((await snapshot(p)).page,3); assert.equal(await p.locator('[data-flow-action="next"]').isEnabled(),true);
     assert.equal(await p.locator('#sortieTitle').innerText(),'确认作战目标');
     await next(p); assert.equal((await snapshot(p)).mode,'naval'); assert.equal((await snapshot(p)).aircraft,'fa18c');
+    assert.equal(await p.evaluate(()=>window.__sortieQA.sim.ammoTiers.gun),'silver');
   });
   await context.close();
   for (const [viewport, name] of [[{ width: 390, height: 844 }, 'phone'], [{ width: 844, height: 390 }, 'landscape']]) {

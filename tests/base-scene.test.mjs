@@ -23,7 +23,7 @@ test('owned inventory contains only playable vehicles and takes loadouts from si
   assert.equal(Number(OWNED_VEHICLES[2].stats[2][1]), DESTROYER.maxAmmo);
   assert.ok(OWNED_VEHICLES[2].weapons.includes(`反舰导弹 ${DESTROYER.maxAntiShipMissiles} 枚`));
   const profile = normalizeWorkshop(null), j16 = vehicleById('j16', profile), stats = effectiveAircraft('j16', profile);
-  assert.ok(j16.weapons.startsWith(`GSh-30-1 ${stats.maxAmmo} 发`)); assert.equal(j16.stats[2][1], `${stats.air} / ${stats.sea}`);
+  assert.ok(j16.weapons.includes('局内无限')); assert.equal(j16.stats[1][1], '60 / ∞'); assert.equal(j16.stats[2][1], '5 / 7.5');
 });
 
 test('display camera scales for portrait and keeps the entire vehicle above the ground', () => {

@@ -76,27 +76,13 @@ test('each live missile maps to its store, its ship class or the enemy model', (
   for (const id of [MISSILE_VISUALS.enemy, ...Object.values(MISSILE_VISUALS.ships).flatMap(Object.values)]) assert.ok(models.templates[id]);
 });
 
-test('the Hornet keeps its measured wing/tip fits and carries real-scale AIM-7M, Harpoon and fuselage AIM-120C', () => {
-  const ctx = new Proxy({}, { get: (t, k) => /create.*Gradient/.test(k) ? () => ({ addColorStop() {} }) : () => {} });
-  const prior = globalThis.document; globalThis.document = { createElement: () => ({ getContext: () => ctx }) };
-  const jetAssets = makeJetAssets();
-  if (prior === undefined) delete globalThis.document; else globalThis.document = prior;
-  const assets = { ...fa18Assets, templates: storeTemplates(models, ['aim9', 'aim120', 'aim7', 'harpoon']) };
-  const jet = makeFA18(assets, jetAssets), geometryOf = new Map();
-  for (const [id, template] of Object.entries(assets.templates)) template.traverse(o => { if (o.geometry) geometryOf.set(o.geometry, id); });
-  const kinds = {};
-  jet.userData.stores.traverse(o => {
-    if (!o.userData.store) return;
-    const key = `${o.userData.station}:${o.userData.store}`; let source = 'generated';
-    o.traverse(m => { if (m.isMesh) source = geometryOf.has(m.geometry) ? 'model' : m.geometry === assets.armament.geometries.medium || m.geometry === assets.armament.geometries.short ? 'fitted' : source; });
-    kinds[key] = source;
-  });
-  for (const station of [2, 3, 7, 8]) { assert.equal(kinds[`${station}:aim7`], 'model'); assert.equal(kinds[`${station}:harpoon`], 'model'); assert.equal(kinds[`${station}:aim120`], 'fitted'); }
-  for (const station of [4, 6]) { assert.equal(kinds[`${station}:aim120`], 'model'); assert.equal(kinds[`${station}:aim7`], 'model'); }
-  for (const station of [1, 9]) assert.equal(kinds[`${station}:aim9`], 'fitted');
-  assert.equal(kinds['5:tank'], 'generated');
-  jet.userData.dispose(); assets.armament.dispose();
-  Object.values(jetAssets.geometries).forEach(g => g.dispose()); Object.values(jetAssets.materials).forEach(m => m.dispose());
+test('the clean Hornet carries no external missiles while launch templates retain their real-scale geometry', () => {
+  const ctx = new Proxy({}, { get: (t,k) => /create.*Gradient/.test(k) ? () => ({addColorStop(){}}) : () => {} });
+  const prior=globalThis.document;globalThis.document={createElement:()=>({getContext:()=>ctx})};const jetAssets=makeJetAssets();
+  if(prior===undefined)delete globalThis.document;else globalThis.document=prior;
+  const assets={...fa18Assets,templates:storeTemplates(models,['aim9','aim120','aim7','harpoon'])},jet=makeFA18(assets,jetAssets);
+  assert.equal(jet.userData.stores.children.length,0);for(const id of ['aim9','aim120','aim7','harpoon'])assert.ok(assets.templates[id]);
+  jet.userData.dispose();
 });
 
 function rendererFixture(storeTemplates, shipId) {

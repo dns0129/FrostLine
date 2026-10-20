@@ -106,7 +106,7 @@ test('manually traversing the gun finishes both stationary training ships', () =
   assert.equal(sim.kills, 2);
   assert.equal(sim.hits, 17);
   assert.equal(sim.player.health, DESTROYER.maxHealth);
-  assert.equal(sim.player.missiles, DESTROYER.maxMissiles);
+  assert.equal(sim.player.missiles, 1);
   assert.equal(sim.enemies.length, 0);
   assert.equal(sim.drainEvents().filter(e => e.type === 'result').length, 1);
 });
@@ -345,8 +345,8 @@ test('all three naval waves resupply the correct ship inventory and end after ni
     if (wave < 3) {
       assert.equal(sim.state, 'playing');
       assert.equal(sim.player.health, wave === 1 ? 205 : 310);
-      assert.equal(sim.player.ammo, wave === 1 ? 120 : 220);
-      assert.equal(sim.player.missiles, wave === 1 ? 7 : 12);
+      assert.equal(sim.player.ammo, 12);
+      assert.equal(sim.player.missiles, 1);
       run(sim, 4.7);
       sim.enemies.forEach(assertSafeHull);
     }
@@ -398,64 +398,43 @@ test('long naval sessions preserve bounded effects, sea clearance and finite ene
   assert.ok(sim.drainEvents().length <= 100);
 });
 
-test('naval tasks with empty mounted magazines keep free reserve weapons and never lose for ammunition', () => {
-  for (const mode of ['naval', 'naval-training']) {
-    const sim = naval(mode); sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.player.health = 230;
-    const balance = { ...sim.wallet };
-    sim.drainEvents(); sim.update(DT, { fire: true });
-    assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
-    assert.equal(sim.player.ammo, 0); assert.deepEqual(sim.wallet, balance);
-    assert.equal(sim.shots, 1); assert.ok(sim.tracers.some(t => !t.enemy));
-    assert.ok(!sim.drainEvents().some(e => e.type === 'result'));
+test('empty naval magazines start automatic refill and cannot fire before it completes', () => {
+  for (const mode of ['naval','naval-training']) {
+    const sim=naval(mode);sim.player.ammo=0;const money={...sim.wallet};
+    sim.update(DT,{fire:true});assert.equal(sim.player.ammo,0);assert.equal(sim.shots,0);assert.ok(sim.gunReloadCooldown>0);
+    run(sim,3.1);assert.equal(sim.player.ammo,12);sim._fireGun();assert.equal(sim.shots,1);assert.deepEqual(sim.wallet,money);assert.equal(sim.state,'playing');
   }
 });
 
-test('a missed shell from an empty reserve does not end the mission and another shot remains available', () => {
-  const sim = naval('naval-training'); sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.player.turretHeading = Math.PI;
-  sim.update(DT, { fire: true }); run(sim, 4.5);
-  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, ''); assert.equal(sim.hits, 0);
-  sim._fireGun(); assert.equal(sim.shots, 2); assert.equal(sim.player.ammo, 0);
-  assert.equal(sim.player.health, DESTROYER.maxHealth);
+test('a missed last magazine shot refills and allows continued firing without ammunition defeat',()=>{
+  const sim=naval('naval-training');sim.player.ammo=1;sim.player.turretHeading=Math.PI;
+  sim.update(DT,{fire:true});run(sim,4.5);assert.equal(sim.hits,0);assert.equal(sim.player.ammo,12);
+  sim._fireGun();assert.equal(sim.shots,2);assert.equal(sim.player.ammo,11);assert.equal(sim.endReason,'');
 });
 
-test('a free reserve shell can sink the final target and win a training sortie', () => {
-  const sim = naval('naval-training'); sim.enemies = [sim.enemies[0]];
-  sim.enemies[0].health = 38.25; sim.player.ammo = 0; sim.player.antiShipMissiles = 0;
-  sim.update(DT, { fire: true }); run(sim, 2);
-  assert.equal(sim.state, 'won'); assert.equal(sim.kills, 1); assert.equal(sim.enemies.length, 0);
-  assert.equal(sim.endReason, ''); assert.equal(sim.player.health, DESTROYER.maxHealth);
-  assert.equal(sim.drainEvents().filter(e => e.type === 'result').length, 1);
+test('the last magazine shell can win before its automatic refill finishes',()=>{
+  const sim=naval('naval-training');sim.enemies=[sim.enemies[0]];sim.enemies[0].health=38.25;sim.player.ammo=1;
+  sim.update(DT,{fire:true});run(sim,2);assert.equal(sim.state,'won');assert.equal(sim.kills,1);assert.equal(sim.player.ammo,0);assert.equal(sim.endReason,'');
+  assert.equal(sim.drainEvents().filter(e=>e.type==='result').length,1);
 });
 
-test('a reserve shell clears a combat wave and replenishes only the configured physical inventory', () => {
-  const sim = naval(); const target = sim.enemies[0]; sim.enemies = [target];
-  target.health = 38.25; target.passive = true; target.speed = 0; target.vel.set(0, 0, 0);
-  sim.player.ammo = 0; sim.player.antiShipMissiles = 0; sim.player.health = 150;
-  sim.update(DT, { fire: true }); run(sim, 2);
-  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, ''); assert.equal(sim.kills, 1);
-  assert.equal(sim.player.ammo, 100); assert.equal(sim.player.health, 255); assert.equal(sim.player.antiShipMissiles, 3);
-  assert.ok(sim._waveDelay > 0); run(sim, 4.6);
-  assert.equal(sim.wave, 2); assert.equal(sim.enemies.length, 3);
+test('a last magazine shell clears a combat wave and resets automatic refill',()=>{
+  const sim=naval(),target=sim.enemies[0];sim.enemies=[target];target.health=38.25;target.passive=true;target.speed=0;target.vel.set(0,0,0);sim.player.ammo=1;sim.player.health=150;
+  sim.update(DT,{fire:true});run(sim,2);assert.equal(sim.kills,1);assert.equal(sim.player.ammo,12);assert.equal(sim.gunReloadCooldown,0);assert.equal(sim.player.health,255);assert.equal(sim.player.antiShipMissiles,1);
+  run(sim,4.6);assert.equal(sim.wave,2);assert.equal(sim.enemies.length,3);assert.equal(sim.state,'playing');
 });
 
-test('a reserve shell that damages but does not sink a vessel allows continued fire', () => {
-  const sim = naval('naval-training'); sim.enemies = [sim.enemies[0]]; sim.player.ammo = 0;
-  sim.update(DT, { fire: true }); run(sim, 2);
-  assert.equal(sim.hits, 1); assert.equal(sim.enemies[0].health, sim.enemies[0].maxHealth - 38.25);
-  assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
-  sim._fireGun(); assert.equal(sim.shots, 2); assert.equal(sim.player.ammo, 0);
+test('a last shell that leaves a vessel alive waits for refill and continues firing',()=>{
+  const sim=naval('naval-training');sim.enemies=[sim.enemies[0]];sim.player.ammo=1;sim.update(DT,{fire:true});run(sim,2);
+  assert.equal(sim.hits,1);assert.equal(sim.enemies[0].health,sim.enemies[0].maxHealth-38.25);sim._fireGun();assert.equal(sim.shots,1);
+  run(sim,1.2);sim._fireGun();assert.equal(sim.shots,2);assert.equal(sim.player.ammo,11);assert.equal(sim.endReason,'');
 });
 
-test('restarts restore physical inventories and hull destruction still loses with unlimited basic ammo', () => {
-  const sim = naval('naval-training');
-  for (const vehicle of ['aircraft', 'destroyer']) {
-    sim.start('training', 'normal', vehicle); sim.player.ammo = 0;
-    run(sim, 2, { fire: true });
-    assert.equal(sim.state, 'playing'); assert.equal(sim.endReason, '');
-    assert.ok(sim.shots > 1); assert.equal(sim.player.ammo, 0);
+test('restarts refill magazines and hull destruction still loses with infinite reserves',()=>{
+  const sim=naval('naval-training');for(const vehicle of ['aircraft','destroyer']){
+    sim.start('training','normal',vehicle);sim.player.ammo=0;run(sim,4,{fire:true});assert.equal(sim.state,'playing');assert.ok(sim.shots>1);assert.ok(sim.player.ammo>=0&&sim.player.ammo<sim.player.maxGunMagazine);
   }
-  sim.start('naval-training'); sim._damagePlayer(DESTROYER.maxHealth);
-  assert.equal(sim.state, 'lost'); assert.equal(sim.endReason, 'health'); assert.ok(sim.particles.length > 0);
+  sim.start('naval-training');sim._damagePlayer(DESTROYER.maxHealth);assert.equal(sim.state,'lost');assert.equal(sim.endReason,'health');assert.ok(sim.particles.length>0);
 });
 
 test('naval defeat, pause and restart preserve original aircraft and destroyer modes', () => {

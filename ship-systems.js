@@ -7,8 +7,8 @@ export const DESTROYER = Object.freeze({
 });
 export const SHIP_READINESS = Object.freeze({
   balanced:Object.freeze({name:'均衡战备',note:'兼顾防空、反舰与诱饵储备。'}),
-  airDefense:Object.freeze({name:'防空战备',note:'增加防空导弹，以部分反舰装载换取持续拦截。'}),
-  strike:Object.freeze({name:'反舰战备',note:'增加反舰导弹，需要节约防空弹药并及时使用诱饵。'}),
+  airDefense:Object.freeze({name:'防空战备',note:'防空补充时间缩短 20%，反舰补充时间增加 20%，诱饵少两组。'}),
+  strike:Object.freeze({name:'反舰战备',note:'反舰补充时间缩短 20%，防空补充时间增加 20%。'}),
 });
 const ship=(id,copy,stats)=>Object.freeze({id,...DESTROYER,gunDamage:45,gunInterval:.28,gunHeat:.075,
   samDamage:125,samInterval:.75,samChannels:24,lockSeconds:1.2,antiShipDamage:280,antiShipInterval:1.4,
@@ -39,8 +39,8 @@ export const isShipVehicle=id=>Object.hasOwn(SHIPS,id);
 export function normalizeReadiness(value){return Object.fromEntries(Object.keys(SHIPS).map(id=>[id,Object.hasOwn(SHIP_READINESS,value?.[id])?value[id]:'balanced']));}
 export function effectiveShip(id='destroyer',readiness='balanced'){
   const base=SHIPS[id]||SHIPS.destroyer,preset=Object.hasOwn(SHIP_READINESS,readiness)?readiness:'balanced';
-  if(base.id==='destroyer')return {...base,readiness:'balanced'};
+  if(base.id==='destroyer')return {...base,readiness:'balanced',airReloadFactor:1,seaReloadFactor:1};
   const changes=preset==='airDefense'?{maxMissiles:base.maxMissiles+6,maxAntiShipMissiles:4,maxFlares:base.maxFlares-2}
     :preset==='strike'?{maxMissiles:base.maxMissiles-6,maxAntiShipMissiles:12}:{};
-  return {...base,...changes,readiness:preset};
+  return {...base,...changes,readiness:preset,airReloadFactor:preset==='airDefense'?.8:preset==='strike'?1.2:1,seaReloadFactor:preset==='strike'?.8:preset==='airDefense'?1.2:1};
 }

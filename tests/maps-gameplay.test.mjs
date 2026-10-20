@@ -56,9 +56,8 @@ for (const map of MAPS) for (const requestedVehicle of OWNED_VEHICLES) for (cons
       assert.equal(sim.vehicle, vehicle);
       if (requestedVehicle.aircraftId) {
         assert.equal(sim.player.aircraftId, requestedVehicle.aircraftId);
-        const summary = loadoutSummary(sim.player.stores, requestedVehicle.aircraftId);
-        assert.equal(sim.player.missiles, summary.air);
-        assert.equal(sim.player.antiShipMissiles, summary.sea);
+        assert.deepEqual(sim.player.stores, []);
+        assert.equal(sim.player.missiles, 1); assert.equal(sim.player.antiShipMissiles, 1);
       }
       assert.equal(sim.state, 'playing');
       assert.equal(sim._spawnIncomplete, false);
