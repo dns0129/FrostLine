@@ -55,16 +55,16 @@ for (const track of ['engine','firepower','defense','maneuver']) test(`${track}:
   let p = profile(); const original = structuredClone(p);
   const first = purchaseUpgrade(p,track); assert.equal(first.ok,true); assert.equal(first.profile.credits,900); assert.equal(first.profile.levels[track],1);
   assert.deepEqual(p,original); assert.equal(upgradeAvailability(first.profile,track).allowed,false);
-  p = {...first.profile,xp:7000,credits:20000};
+  p = {...first.profile,xp:30000,silver:20000};
   for (let i=2;i<=5;i++) { const result=purchaseUpgrade(p,track); assert.equal(result.ok,true);p=result.profile;assert.equal(p.levels[track],i); }
   const atCap = structuredClone(p); assert.equal(purchaseUpgrade(p,track).ok,false); assert.deepEqual(p,atCap);
-  p = {...profile(),credits:0}; assert.equal(purchaseUpgrade(p,track).ok,false); assert.equal(purchaseUpgrade(p,'unknown').ok,false);
+  p = {...profile(),silver:0}; assert.equal(purchaseUpgrade(p,track).ok,false); assert.equal(purchaseUpgrade(p,'unknown').ok,false);
 });
 
 test('universal upgrades preserve each aircraft base values and do not expand its certified game loadout', () => {
   const p = profile(), upgraded = {...p,levels:{engine:5,firepower:5,defense:5,maneuver:5}};
   const base = effectiveAircraft('fa18c',p), advanced = effectiveAircraft('fa18c',upgraded);
-  assert.equal(advanced.maxHealth,140); assert.ok(advanced.thrust > base.thrust); assert.ok(advanced.rollRate > base.rollRate);
+  assert.equal(advanced.maxHealth,280); assert.ok(advanced.thrust > base.thrust); assert.ok(advanced.rollRate > base.rollRate);
   assert.ok(advanced.gunDamage > base.gunDamage); assert.ok(advanced.lockFactor < base.lockFactor); assert.equal(advanced.maxAmmo,578);
   assert.equal(advanced.air,base.air); assert.equal(advanced.sea,base.sea); assert.equal(advanced.payloadKg,base.payloadKg);
   const differentBase = {...AIRCRAFT.fa18c,base:{...AIRCRAFT.fa18c.base,health:80,thrust:30,rollRate:1}};
@@ -79,16 +79,16 @@ test('engine and maneuver upgrades affect actual acceleration, roll and fuel con
   run(base,1,{boost:true,roll:.5});run(upgraded,1,{boost:true,roll:.5});
   assert.ok(upgraded.player.speed > base.player.speed); assert.ok(upgraded.player.rollRate > base.player.rollRate);
   assert.ok(upgraded.player.fuelKg > base.player.fuelKg);
-  upgraded.start('training'); assert.equal(upgraded.player.maxHealth,100);assert.equal(upgraded.player.systems.thrust,effectiveAircraft('fa18c',p).thrust);
+  upgraded.start('training'); assert.equal(upgraded.player.maxHealth,200);assert.equal(upgraded.player.systems.thrust,effectiveAircraft('fa18c',p).thrust);
 });
 
 test('defense and firepower change real damage, HP, flares and cannon damage', () => {
   const p=profile();p.levels.defense=5;p.levels.firepower=5;
   const sim=new Simulation();sim.configureAircraft(p);sim.start('training');
-  assert.equal(sim.player.health,140);assert.equal(sim.player.flares,8);sim._damagePlayer(40);assert.equal(sim.player.health,105);
+  assert.equal(sim.player.health,280);assert.equal(sim.player.flares,8);sim._damagePlayer(40);assert.equal(sim.player.health,245);
   sim._fireGun();assert.ok(sim.tracers[0].damage>24);sim.deployFlare();assert.ok(sim.player.flareTime>2.6);
-  sim.start('training');assert.equal(sim.player.health,140);
-  sim.start('training','normal','destroyer');assert.equal(sim.player.maxHealth,300);assert.equal(sim.player.systems,undefined);
+  sim.start('training');assert.equal(sim.player.health,280);
+  sim.start('training','normal','destroyer');assert.equal(sim.player.maxHealth,600);assert.equal(sim.player.systems,undefined);
 });
 
 test('mixed air weapon selection enables medium/long range while near-range stores cannot lock the same target', () => {
@@ -117,7 +117,7 @@ test('aircraft Harpoon locks a sea target, launches without VLS, and scores a re
   const air=sim.player.missiles;assert.equal(sim.launchMissile(),false);assert.equal(sim.launchAntiShipMissile(),true);
   assert.equal(sim.player.antiShipMissiles,3);assert.equal(sim.player.missiles,air);assert.equal(sim.missileCooldown,0);
   assert.equal(sim.missiles[0].shipLaunched,false);assert.equal(sim.missiles[0].verticalLaunch,0);assert.ok([2,3,7,8].includes(sim.missiles[0].station));
-  run(sim,12);assert.ok(sim.kills>=1);assert.ok(sim.drainEvents().some(e=>e.type==='hit'&&e.weapon==='anti-ship'));
+  run(sim,12);assert.equal(sim.kills,0);assert.equal(sim.launchAntiShipMissile(),true);run(sim,12);assert.ok(sim.kills>=1);assert.ok(sim.drainEvents().some(e=>e.type==='hit'&&e.weapon==='anti-ship'));
 });
 
 test('wave supply respects selected stores and capacities and never creates unconfigured Harpoons', () => {
@@ -129,14 +129,14 @@ test('wave supply respects selected stores and capacities and never creates unco
   sim.configureAircraft(profile('clean'));sim.startCampaign('dawn');assert.equal(sim.player.missiles,2);assert.equal(sim.player.antiShipMissiles,0);
 });
 
-test('reward accounting pays real aircraft combat and rejects training, exits/no kills and ship sorties', () => {
+test('reward accounting pays real air and naval combat while rejecting training and no-kill failures', () => {
   const p=profile();
-  for(const sortie of [{mode:'training',won:true,kills:3},{mode:'naval-training',won:true,kills:2},{mode:'intercept',won:false,kills:0},{vehicle:'destroyer',mode:'naval',won:true,kills:9}]) {
+  for(const sortie of [{mode:'training',won:true,kills:3},{mode:'naval-training',won:true,kills:2},{mode:'intercept',won:false,kills:0}]) {
     const reward=sortieReward(p,sortie);assert.equal(reward.credits,0);assert.equal(reward.xp,0);assert.deepEqual(reward.profile,p);
   }
   const win=sortieReward(p,{vehicle:'aircraft',mode:'intercept',won:true,kills:9,score:3000});
-  assert.equal(win.xp,1200);assert.equal(win.credits,1090);assert.equal(win.profile.credits,2290);assert.deepEqual(p,profile());
-  assert.ok(sortieReward(p,{mode:'naval',vehicle:'aircraft',won:false,kills:1}).credits>0);
+  assert.equal(win.xp,1300);assert.equal(win.credits,1090);assert.equal(win.profile.credits,2290);assert.deepEqual(p,profile());
+  assert.ok(sortieReward(p,{mode:'naval',vehicle:'aircraft',won:false,kills:1}).silver>0);assert.ok(sortieReward(p,{mode:'naval',vehicle:'destroyer',won:true,kills:9}).gold>0);
 });
 
 test('fuel exhaustion stops engine thrust and boost while pause freezes fuel and inventories', () => {
@@ -177,7 +177,7 @@ test('J-16 registers its own base values, real references and eight symmetric st
 test('shared technology levels apply to the J-16 base values without changing its loadout or gun', () => {
   const p = j16Profile(), upgraded = { ...p, levels: { engine: 5, firepower: 5, defense: 5, maneuver: 5 } };
   const base = effectiveAircraft('j16', p), advanced = effectiveAircraft('j16', upgraded), hornet = effectiveAircraft('fa18c', p);
-  assert.equal(base.maxHealth, 125); assert.equal(advanced.maxHealth, 175); assert.equal(base.maxAmmo, 150); assert.equal(advanced.maxAmmo, 150);
+  assert.equal(base.maxHealth, 250); assert.equal(advanced.maxHealth, 350); assert.equal(base.maxAmmo, 150); assert.equal(advanced.maxAmmo, 150);
   assert.equal(base.maxFlares, 8); assert.ok(base.gunDamage > hornet.gunDamage); assert.ok(base.rollRate < hornet.rollRate);
   assert.equal(base.fuelCapacity, 9400); assert.ok(advanced.thrust > base.thrust);
   assert.equal(advanced.air, base.air); assert.equal(advanced.sea, base.sea); assert.equal(advanced.payloadKg, base.payloadKg);
@@ -185,7 +185,7 @@ test('shared technology levels apply to the J-16 base values without changing it
 
 test('a configured J-16 sortie flies its own airframe, PL-15 range and station launch points', () => {
   const sim = j16Sim('air'); assert.equal(sim.vehicle, 'aircraft'); assert.equal(sim.player.aircraftId, 'j16');
-  assert.equal(sim.player.ammo, 150); assert.equal(sim.player.health, 125); assert.equal(sim.player.missiles, 8);
+  assert.equal(sim.player.ammo, 150); assert.equal(sim.player.health, 250); assert.equal(sim.player.missiles, 8);
   assert.equal(sim.player.selectedAirWeapon, 'pl10');
   fixedAirTarget(sim, 7000); run(sim, 1.5); assert.equal(sim.lockProgress, 0);
   assert.equal(sim.cycleAirWeapon(), true); assert.equal(sim.player.selectedAirWeapon, 'pl15'); run(sim, 1.3); assert.equal(sim.lockProgress, 1);
@@ -193,7 +193,7 @@ test('a configured J-16 sortie flies its own airframe, PL-15 range and station l
   assert.equal(missile.store, 'pl15'); assert.equal(missile.maxSpeed, STORES.pl15.speed); assert.ok([2, 3, 4, 5, 6, 7].includes(missile.station));
   const station = AIRCRAFT.j16.stations.find(s => s.id === missile.station);
   assert.ok(missile.pos.distanceTo(sim.player.pos.clone().add(new THREE.Vector3(...station.position))) < 1e-6);
-  sim._fireGun(); assert.equal(sim.tracers.at(-1).damage, 40); assert.equal(sim.player.ammo, 149);
+  sim._fireGun(); assert.equal(sim.tracers.at(-1).damage, 34); assert.equal(sim.player.ammo, 149);
 });
 
 test('J-16 YJ-83K uses its own range, speed and damage and sinks a real target', () => {
@@ -204,8 +204,8 @@ test('J-16 YJ-83K uses its own range, speed and damage and sinks a real target',
   target.pos.copy(sim.player.pos).add(new THREE.Vector3(0, -sim.player.pos.y + .5, -7300));
   run(sim, 1.6); assert.equal(sim.antiShipLockProgress, 1, 'YJ-83K locks beyond the 7 km Harpoon range');
   assert.equal(sim.launchAntiShipMissile(), true); const missile = sim.missiles[0];
-  assert.equal(missile.store, 'yj83k'); assert.equal(missile.maxSpeed, 290); assert.equal(missile.damage, 250); assert.ok([2, 7].includes(missile.station));
-  run(sim, 40); assert.ok(sim.kills >= 1); assert.equal(sim.player.antiShipMissiles, 1);
+  assert.equal(missile.store, 'yj83k'); assert.equal(missile.maxSpeed, 290); assert.equal(missile.damage, 212.5); assert.ok([2, 7].includes(missile.station));
+  run(sim, 40); assert.equal(sim.kills, 0); assert.equal(sim.launchAntiShipMissile(), true); run(sim, 40); assert.ok(sim.kills >= 1); assert.equal(sim.player.antiShipMissiles, 0);
 });
 
 test('J-16 wave supply only restores configured stores and its own cannon capacity', () => {

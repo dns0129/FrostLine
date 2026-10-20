@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import {Simulation,shipGunOrigin} from '../simulation.js';
 import {SHIPS,effectiveShip,normalizeReadiness} from '../ship-systems.js';
+import {PLAYER_DAMAGE_SCALE} from '../combat-economy.js';
 import {makePlayableShip} from '../playable-ships.js';
 import {navalAssets} from './naval-fixture.mjs';
 
@@ -13,19 +14,19 @@ test('new ship IDs start the original destroyer simulation with independent stat
 });
 test('readiness changes inventory without stacking health or damage and preserves old D-21',()=>{
   for(const id of ['burke','type052d']){const a=effectiveShip(id,'strike'),b=effectiveShip(id,'airDefense');assert.equal(a.maxHealth,b.maxHealth);assert.equal(a.gunDamage,b.gunDamage);assert.equal(a.maxAntiShipMissiles,12);assert.ok(b.maxMissiles>a.maxMissiles);assert.deepEqual(effectiveShip(id,'strike'),a);}
-  assert.equal(effectiveShip('destroyer','strike').maxHealth,300);assert.equal(effectiveShip('destroyer','airDefense').maxMissiles,12);assert.equal(normalizeReadiness({burke:'bad'}).burke,'balanced');
+  assert.equal(effectiveShip('destroyer','strike').maxHealth,600);assert.equal(effectiveShip('destroyer','airDefense').maxMissiles,12);assert.equal(normalizeReadiness({burke:'bad'}).burke,'balanced');
 });
 test('armor reduces actual incoming damage and independent modules, then wave supply restores modules',()=>{
   for(const id of ['burke','type052d']){const s=new Simulation();s.start('intercept','normal',id);const max=s.player.health;s._damagePlayer(100);assert.equal(max-s.player.health,id==='burke'?90:94);assert.ok(s.player.modules.engine<SHIPS[id].modules.engine);assert.equal(s.player.modules.weapons,SHIPS[id].modules.weapons);s.player.modules.weapons=0;assert.equal(s.launchMissile(),false);s._gunTimer=0;const ammo=s.player.ammo;s._fireGun();assert.equal(s.player.ammo,ammo);s.enemies=[];s._waveDelay=-1;step(s,.1);assert.equal(s.player.modules.weapons,SHIPS[id].modules.weapons);assert.equal(s.player.maxHealth,SHIPS[id].maxHealth);}
 });
 test('new hull cannon fires its configured damage and cooldown with the original controls',()=>{
-  for(const id of ['burke','type052d']){const s=new Simulation();s.start('naval-training','normal',id);s._fireGun();assert.equal(s.tracers.at(-1).damage,SHIPS[id].gunDamage);assert.equal(s._gunTimer,SHIPS[id].gunInterval);const ammo=s.player.ammo;s._fireGun();assert.equal(s.player.ammo,ammo);}
+  for(const id of ['burke','type052d']){const s=new Simulation();s.start('naval-training','normal',id);s._fireGun();assert.equal(s.tracers.at(-1).damage,SHIPS[id].gunDamage*PLAYER_DAMAGE_SCALE);assert.equal(s._gunTimer,SHIPS[id].gunInterval);const ammo=s.player.ammo;s._fireGun();assert.equal(s.player.ammo,ammo);}
 });
 test('radar SAM channels limit simultaneous launches without consuming blocked ammo',()=>{
-  for(const id of ['burke','type052d']){const s=new Simulation();s.start('training','normal',id);const e=s.enemies[0];for(let i=0;i<SHIPS[id].samChannels;i++){s.targetId=e.id;s.lockTarget=e;s.lockProgress=1;s._missileTimer=0;assert.equal(s.launchMissile(),true);}s._missileTimer=0;s.lockProgress=1;s.lockTarget=e;const before=s.player.missiles;assert.equal(s.launchMissile(),false);assert.equal(s.player.missiles,before);assert.ok(s.missiles.every(m=>m.damage===SHIPS[id].samDamage));}
+  for(const id of ['burke','type052d']){const s=new Simulation();s.start('training','normal',id);const e=s.enemies[0];for(let i=0;i<SHIPS[id].samChannels;i++){s.targetId=e.id;s.lockTarget=e;s.lockProgress=1;s._missileTimer=0;assert.equal(s.launchMissile(),true);}s._missileTimer=0;s.lockProgress=1;s.lockTarget=e;const before=s.player.missiles;assert.equal(s.launchMissile(),false);assert.equal(s.player.missiles,before);assert.ok(s.missiles.every(m=>m.damage===SHIPS[id].samDamage*PLAYER_DAMAGE_SCALE));}
 });
 test('existing R anti-ship launch uses the chosen hull damage and independent cooldown',()=>{
-  for(const id of ['burke','type052d']){const s=new Simulation();s.start('naval-training','normal',id);step(s,1.7);assert.equal(s.launchAntiShipMissile(),true);const m=s.missiles.at(-1);assert.equal(m.damage,SHIPS[id].antiShipDamage);assert.equal(s.antiShipCooldown,SHIPS[id].antiShipInterval);assert.equal(s.missileCooldown,0);assert.equal(s.player.antiShipMissiles,SHIPS[id].maxAntiShipMissiles-1);}
+  for(const id of ['burke','type052d']){const s=new Simulation();s.start('naval-training','normal',id);step(s,1.7);assert.equal(s.launchAntiShipMissile(),true);const m=s.missiles.at(-1);assert.equal(m.damage,SHIPS[id].antiShipDamage*PLAYER_DAMAGE_SCALE);assert.equal(s.antiShipCooldown,SHIPS[id].antiShipInterval);assert.equal(s.missileCooldown,0);assert.equal(s.player.antiShipMissiles,SHIPS[id].maxAntiShipMissiles-1);}
 });
 test('automatic CIWS launches actual tracers and destroys an incoming missile without using main ammo',()=>{
   const s=new Simulation();s.start('training','normal','type052d');const p=s.player;

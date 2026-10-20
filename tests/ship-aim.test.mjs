@@ -147,7 +147,7 @@ test('a camera ray at a real hull yields a compensated low arc and actual cannon
   sim.update(DT, { aimPoint: aim.point, fire: true });
   assert.equal(sim.player.ammo, stocks[0] - 1); assert.equal(sim.player.missiles, stocks[1]); assert.equal(sim.player.antiShipMissiles, stocks[2]);
   run(sim, 2, { aimPoint: aim.point });
-  assert.equal(sim.hits, 1); assert.equal(target.health, 255);
+  assert.equal(sim.hits, 1); assert.equal(target.health, 261.75);
   assert.ok(sim.drainEvents().some(event => event.type === 'hit' && event.id === target.id));
 });
 
@@ -163,7 +163,7 @@ test('low-arc compensation inherits sideways hull velocity and the real shell hi
   sim.update(DT, { aimPoint: point, fire: true });
   assert.ok(sim.tracers[0].maxLife > 5 && sim.tracers[0].maxLife <= 6.8);
   run(sim, 6, { aimPoint: point });
-  assert.equal(sim.hits, 1); assert.equal(target.health, 255);
+  assert.equal(sim.hits, 1); assert.equal(target.health, 261.75);
 });
 
 test('aligned camera fire leaves the actual muzzle and an off-ray selected hull cannot bend its shell', () => {

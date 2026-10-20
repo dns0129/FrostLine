@@ -97,6 +97,7 @@ test('actual enemy shell and guided missile hits damage the carrier independentl
 
 test('a player aircraft can physically lock, launch and sink the new hostile destroyer', () => {
   const sim = new Simulation(); sim.startCampaign('shield', 'easy');
+  sim.setAmmoGrade('missile', 'gold');
   const ship = sim.enemies.find(e => e.kind === 'ship');
   ship.pos.set(0, .5, 2500); ship.vel.set(0, 0, 0); ship.passive = true;
   sim.player.pos.set(0, 450, 4000); sim.player.heading = sim.player.pitch = 0; sim.targetId = ship.id;
@@ -125,7 +126,7 @@ test('wingmen launch physical weapons, share kills, can be shot down and do not 
   const sim = new Simulation(); sim.startCampaign('dawn'); const ally = sim.allies[0], enemy = sim.enemies[0];
   assert.deepEqual(new Set(sim.enemies.map(e => e.targetId)), new Set(['player', ...sim.allies.map(a => a.id)]));
   ally.pos.copy(sim.player.pos); ally.heading = 0; ally.pitch = 0; ally.fireTimer = 0; ally.missileTimer = 0;
-  enemy.pos.copy(ally.pos).add(new THREE.Vector3(0, 0, -800)); enemy.vel.set(0, 0, 0);
+  enemy.pos.copy(ally.pos).add(new THREE.Vector3(0, 0, -800)); enemy.vel.set(0, 0, 0); enemy.health = 50; // Finish a damaged target with a real allied projectile.
   sim._updateAllies(1 / 60);
   assert.ok(sim.missiles.some(m => m.allied && m.targetId === enemy.id));
   assert.ok(sim.tracers.some(t => t.allied));

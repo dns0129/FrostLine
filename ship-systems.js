@@ -1,7 +1,7 @@
 // All performance and armament below are fictional FrostLine balance values.
 // Model dimensions are shared with the existing public-reference GLB assets.
 export const DESTROYER = Object.freeze({
-  waterline:.5,maxSpeed:18,maxHealth:300,maxAmmo:240,maxMissiles:12,maxAntiShipMissiles:6,
+  waterline:.5,maxSpeed:18,maxHealth:600,maxAmmo:240,maxMissiles:12,maxAntiShipMissiles:6,
   halfLength:55,halfWidth:10,collisionTop:21,turretY:8,turretZ:-32,
   radarRange:5000,antiShipRadarRange:5500,antiShipLaunch:Object.freeze([1.05,6.2,-22.56]),
 });
@@ -19,21 +19,21 @@ export const SHIPS=Object.freeze({
   burke:ship('burke',{code:'DDG-51',name:'阿利·伯克级',english:'ARLEIGH BURKE',model:'burke',role:'区域防空 / 持续作战',
     description:'复用现有伯克级三维模型。较高船体耐久、3 个防空交战通道与较远雷达覆盖；转向和末端防御较慢。',
     gunName:'Mk 45 · 127 mm 舰炮',samName:'标准系列防空导弹',antiShipName:'舰载反舰导弹',ciwsName:'密集阵近防炮'},
-    {maxHealth:420,maxSpeed:17,maxAmmo:220,maxMissiles:18,maxAntiShipMissiles:8,maxFlares:8,
+    {maxHealth:840,maxSpeed:17,maxAmmo:220,maxMissiles:18,maxAntiShipMissiles:8,maxFlares:8,
       halfLength:76.9,halfWidth:10.15,collisionTop:28,turretY:10.2,turretZ:-50,turretForwardOffset:1.6,antiShipLaunch:[0,8,-38],
       radarRange:5800,antiShipRadarRange:6000,gunDamage:52,gunInterval:.42,gunHeat:.09,
       samDamage:145,samInterval:1.1,samChannels:3,antiShipDamage:320,antiShipInterval:2.4,
       armor:.1,turnRate:.088,ciwsRange:700,ciwsInterval:.085,ciwsDamage:8,
-      modules:Object.freeze({engine:160,radar:140,weapons:180})}),
+      modules:Object.freeze({engine:320,radar:280,weapons:360})}),
   type052d:ship('type052d',{code:'DDG-172',name:'052D 型',english:'TYPE 052D',model:'type052d',role:'机动防空 / 末端拦截',
     description:'复用现有 052D 三维模型。更灵活的转舵、更强近防火力与较高反舰单发伤害；船体耐久和防空通道较少。',
     gunName:'H/PJ-45 · 130 mm 舰炮',samName:'海红旗系列防空导弹',antiShipName:'鹰击系列反舰导弹',ciwsName:'近防炮系统'},
-    {maxHealth:390,maxSpeed:18.5,maxAmmo:200,maxMissiles:14,maxAntiShipMissiles:8,maxFlares:10,
+    {maxHealth:780,maxSpeed:18.5,maxAmmo:200,maxMissiles:14,maxAntiShipMissiles:8,maxFlares:10,
       halfLength:78.5,halfWidth:8.75,collisionTop:28,turretY:10.48,turretZ:-52,turretForwardOffset:2.4,antiShipLaunch:[0,8,-40],
       radarRange:5400,antiShipRadarRange:6200,gunDamage:60,gunInterval:.5,gunHeat:.1,
       samDamage:135,samInterval:1.2,samChannels:2,antiShipDamage:360,antiShipInterval:3,
       armor:.06,turnRate:.115,ciwsRange:850,ciwsInterval:.065,ciwsDamage:10,ciwsCooling:.5,ciwsHeat:.075,
-      modules:Object.freeze({engine:150,radar:130,weapons:170})}),
+      modules:Object.freeze({engine:300,radar:260,weapons:340})}),
 });
 export const isShipVehicle=id=>Object.hasOwn(SHIPS,id);
 export function normalizeReadiness(value){return Object.fromEntries(Object.keys(SHIPS).map(id=>[id,Object.hasOwn(SHIP_READINESS,value?.[id])?value[id]:'balanced']));}

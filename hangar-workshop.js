@@ -1,5 +1,7 @@
-import { AIRCRAFT, STORES, presetsFor, UPGRADE_TRACKS, PILOT_XP, presetLoadout, loadoutSummary, validateLoadout,
+import { AIRCRAFT, STORES, presetsFor, UPGRADE_TRACKS, presetLoadout, loadoutSummary, validateLoadout,
   normalizeWorkshop, pilotLevel, effectiveAircraft, upgradeAvailability, purchaseUpgrade } from './aircraft-systems.js';
+
+import { pilotProgress } from './combat-economy.js';
 
 const $ = id => document.getElementById(id);
 const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
@@ -50,10 +52,10 @@ export class HangarWorkshop {
     }));
     this.presetAircraft = this.aircraftId;
     $('workshopRank').textContent = `指挥官 ${level} 级`;
-    $('workshopCredits').textContent = `${p.credits.toLocaleString()} 改装点`;
-    const nextXp = PILOT_XP[level];
-    $('workshopXp').textContent = nextXp ? `${p.xp} / ${nextXp} XP · 下一级解锁更高阶改装` : `${p.xp} XP · 全部阶级已开放`;
-    $('workshopXpBar').value = nextXp ? (p.xp - PILOT_XP[level - 1]) / (nextXp - PILOT_XP[level - 1]) : 1;
+    $('workshopCredits').textContent = `${p.silver.toLocaleString()} 银币 · ${p.gold.toLocaleString()} 金币`;
+    const xp = pilotProgress(p.xp);
+    $('workshopXp').textContent = xp.needed ? `本级 ${xp.current} / ${xp.needed} XP · 距下一级 ${xp.remaining} XP` : `${p.xp} XP · 指挥官已满 30 级`;
+    $('workshopXpBar').value = xp.fraction;
     const focused = document.activeElement?.dataset?.station;
     $('hardpointGrid').replaceChildren(...aircraft.stations.map(station => {
       const item = slots.find(s => s.station === station.id), row = element('div', 'hardpoint-row');
@@ -87,7 +89,7 @@ export class HangarWorkshop {
       for (let i = 1; i <= 5; i++) tiers.append(element('i', i <= current ? 'active' : ''));
       const metric = s => id === 'engine' ? `推力指数 ${(s.thrust + s.boostThrust).toFixed(1)}` : id === 'firepower' ? `伤害 ${Math.round(s.damageMultiplier * 100)}%`
         : id === 'defense' ? `机体 ${s.maxHealth} HP` : `滚转 ${Math.round(s.rollRate * 180 / Math.PI)}°/s`;
-      const button = element('button', 'upgrade-buy', check.allowed ? `升级 · ${check.cost} 点` : check.reason);
+      const button = element('button', 'upgrade-buy', check.allowed ? `升级 · ${check.cost} 银币` : check.reason);
       button.dataset.upgrade = id; button.disabled = !check.allowed;
       button.addEventListener('click', () => {
         const purchase = purchaseUpgrade(this.profile, id);

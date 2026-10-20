@@ -13,7 +13,7 @@ const chapters = [
   { id: 'shield', title: '断后航线', subtitle: '保护航母撤退', mapId: 'storm-strait', location: '风暴海峡 · 航母撤离走廊', tag: 'WITHDRAWAL',
     story: '舰队转向风暴海峡，两艘不明驱逐舰从侧翼逼近，空袭也紧随而至。企业号需要时间撤出危险水道。你的小队必须同时清除水面封锁与空中威胁，让航母抵达安全海域。',
     briefing: '五波共二十架敌机和两艘驱逐舰交替进入战区。驱逐舰与部分攻击机优先攻击航母，其他敌机牵制小队。企业号有独立耐久，沿二点四公里撤离航线航行一百八十秒。击退全部敌人、航母存活且抵达出口后通关；需要携带反舰导弹。',
-    waves: [4, 4, 4, 4, 4], shipWaves: [1, 0, 1, 0, 0], escortDuration: 180, retreatDistance: 2400, carrierHealth: 2200,
+    waves: [4, 4, 4, 4, 4], shipWaves: [1, 0, 1, 0, 0], escortDuration: 180, retreatDistance: 2400, carrierHealth: 4400,
     guardRadius: 6500, abandonAfter: 20, timeLimit: 660, rewardPoints: 650, parTime: 420,
     ending: '企业号驶出风暴海峡，受损甲板开始抢修。敌舰的通信记录指向一片偏离民用航线的群岛。为了让舰队安全返航，苍隼小队接到追查命令。',
     radio: [{ at: 0, text: '企业号：撤退开始。拦截攻击机，用 R 发射反舰导弹清除驱逐舰！' }, { at: 60, text: '指挥部：留意航母耐久和绿色标记。水面目标正在组织新一轮攻击。' }] },
@@ -39,8 +39,8 @@ const chapters = [
     ending: '冰海防线瓦解，但暗潮反向解算了企业号的位置。舰队转场途中遭遇第二轮追击，小队必须立即回援。' },
   { id: 'convoy', title: '暮湾回援', subtitle: '再次掩护舰队', mapId: 'dusk-gulf', location: '暮色海湾 · 舰队转场航线', tag: 'FLEET RESCUE',
     story: '暮色中，刚恢复战力的企业号再次遭到围攻。暗潮这次投入更大规模的海空协同编队，试图迫使舰队在湾口搁浅。苍隼小队必须守住最后一条撤离走廊。',
-    briefing: '五波共三十二架敌机、四艘驱逐舰。保护二千耐久的航母沿三点二公里航线撤离，航程二百四十秒。攻击航母的敌机比例上升；全歼敌人并等航母抵达出口。防区外连续二十秒或航母被击沉都会失败。',
-    waves: [6, 6, 6, 7, 7], shipWaves: [1, 1, 0, 1, 1], escortDuration: 240, retreatDistance: 3200, carrierHealth: 2000,
+    briefing: '五波共三十二架敌机、四艘驱逐舰。保护四千耐久的航母沿三点二公里航线撤离，航程二百四十秒。攻击航母的敌机比例上升；全歼敌人并等航母抵达出口。防区外连续二十秒或航母被击沉都会失败。',
+    waves: [6, 6, 6, 7, 7], shipWaves: [1, 1, 0, 1, 1], escortDuration: 240, retreatDistance: 3200, carrierHealth: 4000,
     guardRadius: 6500, abandonAfter: 20, timeLimit: 900, rewardPoints: 1400, parTime: 600,
     ending: '企业号成功撤离。最后一轮攻击机的导航数据揭开了冰川深处的中继节点。舰队将支援这次远程突击，苍隼小队不再被动迎战。' },
   { id: 'relay', title: '冰川静默', subtitle: '猎杀中继指挥机', mapId: 'glacial-sea', location: '冰原海域 · 冰川中继站', tag: 'RELAY HUNT',
@@ -71,7 +71,7 @@ export const CAMPAIGN_LEVELS = freeze(chapters.map((chapter, i) => {
     spawn: [0, 1100 + i * 35, 4000], airTotal: air, shipTotal: sea,
     objectives: [`清除五波共 ${air} 架敌机${sea ? `与 ${sea} 艘驱逐舰` : ''}`,
       chapter.escortDuration ? `保护企业号存活，完成 ${chapter.escortDuration} 秒撤离航程` : chapter.commanderWave ? '击落强化指挥机及其全部护航目标' : '保持机体存活，协同僚机清除战区'],
-    rules: `玩家 + 三架僚机 · 五波清敌 · 波次间修复并补满出击挂载${chapter.escortDuration ? ` · 航母 ${chapter.carrierHealth} HP · 离区 ${chapter.abandonAfter} 秒失败` : ''} · 通关 +${chapter.rewardPoints} 升级点`,
+    rules: `玩家 + 三架僚机 · 五波清敌 · 波次间修复并补满出击挂载${chapter.escortDuration ? ` · 航母 ${chapter.carrierHealth} HP · 离区 ${chapter.abandonAfter} 秒失败` : ''} · 通关 +${chapter.rewardPoints} 银币`,
     radio: chapter.radio || [{ at: 0, text: `指挥部：苍隼小队，进入${chapter.location}。${chapter.subtitle}，注意海空协同威胁。` }],
   };
 }));

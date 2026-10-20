@@ -216,7 +216,7 @@ for (const selectedAircraft of OWNED_VEHICLES.filter(vehicle => vehicle.aircraft
       input: { reset() {}, active: false }, sound: { init() {}, silence() {} },
       baseScene: { cancelPointers() {}, dirty: false },
       presentation: { reset() {}, sample: () => sim },
-      toast() {}, closePanels() {}, syncCameraControls() {}, readouts() {},
+      toast() {}, closePanels() {}, syncCameraControls() {}, readouts() {}, captureCombatWallet() {},
       selectMode(mode) { context.selectedMode = mode; },
       selectVehicle(vehicle) { context.selectedVehicle = vehicle; },
       isShip: () => context.selectedVehicle === 'destroyer',

@@ -5,6 +5,8 @@ import { terrainHeight, setActiveMap } from './world-math.js';
 import { createDefaultFleet, updateDefaultFleet } from './ambient-fleet.js';
 import { CAMPAIGN_LEVELS, campaignLevel } from './campaign.js';
 import { aircraftById, STORES, normalizeWorkshop, normalizeLoadout, effectiveAircraft, storeRange, primaryAirWeapon } from './aircraft-systems.js';
+import { AMMO_GRADES, spendAmmunition, PLAYER_DAMAGE_SCALE } from './combat-economy.js';
+import { aiProfile, airSpawnPosition, flightPlan } from './enemy-ai.js';
 
 const TAU = Math.PI * 2;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -18,11 +20,11 @@ const surfaceHeight = (x, z) => Math.max(0, terrainHeight(x, z));
 
 export const HOSTILE_SHIPS = Object.freeze({
   patrol: Object.freeze({ halfLength: 22.5, halfWidth: 5.5, collisionTop: 10, waterline: 0.5,
-    turretY: 4, turretZ: -12, aimHeight: 4, maxSpeed: 14, maxHealth: 140 }),
+    turretY: 4, turretZ: -12, aimHeight: 4, maxSpeed: 14, maxHealth: 280 }),
   frigate: Object.freeze({ halfLength: 42.5, halfWidth: 8.5, collisionTop: 17, waterline: 0.5,
-    turretY: 6, turretZ: -24, aimHeight: 6, maxSpeed: 11, maxHealth: 240 }),
+    turretY: 6, turretZ: -24, aimHeight: 6, maxSpeed: 11, maxHealth: 480 }),
   destroyer: Object.freeze({ halfLength: 55, halfWidth: 10, collisionTop: 21, waterline: 0.5,
-    turretY: 8, turretZ: -32, aimHeight: 8, maxSpeed: 18, maxHealth: 300 }),
+    turretY: 8, turretZ: -32, aimHeight: 8, maxSpeed: 18, maxHealth: 600 }),
 });
 const isNavalMode = mode => mode === 'naval' || mode === 'naval-training';
 
@@ -256,9 +258,9 @@ function segmentSphereEntry(point, a, b, radius) {
 }
 
 const DIFFICULTY = {
-  easy: { damage: 0.48, aim: 27, enemyTurn: 0.23, enemyHealth: 85, missileEvery: 25 },
-  normal: { damage: 0.72, aim: 21, enemyTurn: 0.29, enemyHealth: 100, missileEvery: 19 },
-  hard: { damage: 1, aim: 16, enemyTurn: 0.35, enemyHealth: 110, missileEvery: 14 },
+  easy: { damage: 0.48, aim: 27, enemyTurn: 0.23, enemyHealth: 170, missileEvery: 25 },
+  normal: { damage: 0.72, aim: 21, enemyTurn: 0.29, enemyHealth: 200, missileEvery: 19 },
+  hard: { damage: 1, aim: 16, enemyTurn: 0.35, enemyHealth: 220, missileEvery: 14 },
 };
 
 /** Metres / seconds / radians. Rendering and audio consume this state; nothing here needs a DOM. */
@@ -291,10 +293,33 @@ export class Simulation {
 
   get airWeapon() { return STORES[this.player.selectedAirWeapon] || STORES.aim9; }
 
+  hasWeapon(kind) {
+    return this.vehicle === 'destroyer' || this.player.configuredStores.some(s => s.count > 0 && STORES[s.store]?.kind === kind);
+  }
+
+  setAmmoGrade(kind, tier) {
+    if (!Object.hasOwn(AMMO_GRADES, kind) || !Object.hasOwn(AMMO_GRADES[kind], tier)) return false;
+    this.ammoTiers[kind] = tier; this.workshop.ammoTiers[kind] = tier;
+    return true;
+  }
+
+  _chargeAmmo(kind) {
+    const training = this.mode === 'training' || this.mode === 'naval-training';
+    const paid = spendAmmunition(this.wallet, kind, this.ammoTiers[kind], training);
+    this.wallet = paid.wallet;
+    this.workshop.silver = this.workshop.credits = this.wallet.silver; this.workshop.gold = this.wallet.gold;
+    if (paid.fallback) {
+      this.setAmmoGrade(kind, 'basic');
+      this._emit('toast', { text: `${kind === 'gun' ? '机炮' : '导弹'}余额不足，已自动切换免费基础弹。` });
+    }
+    if (paid.grade.cost || paid.fallback) this._emit('wallet', { ...this.wallet, ammoTiers: { ...this.ammoTiers } });
+    return paid;
+  }
+
   cycleAirWeapon() {
     if (this.vehicle === 'destroyer') return false;
     const types = Object.keys(STORES).filter(id => STORES[id].kind === 'anti-air'
-      && this.player.stores.some(s => s.store === id && s.count > 0));
+      && this.player.configuredStores.some(s => s.store === id && s.count > 0));
     if (!types.length) return false;
     this.player.selectedAirWeapon = types[(types.indexOf(this.player.selectedAirWeapon) + 1) % types.length];
     this.lockProgress = 0; this.lockTarget = null; this._lockAnnounced = false;
@@ -306,8 +331,8 @@ export class Simulation {
     const remaining = p.stores.map(s => s.count > 0 ? s : { station: s.station, store: null, count: 0 });
     const stats = effectiveAircraft(this.aircraftId, this.workshop, remaining);
     p.systems = stats; p.missiles = stats.air; p.antiShipMissiles = stats.sea;
-    if (!p.stores.some(s => s.store === p.selectedAirWeapon && s.count > 0)) {
-      p.selectedAirWeapon = p.stores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || primaryAirWeapon(this.aircraftId);
+    if (!p.configuredStores.some(s => s.store === p.selectedAirWeapon && s.count > 0)) {
+      p.selectedAirWeapon = p.configuredStores.find(s => s.count > 0 && STORES[s.store]?.kind === 'anti-air')?.store || primaryAirWeapon(this.aircraftId);
       this.lockProgress = 0; this.lockTarget = null;
     }
   }
@@ -318,10 +343,12 @@ export class Simulation {
     const stations = aircraftById(this.aircraftId).stations;
     candidates.sort((a, b) => Math.abs(p.systems.moment - STORES[a.store].massKg * stations.find(s => s.id === a.station).x)
       - Math.abs(p.systems.moment - STORES[b.store].massKg * stations.find(s => s.id === b.station).x));
-    const slot = candidates[0];
+    const slot = candidates[0] || p.configuredStores.find(s => s.count > 0 && STORES[s.store]?.kind === kind
+      && (kind !== 'anti-air' || s.store === p.selectedAirWeapon));
     if (!slot) return null;
     const result = { station: slot.station, store: slot.store };
-    slot.count -= 1; this._refreshAircraftStores(); return result;
+    if (candidates.length) slot.count -= 1;
+    this._refreshAircraftStores(); return result;
   }
 
   _refillAircraftStores(full = false) {
@@ -339,6 +366,8 @@ export class Simulation {
   }
 
   _reset(vehicle = 'aircraft') {
+    this.wallet = { silver: this.workshop.silver, gold: this.workshop.gold };
+    this.ammoTiers = { ...this.workshop.ammoTiers };
     this.campaignId = null;
     this.campaignState = null;
     this.vehicle = vehicle;
@@ -445,7 +474,7 @@ export class Simulation {
       for (let i = 0; i < level.wingmen; i++) {
         const pos = this.player.pos.clone().add(new THREE.Vector3((i % 2 ? 1 : -1) * (110 + i * 65), 35 + i * 25, 120 + i * 85));
         this.allies.push({ id: `wingman-${i + 2}`, name: `苍隼${['二', '三', '四'][i]}号`, kind: 'aircraft', allied: true,
-          pos, vel: this.player.vel.clone(), heading: 0, pitch: 0, bank: 0, speed: 185, health: 135, maxHealth: 135,
+          pos, vel: this.player.vel.clone(), heading: 0, pitch: 0, bank: 0, speed: 185, health: 270, maxHealth: 270,
           fireTimer: i * .2, missileTimer: 9 + i * 3, seaMissiles: 1, hitFlash: 0 });
       }
       if (level.escortDuration) {
@@ -503,22 +532,17 @@ export class Simulation {
     const level = campaignLevel(this.campaignId);
     const count = level ? level.waves[this.wave - 1] : this.mode === 'training' ? 3 : this.mode === 'free' ? this.wave + 1 : Math.min(6, this.wave + 1);
     const p = this.player;
-    const ahead = forward(p.heading, clamp(p.pitch, -0.1, 0.1));
-    const right = new THREE.Vector3().crossVectors(ahead, UP).normalize();
     for (let i = 0; i < count; i++) {
-      const formationIndex = this.mode === 'free' ? i % 8 : i;
-      const distance = 820 + formationIndex * 310 + (this.mode === 'free' ? Math.floor(i / 8) * 90 : 0);
-      const lateral = formationIndex === 0 ? -75 : (i % 2 ? 1 : -1) * (150 + formationIndex * 70);
-      const pos = p.pos.clone().addScaledVector(ahead, distance).addScaledVector(right, lateral);
-      pos.y = Math.max(terrainHeight(pos.x, pos.z) + 450,
-        this.vehicle === 'destroyer' ? 600 + i * 75 : p.pos.y + (i % 2 ? 70 : -20));
-      const heading = p.heading + (this._random() - 0.5) * 0.1;
+      const pos = airSpawnPosition(p, i, this.wave, () => this._random(), terrainHeight);
+      const heading = Math.atan2(-(p.pos.x - pos.x), -(p.pos.z - pos.z));
       this.enemies.push({
         id: `bandit-${this._nextId++}`, kind: 'aircraft', pos,
         heading, pitch: 0, bank: 0, speed: 150 + i * 5,
         vel: forward(heading, 0).multiplyScalar(150 + i * 5),
-        health: this.mode === 'training' ? 65 : this.settings.enemyHealth,
-        maxHealth: this.mode === 'training' ? 65 : this.settings.enemyHealth,
+        health: this.mode === 'training' ? 130 : this.settings.enemyHealth,
+        maxHealth: this.mode === 'training' ? 130 : this.settings.enemyHealth,
+        role: i % 3, arrivalGrace: 4, aiMode: 'ingress', decisionTimer: 0, breakCooldown: 0,
+        flares: aiProfile(this.difficulty, this.mode === 'free' ? this.wave : null).flares, flareCooldown: 0,
         phase: this._random() * TAU, age: 0, extendTime: 0,
         fireTimer: 2 + i * 1.3, missileTimer: (this.mode === 'free' ? this.settings.missileEvery : 14) + i * 5 + this._random() * 5,
         burst: 0, burstCooldown: 1 + i * 0.5, hitFlash: 0,
@@ -554,7 +578,7 @@ export class Simulation {
       const desired = anchor.pos.clone().add(new THREE.Vector3((i ? 1 : -1) * 650, 0, -1500 - i * 400)).setY(body.waterline);
       const pos = this._shipSpawnPosition(desired, heading, body);
       if (!pos) { this._spawnIncomplete = true; this.state = 'paused'; this._emit('toast', { text: '无法找到安全出舰海域，请返回基地重新出击。' }); return; }
-      const health = Math.round(body.maxHealth * level.healthScale * this.settings.enemyHealth / 100);
+      const health = Math.round(body.maxHealth * level.healthScale * this.settings.enemyHealth / 200);
       this.enemies.push({ ...body, id: `hostile-ship-${this._nextId++}`, kind: 'ship', shipType: 'destroyer', name: '暗潮驱逐舰',
         pos, vel: new THREE.Vector3(), heading, pitch: 0, bank: 0, speed: 0, health, maxHealth: health,
         turretHeading: heading, turretPitch: 0, age: 0, hitFlash: 0, rudder: 0, phase: this._random() * TAU,
@@ -685,8 +709,8 @@ export class Simulation {
         this._emit('toast', { text: '暂时无法找到安全出舰海域 · 请返回基地重新开始' });
         break;
       }
-      const health = passive ? (shipType === 'patrol' ? 120 : 180)
-        : Math.round(body.maxHealth * this.settings.enemyHealth / 100);
+      const health = passive ? (shipType === 'patrol' ? 240 : 360)
+        : Math.round(body.maxHealth * this.settings.enemyHealth / 200);
       this.enemies.push({
         ...body, id: `hostile-ship-${this._nextId++}`, kind: 'ship', shipType, pos,
         heading, pitch: 0, bank: 0, speed: passive ? 0 : body.maxSpeed * 0.55,
@@ -734,10 +758,8 @@ export class Simulation {
     this._removeDestroyed();
     this._updateThreat();
     this._updateMission(dt);
-    if (this.state === 'playing' && isNavalMode(this.mode) && this.player.ammo <= 0 && this.player.antiShipMissiles <= 0
-      && this.enemies.some(e => e.kind === 'ship' && e.health > 0)
-      && !this.tracers.some(t => !t.enemy && t.life > 0)
-      && !this.missiles.some(m => !m.enemy && m.weapon === 'anti-ship' && m.life > 0)) this._finish(false, 'ammo');
+    // Configured launchers have unlimited free reserve ammunition. Heat,
+    // guidance, cooldowns and ship fire-control channels still limit firing.
     if (this.player.health <= 0 && this.state === 'playing') this._finish(false);
   }
 
@@ -1009,85 +1031,75 @@ export class Simulation {
   }
 
   _updateEnemies(dt) {
+    const profile = aiProfile(this.difficulty, this.mode === 'free' ? this.wave : null);
     for (const e of this.enemies) {
       if (e.health <= 0) continue;
       if (e.kind === 'ship') { this._updateEnemyShip(e, dt); continue; }
-      const p = this._enemyTarget(e), surfaceTarget = p.kind !== 'aircraft';
-      e.age += dt;
-      e.hitFlash = Math.max(0, e.hitFlash - dt * 4);
-      e.fireTimer -= dt;
-      e.missileTimer -= dt;
-      e.burstCooldown -= dt;
+      e.age += dt; e.hitFlash = Math.max(0, e.hitFlash - dt * 4);
+      e.fireTimer -= dt; e.missileTimer -= dt; e.burstCooldown -= dt;
       e.extendTime = Math.max(0, e.extendTime - dt);
-      const toPlayer = p.pos.clone().sub(e.pos);
-      const distance = toPlayer.length();
-      let desiredHeading = e.heading;
-      let desiredPitch = 0;
-      if (e.passive || e.age < 6) {
-        desiredHeading = e.heading + Math.sin(e.age * 0.13 + e.phase) * 0.045;
-        desiredPitch = Math.sin(e.age * 0.3 + e.phase) * 0.05;
-      } else {
-        if (distance < 270 && e.extendTime === 0) e.extendTime = 3.5 + this._random() * 2;
-        if (e.extendTime > 0) {
-          desiredHeading = e.heading + Math.sin(e.phase) * 0.13;
-          desiredPitch = Math.sin(e.age * 0.35 + e.phase) * 0.18;
-        } else {
-          const lead = p.pos.clone().addScaledVector(p.vel, Math.min(distance / 850, 1.1));
-          // Attack along the coast at a safe altitude; weapon guidance still aims at the hull.
-          if (surfaceTarget) lead.y = Math.max(350, terrainHeight(lead.x, lead.z) + 350);
-          lead.sub(e.pos);
-          desiredHeading = Math.atan2(-lead.x, -lead.z);
-          desiredPitch = clamp(Math.atan2(lead.y, Math.hypot(lead.x, lead.z)), -0.5, 0.5);
+      e.breakCooldown = Math.max(0, (e.breakCooldown || 0) - dt);
+      e.flareCooldown = Math.max(0, (e.flareCooldown || 0) - dt);
+      e.decisionTimer = (e.decisionTimer || 0) - dt;
+      e.targetChoiceTimer = (e.targetChoiceTimer || 0) - dt;
+      if (!e.attackCarrier && profile === aiProfile('hard') && this.allies.length && e.targetChoiceTimer <= 0) {
+        const targets = [this.player, ...this.allies].filter(target => target.health > 0);
+        let best = null, score = Infinity;
+        for (const target of targets) {
+          const id = target.id || 'player', assigned = this.enemies.filter(other => other !== e && other.targetId === id).length;
+          const value = e.pos.distanceTo(target.pos) * (.65 + target.health / target.maxHealth * .45) + assigned * 900;
+          if (value < score) { best = target; score = value; }
         }
+        if (best) e.targetId = best.id || 'player';
+        e.targetChoiceTimer = 3;
       }
-      const clearance = e.pos.y - terrainHeight(e.pos.x, e.pos.z);
-      if (clearance < 300) desiredPitch = Math.max(0.34, desiredPitch);
-      if (e.pos.y > 4200) desiredPitch = Math.min(-0.2, desiredPitch);
-      const headingError = wrap(desiredHeading - e.heading);
-      const maxTurn = e.passive ? 0.09 : this.settings.enemyTurn * (e.turnScale || 1);
-      const turn = clamp(headingError * 0.9, -maxTurn, maxTurn);
+      const target = this._enemyTarget(e), toTarget = target.pos.clone().sub(e.pos), distance = toTarget.length();
+      const incoming = profile.evadeRange ? this.missiles.find(m => !m.enemy && !m.decoy && m.life > 0
+        && m.targetId === e.id && m.pos.distanceTo(e.pos) < profile.evadeRange) : null;
+      if (!e.passive && distance < 330 && e.breakCooldown <= 0) { e.extendTime = 3.5; e.breakCooldown = 9; }
+      if (!e.passive && incoming && e.flares > 0 && e.flareCooldown <= 0 && ['aim9', 'pl10'].includes(incoming.store)) {
+        incoming.decoy = e.pos.clone().add(new THREE.Vector3(130, -90, 110)); incoming.decoyLife = 2.2; incoming.targetId = null;
+        e.flares--; e.flareCooldown = 14;
+        for (let i = 0; i < 3; i++) this._particle(e.pos, 'flare', 2.2, 2.5, new THREE.Vector3((i - 1) * 30, -20, 15));
+      }
+      if (e.decisionTimer <= 0 || !e.plan || incoming && e.aiMode !== 'evade') {
+        e.plan = flightPlan(e, target, { profile, incoming, time: this.time, terrainHeight });
+        e.decisionTimer = profile.thinkEvery;
+      }
+      let plan = e.plan;
+      if (e.passive) plan = { mode: 'training', heading: Math.hypot(e.pos.x, e.pos.z) > 10100 ? Math.atan2(e.pos.x, e.pos.z)
+        : e.heading + Math.sin(e.age * .13 + e.phase) * .04, pitch: Math.sin(e.age * .3 + e.phase) * .045, speed: 142, weaponsAllowed: false };
+      e.aiMode = plan.mode;
+      let headingError = wrap(plan.heading - e.heading);
+      // Short-range separation keeps wingmen from collapsing onto one pursuit line.
+      const neighbor = this.enemies.find(other => other !== e && other.kind !== 'ship' && other.health > 0 && other.pos.distanceTo(e.pos) < 140);
+      if (neighbor) headingError += Math.sign(e.pos.x - neighbor.pos.x || Math.sin(e.phase)) * .3;
+      const maxTurn = e.passive ? .09 : this.settings.enemyTurn * (e.turnScale || 1);
+      const turn = clamp(headingError * 1.1, -maxTurn, maxTurn);
       e.heading = wrap(e.heading + turn * dt);
-      e.pitch = smooth(e.pitch, desiredPitch, 0.8, dt);
-      e.bank = smooth(e.bank, clamp(turn * e.speed / 9.81, -1.05, 1.05), 2.3, dt);
-      const targetSpeed = e.passive ? 142 : (e.extendTime > 0 ? 193 : 163);
-      e.speed = smooth(e.speed, targetSpeed, 0.25, dt);
-      e.vel.copy(forward(e.heading, e.pitch)).multiplyScalar(e.speed);
-      e.pos.addScaledVector(e.vel, dt);
-      // Keep AI in the same useful combat volume even if a player spends time near the boundary.
-      if (distance > 6000) {
-        const delta = e.pos.clone().sub(p.pos).normalize();
-        e.pos.copy(p.pos).addScaledVector(delta, 3500);
+      e.pitch = smooth(e.pitch, plan.pitch, profile === aiProfile('hard') ? 1.6 : 1, dt);
+      e.bank = smooth(e.bank, clamp(turn * e.speed / 9.81, -1.1, 1.1), 2.8, dt);
+      e.speed = smooth(e.speed, plan.speed, .4, dt);
+      e.vel.copy(forward(e.heading, e.pitch)).multiplyScalar(e.speed); e.pos.addScaledVector(e.vel, dt);
+      const floor = Math.max(240, terrainHeight(e.pos.x, e.pos.z) + 200);
+      if (e.pos.y < floor) { e.pos.y = floor; e.vel.y = Math.max(0, e.vel.y); e.pitch = Math.max(0, e.pitch); }
+      if (e.passive || !plan.weaponsAllowed) { e.burst = 0; continue; }
+      const aim = forward(e.heading, e.pitch).dot(toTarget.normalize()), surface = target.kind !== 'aircraft';
+      const clear = distance < 4300 && segmentTerrainEntry(e.pos, target.pos.clone().add(new THREE.Vector3(0, surface ? 10 : 0, 0))) === null;
+      if (clear && e.burstCooldown <= 0 && aim > (surface ? .93 : profile.aim) && distance < (surface ? 2100 : 1450) && distance > 160) {
+        e.burst = profile.burst; e.burstCooldown = profile.burstEvery + this._random() * 1.2;
       }
-      if (surfaceTarget) {
-        const minimumAltitude = Math.max(300, terrainHeight(e.pos.x, e.pos.z) + 300);
-        if (e.pos.y < minimumAltitude) {
-          e.pos.y = minimumAltitude;
-          e.vel.y = Math.max(0, e.vel.y);
-          e.pitch = Math.max(0, e.pitch);
-        }
+      if (clear && e.burst > 0 && e.fireTimer <= 0) {
+        e.burst--; e.fireTimer = .14;
+        const lead = target.pos.clone().addScaledVector(target.vel, distance / 1020 * profile.lead).sub(e.pos).normalize();
+        lead.x += (this._random() - .5) * profile.spread; lead.y += (this._random() - .5) * profile.spread;
+        this._addTracer(e.pos, lead.normalize(), e.vel, true); this.tracers.at(-1).targetId = target.id || 'player';
       }
-      if (e.passive) continue;
-      const aim = forward(e.heading, e.pitch).dot(toPlayer.normalize());
-      if (e.burstCooldown <= 0 && aim > (surfaceTarget ? 0.93 : 0.978)
-        && distance < (surfaceTarget ? 2100 : 1300) && distance > 140) {
-        e.burst = 4;
-        e.burstCooldown = 2.8 + this._random() * 1.5;
-      }
-      if (e.burst > 0 && e.fireTimer <= 0) {
-        e.burst -= 1;
-        e.fireTimer = 0.14;
-        const lead = p.pos.clone().addScaledVector(p.vel, distance / 1020 * 0.72).sub(e.pos).normalize();
-        lead.x += (this._random() - 0.5) * 0.017;
-        lead.y += (this._random() - 0.5) * 0.017;
-        this._addTracer(e.pos, lead.normalize(), e.vel, true);
-        this.tracers.at(-1).targetId = p.id || 'player';
-      }
-      if (e.missileTimer <= 0 && aim > (surfaceTarget ? 0.8 : 0.91)
-        && distance > 550 && distance < (surfaceTarget ? 3800 : 2600) && !p.flareTime
-        && this.missiles.filter(m => m.enemy && !m.decoy && m.targetId === (p.id || 'player')).length < 2) {
+      if (clear && e.missileTimer <= 0 && aim > (surface ? .8 : .91) && distance > 650 && distance < (surface ? 3800 : 3000)
+        && !target.flareTime && this.missiles.filter(m => m.enemy && !m.decoy && m.targetId === (target.id || 'player')).length < profile.missileLimit) {
         e.missileTimer = this.settings.missileEvery + this._random() * 8;
-        this._addMissile(e, true, p.id || 'player');
-        if (p === this.player) this._emit('toast', { text: '导弹来袭！释放热诱饵并大幅转弯。' });
+        this._addMissile(e, true, target.id || 'player');
+        if (target === this.player) this._emit('toast', { text: '导弹来袭！释放热诱饵并转向规避。' });
         this._emit('missile', { enemy: true });
       }
     }
@@ -1132,7 +1144,7 @@ export class Simulation {
       this.targetId = selected?.id || null;
     }
     const weapon = this.airWeapon;
-    const valid = p.missiles > 0 && selected && selected.kind !== 'ship' && selected.pos.distanceTo(p.pos) < weapon.range
+    const valid = this.hasWeapon('anti-air') && selected && selected.kind !== 'ship' && selected.pos.distanceTo(p.pos) < weapon.range
       && alignment(selected) > Math.cos(weapon.cone * Math.PI / 180)
       && segmentTerrainEntry(p.pos, selected.pos) === null;
     this.lockTarget = valid ? selected : null;
@@ -1152,9 +1164,9 @@ export class Simulation {
 
   _validAntiShipTarget(target) {
     const aircraft = this.vehicle !== 'destroyer';
-    if ((aircraft && this.player.antiShipMissiles <= 0) || !target || target.kind !== 'ship' || target.health <= 0
+    if ((aircraft && !this.hasWeapon('anti-ship')) || !target || target.kind !== 'ship' || target.health <= 0
       || !this.enemies.includes(target) || target.id !== this.targetId
-      || !(target.pos.distanceTo(this.player.pos) <= (aircraft ? storeRange(this.player.stores, 'anti-ship') : this.shipSystems.antiShipRadarRange))) return false;
+      || !(target.pos.distanceTo(this.player.pos) <= (aircraft ? storeRange(this.player.configuredStores, 'anti-ship') : this.shipSystems.antiShipRadarRange))) return false;
     if (aircraft && forward(this.player.heading, this.player.pitch).dot(target.pos.clone().sub(this.player.pos).normalize()) < Math.cos(Math.PI / 4)) return false;
     const radar = this.player.pos.clone().add(new THREE.Vector3(0, aircraft ? 0 : 16, 0));
     const contact = target.pos.clone().add(new THREE.Vector3(0, Number.isFinite(target.aimHeight) ? target.aimHeight : 5, 0));
@@ -1191,21 +1203,15 @@ export class Simulation {
   _fireGun() {
     const p = this.player;
     const ship = this.vehicle === 'destroyer';
-    if (this._gunTimer > 0 || p.overheated || p.ammo <= 0 || (ship && !this._shipWeaponsReady())) return;
+    if (this.state !== 'playing' || this._gunTimer > 0 || p.overheated || (ship && !this._shipWeaponsReady())) return;
+    const round = this._chargeAmmo('gun');
     this._gunTimer = ship ? this.shipSystems.gunInterval : p.systems.gunInterval;
-    p.ammo -= 1;
+    p.ammo = Math.max(0, p.ammo - 1);
     this.shots += 1;
     p.heat = Math.min(1, p.heat + (ship ? this.shipSystems.gunHeat : 0.043));
     if (p.heat >= 0.98) {
       p.overheated = true;
       this._emit('toast', { text: `${ship ? '舰炮' : '机炮'}过热 · 松开发射以快速冷却` });
-    }
-    if (p.ammo === 0 && !this._lowAmmoAnnounced) {
-      this._lowAmmoAnnounced = true;
-      this._emit('toast', { text: isNavalMode(this.mode)
-        ? this.player.antiShipMissiles > 0 ? '舰炮弹药耗尽 · 可锁定敌舰发射反舰导弹'
-          : '舰炮与反舰弹药耗尽 · 等待在途武器命中'
-        : `${ship ? '舰炮' : '机炮'}弹药耗尽 · 使用导弹，下一波补给弹药` });
     }
     const origin = ship ? shipGunOrigin(p) : p.pos;
     let direction = forward(ship ? p.turretHeading : p.heading, ship ? p.turretPitch : p.pitch);
@@ -1232,10 +1238,11 @@ export class Simulation {
     direction.x += (this._random() - 0.5) * 0.002;
     direction.y += (this._random() - 0.5) * 0.002;
     this._addTracer(origin, direction.normalize(), p.vel, false);
-    if (!ship) this.tracers[this.tracers.length - 1].damage = p.systems.gunDamage;
+    if (!ship) this.tracers.at(-1).damage = p.systems.gunDamage * round.grade.multiplier;
+    this.tracers.at(-1).ammoGrade = round.tier;
     if (ship) {
       const shell = this.tracers[this.tracers.length - 1];
-      shell.damage = this.shipSystems.gunDamage;
+      shell.damage = this.shipSystems.gunDamage * PLAYER_DAMAGE_SCALE * round.grade.multiplier;
       if (isNavalMode(this.mode) || nearest?.kind === 'ship' || p.gunAimActive) {
         shell.life = shell.maxLife = p.gunAimActive ? Math.max(4.2, Math.min(6.8, this._gunAimFlightTime + 0.35)) : 4.2;
         shell.kind = 'ship';
@@ -1300,8 +1307,8 @@ export class Simulation {
       this._emit('toast', { text: '防空只对空 · 对舰用反舰导弹或舰炮' });
       return false;
     }
-    if (this.player.missiles <= 0) {
-      this._emit('toast', { text: '导弹已耗尽 · 使用机炮' });
+    if (!this.hasWeapon('anti-air')) {
+      this._emit('toast', { text: '未配置空空导弹挂载，请返回机库整备。' });
       return false;
     }
     const ship = this.vehicle === 'destroyer';
@@ -1318,9 +1325,11 @@ export class Simulation {
     }
     const slot = ship ? null : this._consumeAircraftStore('anti-air');
     if (!ship && !slot) return false;
-    if (ship) this.player.missiles -= 1;
+    if (ship) this.player.missiles = Math.max(0, this.player.missiles - 1);
     this._missileTimer = ship ? this.shipSystems.samInterval : .75;
+    const round = this._chargeAmmo('missile');
     this._addMissile(this.player, false, target.id, slot);
+    Object.assign(this.missiles.at(-1), { damage: (this.missiles.at(-1).damage || 125) * (ship ? PLAYER_DAMAGE_SCALE : 1) * round.grade.multiplier, ammoGrade: round.tier });
     this._emit('missile', { enemy: false, id: target.id, vehicle: this.vehicle, kind: this.player.kind, weapon: 'anti-air' });
     return true;
   }
@@ -1352,8 +1361,8 @@ export class Simulation {
 
   launchAntiShipMissile() {
     if (this.state !== 'playing' || this._antiShipMissileTimer > 0 || (this.vehicle==='destroyer'&&!this._shipWeaponsReady())) return false;
-    if (this.player.antiShipMissiles <= 0) {
-      this._emit('toast', { text: this.player.ammo > 0 ? '反舰导弹已耗尽 · 使用舰炮，清波后补给' : '舰炮与反舰弹药耗尽 · 等待在途武器命中' });
+    if (!this.hasWeapon('anti-ship')) {
+      this._emit('toast', { text: '未配置反舰挂载，请返回机库整备。' });
       return false;
     }
     const target = this.enemies.find(e => e === this.antiShipLockTarget && e.id === this.antiShipTargetId && e.id === this.targetId);
@@ -1370,9 +1379,11 @@ export class Simulation {
     }
     const slot = this.vehicle === 'destroyer' ? null : this._consumeAircraftStore('anti-ship');
     if (this.vehicle !== 'destroyer' && !slot) return false;
-    if (!slot) this.player.antiShipMissiles -= 1;
+    if (!slot) this.player.antiShipMissiles = Math.max(0, this.player.antiShipMissiles - 1);
     this._antiShipMissileTimer = this.vehicle==='destroyer'?this.shipSystems.antiShipInterval:1.4;
+    const round = this._chargeAmmo('missile');
     this._addAntiShipMissile(target, slot);
+    Object.assign(this.missiles.at(-1), { damage: this.missiles.at(-1).damage * (slot ? 1 : PLAYER_DAMAGE_SCALE) * round.grade.multiplier, ammoGrade: round.tier });
     this._emit('missile', { enemy: false, id: target.id, vehicle: this.vehicle, kind: 'anti-ship', weapon: 'anti-ship' });
     return true;
   }

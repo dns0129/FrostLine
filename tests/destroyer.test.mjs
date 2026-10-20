@@ -175,6 +175,8 @@ test('omnidirectional radar locks a target behind the ship and VLS intercepts it
   assert.ok(missile.pos.y > height + 15);
   assert.equal(missile.dir.y, 1, 'the initial launch safely clears the deck before guidance');
   run(sim, 8);
+  assert.ok(target.health < target.maxHealth); assert.equal(sim.kills, 0);
+  assert.equal(sim.launchMissile(), true); run(sim, 8);
   assert.equal(sim.kills, 1);
   assert.equal(sim.state, 'won');
   assert.ok(sim.drainEvents().some(e => e.type === 'hit' && e.missile));
@@ -187,6 +189,7 @@ test('radar reaches close to five kilometres and a launched interceptor has enou
   assert.equal(sim.lockProgress, 1);
   assert.equal(sim.launchMissile(), true);
   run(sim, 12);
+  assert.equal(sim.launchMissile(), true); run(sim, 12);
   assert.equal(sim.kills, 1);
 });
 
@@ -326,14 +329,14 @@ test('a complete ship training sortie defeats all three real moving aircraft', (
   }
   assert.equal(sim.state, 'won');
   assert.equal(sim.kills, 3);
-  assert.equal(sim.player.missiles, DESTROYER.maxMissiles - 3);
+  assert.equal(sim.player.missiles, DESTROYER.maxMissiles - 6);
   assert.equal(sim.player.health, DESTROYER.maxHealth);
   assert.equal(sim.player.pos.y, DESTROYER.waterline);
 });
 
 test('all three intercept waves resupply the ship to its own caps and produce a victory', () => {
   const sim = ship('intercept');
-  sim.player.health = 280; sim.player.ammo = 230; sim.player.missiles = 11;
+  sim.player.health = DESTROYER.maxHealth - 20; sim.player.ammo = 230; sim.player.missiles = 11;
   for (let wave = 1; wave <= 3; wave++) {
     assert.equal(sim.wave, wave);
     for (const e of sim.enemies) e.health = 0;
@@ -359,8 +362,8 @@ test('ship destruction ends the mission and restart restores clean aircraft defa
   sim.start('training', 'normal');
   assert.equal(sim.vehicle, 'aircraft');
   assert.equal(sim.player.kind, 'aircraft');
-  assert.equal(sim.player.maxHealth, 100);
-  assert.equal(sim.player.health, 100);
+  assert.equal(sim.player.maxHealth, 200);
+  assert.equal(sim.player.health, 200);
   assert.equal(sim.player.ammo, 578);
   assert.equal(sim.player.missiles, 6);
   assert.equal(sim.player.pos.y, 1100);

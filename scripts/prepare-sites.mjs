@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const site = join(root, 'sites/frostline');
 const dist = join(site, 'dist');
-const files = ['sortie-flow.js','mission-briefing.js','sortie-flow.css','ship-systems.js','playable-ships.js','naval-workshop.js',
+const files = ['combat-economy.js','enemy-ai.js','sortie-flow.js','mission-briefing.js','sortie-flow.css','ship-systems.js','playable-ships.js','naval-workshop.js',
   'maps.js', 'quality.js', 'map-scenery.js', 'icebergs.js', 'sea-ice.js', 'fa18-armament.js',
   'index.html', 'style.css', 'app.js', 'input.js', 'audio.js',
   'campaign.js', 'base-scene.js', 'vehicle-catalog.js', 'aircraft-systems.js', 'aircraft-stores.js', 'hangar-workshop.js', 'docs/aircraft-systems.md', 'destroyer.js', 'naval-models.js', 'ambient-fleet.js', 'ship-camera.js', 'simulation.js', 'flight-presentation.js', 'chase-camera.js', 'speed-effects.js', 'renderer.js', 'terrain.js',
