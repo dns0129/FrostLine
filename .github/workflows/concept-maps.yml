@@ -1,0 +1,55 @@
+name: Concept map cloud review
+on:
+  push:
+    branches: [codex/concept-maps-27]
+permissions:
+  contents: read
+concurrency:
+  group: concept-maps-review
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Use cloud project workspace
+        run: |
+          sudo mkdir -p /workspace
+          sudo ln -s "$GITHUB_WORKSPACE" /workspace/FrostLine
+      - name: Syntax checks
+        working-directory: /workspace/FrostLine
+        run: npm run check
+      - name: Unit tests
+        working-directory: /workspace/FrostLine
+        run: npm test
+      - name: Server tests
+        working-directory: /workspace/FrostLine
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Build game
+        working-directory: /workspace/FrostLine
+        run: npm run prepare
+      - name: Install cloud browser tools
+        if: ${{ hashFiles('tests/browser-concepts.mjs') != '' }}
+        working-directory: /workspace/FrostLine
+        run: |
+          npm install --prefix .cloud-qa --no-package-lock playwright
+          .cloud-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Cloud browser and reference frames
+        if: ${{ hashFiles('tests/browser-concepts.mjs') != '' }}
+        working-directory: /workspace/FrostLine
+        env:
+          PLAYWRIGHT_PATH: /workspace/FrostLine/.cloud-qa/node_modules/playwright/index.mjs
+        run: node tests/browser-concepts.mjs
+      - name: Keep review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: concept-map-review
+          path: |
+            verification/concept-maps/
+            sites/frostline/dist/
+          retention-days: 7
