@@ -1,0 +1,15 @@
+S06 | 雪山冰原 | 黑岩雪火山
+
+建模关注：黑岩与积雪边界强调坡面，火山口及径向脊线可读。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S06 — 黑岩雪火山.
+Scene/backdrop: A dormant snow-covered volcanic island with a wide summit crater, black radial lava ridges and steaming geothermal ponds limited to one low coastal pocket.
+Materials/textures: black basalt against white snow, rough old lava, gray ash bands and translucent ice patches.
+Water and effects: cold cobalt ocean, white surf on lava shelves, green-blue tidal water and a few small offshore floes.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.

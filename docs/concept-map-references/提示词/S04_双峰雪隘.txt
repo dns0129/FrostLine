@@ -1,0 +1,15 @@
+S04 | 雪山冰原 | 双峰雪隘
+
+建模关注：双峰—鞍部—U形谷形成主轮廓；雪檐与裸岩分独立细节层。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S04 — 双峰雪隘.
+Scene/backdrop: Two dominant alpine peaks overlooking a broad saddle and a winding U-shaped valley; multiple lower ridges, a partly frozen lake and rock shelves create varied relief.
+Materials/textures: granite ribs, compact snow cornices, blue lake ice, scree fans and sparse low-elevation conifers.
+Water and effects: partly frozen inland lake with dark open center, cloudy edge ice and fine wind ripples.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.

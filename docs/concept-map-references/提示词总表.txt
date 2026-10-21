@@ -1,0 +1,489 @@
+空战地图概念图 · 27 张原始生成提示词
+生成方式：内置 image_gen；每张独立调用，不使用拼图裁切。
+英文提示词为实际提交版本，中文说明为建模使用建议。
+
+O01 | 海洋群岛 | 环礁泻湖
+
+建模关注：环礁外缘、两处缺口、泻湖深浅分层；分开制作礁盘、沙滩与植被。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O01 — 环礁泻湖.
+Scene/backdrop: A huge broken oval coral atoll with six irregular vegetated islets, two deep navigable reef passes and a shallow central lagoon; submerged reef shelves remain plainly visible.
+Materials/textures: white coral sand, porous limestone, dense tropical canopy and exposed intertidal rubble.
+Water and effects: azure shallow lagoon grading to cobalt ocean, reef-edge breakers, foam through passes, sun caustics and faint sand ripples.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O02 | 海洋群岛 | 火山双岛
+
+建模关注：火山口与放射沟壑形成主地形，海峡两侧留清晰高度差。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O02 — 火山双岛.
+Scene/backdrop: Two asymmetric extinct volcanic islands separated by a sinuous strait; a broad breached caldera on the larger island, radial gullies and old lava terraces reaching the coast.
+Materials/textures: rough black basalt, rusty scoria, old lava channels, lush lower slopes and fractured sea cliffs.
+Water and effects: dark deep water, teal shoals, opposing tidal streaks in strait, surf striking lava headlands.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O03 | 海洋群岛 | 喀斯特水道
+
+建模关注：成组石灰岩峰林、岩壁层理与湾内浅滩；避免所有岩柱同形。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O03 — 喀斯特水道.
+Scene/backdrop: A sprawling tropical drowned limestone archipelago; many irregular karst towers on connected larger islands, two wide winding water corridors and sheltered inner bays.
+Materials/textures: banded pale limestone walls, angular talus, jungle pockets and small crescent beaches.
+Water and effects: emerald shallow bays, navy deep corridors, reflected cliff color and narrow shore foam ribbons.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O04 | 海洋群岛 | 红树林三角洲
+
+建模关注：三角洲分汊与潮沟是主结构；泥沙浑水与外海使用独立水体参数。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O04 — 红树林三角洲.
+Scene/backdrop: A broad low island delta opening into the ocean, braided tidal channels, shifting pale sandbars, mangrove islands and one naturally elevated inland ridge.
+Materials/textures: wet silt, dry sand ridges, eroded banks, mangrove root fringes and dark mud flats.
+Water and effects: turbid river plumes feathering into turquoise sea, tidal ripples, small offshore whitecaps.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O05 | 海洋群岛 | 玄武岩海柱
+
+建模关注：重点表现柱状节理、海蚀柱及崖脚浪花，海柱需独立网格。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O05 — 玄武岩海柱.
+Scene/backdrop: A rugged temperate basalt island chain with one long jagged central ridge, columnar coastal cliffs, isolated sea stacks and broad open ocean corridors.
+Materials/textures: vertical basalt joints, broken dark slabs, sparse coastal grass and wave-polished rocks.
+Water and effects: steel-blue choppy ocean, wrapping white surf, spray at cliff bases, eddies behind stacks.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O06 | 海洋群岛 | 沙洲浅海
+
+建模关注：沙脊与水深梯度对应，主航道与潮间带分层建模。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O06 — 沙洲浅海.
+Scene/backdrop: A wide low-relief sandy archipelago with long hooked barrier islands, a branching sandbank network and a large deep-water outer channel.
+Materials/textures: fine wet and dry sand, ripple beds, sparse dune grass and tiny rock patches.
+Water and effects: transparent turquoise shallows revealing sand ridges, blue deep channel, shoaling waves and subtle tidal current seams.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O07 | 海洋群岛 | 花岗岩裂岛
+
+建模关注：花岗岩穹顶、鞍部、裂隙与三角内海构成可辨识轮廓。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O07 — 花岗岩裂岛.
+Scene/backdrop: Three large fractured granite islands forming a triangular inner sea; domed ridges, steep incised coves and a narrow saddle connecting two uplands.
+Materials/textures: coarse pale granite, weathering seams, pine forest clusters, rounded boulders and gravel beaches.
+Water and effects: clear cool blue sea, green shallow coves, cliff reflections and broken foam along exposed shores.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O08 | 海洋群岛 | 风暴外礁
+
+建模关注：背风内湾与迎风外海波况分开；浪向需与礁缘保持一致。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O08 — 风暴外礁.
+Scene/backdrop: An exposed horseshoe reef around a rugged low island, a sheltered turquoise inner basin and enormous open water beyond; a distant receding storm leaves the terrain fully readable.
+Materials/textures: jagged reef rock, wet dark cliff ledges, pale storm beaches and wind-shaped scrub.
+Water and effects: long organized swell, curling reef breakers, streaks of wind-driven foam, calmer inner water with visible bottom.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+O09 | 海洋群岛 | 大陆架台地
+
+建模关注：台地阶梯、双岬角与陆架落差；水下轮廓与陆上层理连贯。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: O09 — 大陆架台地.
+Scene/backdrop: A broad coastal island plateau with stepped sea cliffs, a split headland and several lower offshore islets, deep shelves visible underwater.
+Materials/textures: horizontal sedimentary cliff strata, rough grassy plateau, rubble aprons and narrow beaches.
+Water and effects: continental shelf cyan band dropping to deep indigo, cliff-base foam, subtle current swirls.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D01 | 峡谷荒漠 | 红岩海峡
+
+建模关注：两岸台地分层、峡谷支流与海岸崖脚；海峡是开阔穿行区域。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D01 — 红岩海峡.
+Scene/backdrop: A desert coast with two monumental red sandstone mesas flanking a broad blue sea inlet; branched canyons cut inland and emerge at tiny gravel coves.
+Materials/textures: layered red sandstone, ochre talus fans, desert varnish, dry wash gravel and wind-rippled sand.
+Water and effects: deep sapphire inlet, turquoise shallows and pale foam lines at cliff feet.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D02 | 峡谷荒漠 | 沙海岬湾
+
+建模关注：沙丘迎风缓坡与背风陡坡需区分，湿沙带跟随岸线。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D02 — 沙海岬湾.
+Scene/backdrop: A sweeping coastal dune sea curving around a crescent bay, long barchan dune chains, a rocky peninsula and exposed interdune flats.
+Materials/textures: fine golden sand, sharp slip faces, crosswind ripple patterns, worn beige rock and salt crust.
+Water and effects: turquoise coastal shallows, rolling shorebreak, wet sand reflections and dark offshore water.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D03 | 峡谷荒漠 | 树状大峡谷
+
+建模关注：先建立树状水系，再刻蚀主峡谷与支沟；崖壁与碎石坡分材质。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D03 — 树状大峡谷.
+Scene/backdrop: A vast inland arid plateau split by a branching dendritic canyon system; a thin winding river on the canyon floor, isolated buttes and broad flat uplands.
+Materials/textures: red and cream sedimentary strata, eroded gullies, talus cones, gravel alluvial fans and sparse scrub.
+Water and effects: a narrow muddy green river with small riffles and darker deep bends; no ocean in this inland map.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D04 | 峡谷荒漠 | 盐湖断崖
+
+建模关注：盐壳、湿边与浅卤水分层，冲积扇从崖脚向盆底展开。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D04 — 盐湖断崖.
+Scene/backdrop: An enclosed desert basin with an irregular shallow salt lake, broad polygon-cracked salt flats, rusty escarpments and several alluvial fans.
+Materials/textures: white evaporite crust, polygonal cracks, damp gray mud, orange rock and gravel deposits.
+Water and effects: thin pale turquoise brine, reflective wet margins, salt islands and gentle wind ripples; inland water only.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D05 | 峡谷荒漠 | 玄岩荒原
+
+建模关注：绳状与块状熔岩分区，火山锥与低处流路连续。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D05 — 玄岩荒原.
+Scene/backdrop: A dark volcanic desert descending to the sea; one broad eroded cinder cone, a branching ancient lava field, pale ash plains and broken coastal cliffs.
+Materials/textures: ropy frozen lava, blocky basalt, granular ash, rust-red oxidized scoria and dry dust.
+Water and effects: cobalt ocean, bright breaking surf on black lava shelves and translucent green tidal pools.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D06 | 峡谷荒漠 | 绿洲裂谷
+
+建模关注：断层崖错动、谷底绿洲及山口冲积扇；水池保持合理地势。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D06 — 绿洲裂谷.
+Scene/backdrop: A long arid fault valley with offset cliff walls, scattered oasis pools, palm clusters and a fan-shaped valley mouth opening to a distant shallow sea.
+Materials/textures: pale limestone fault scarps, sand drifts, exposed gravel, darker damp oasis soil.
+Water and effects: clear green oasis pools, pale blue coastal water, small shore foam and saline flats at valley mouth.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D07 | 峡谷荒漠 | 雅丹迷宫
+
+建模关注：雅丹方向整体统一，局部高低错落；低空通道保持连续。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D07 — 雅丹迷宫.
+Scene/backdrop: An extensive wind-eroded yardang field on a dry desert coastal plain, streamlined parallel ridges leading toward a wide open bay; larger mesas frame the field.
+Materials/textures: sculpted buff siltstone, fluted ridge walls, gravel corridors and fine windblown sand.
+Water and effects: green-blue shallow bay, suspended silt plumes and evenly spaced small breaking waves.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D08 | 峡谷荒漠 | 河口台地
+
+建模关注：峡谷河道与海口水系贯通；河口浑水渐变而非硬色块。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D08 — 河口台地.
+Scene/backdrop: A desert river cutting an S-shaped canyon through striped mesas and ending in a broad marine delta, separate sandbar islands and coastal flats.
+Materials/textures: striped sandstone, gravel river terraces, ochre silt deposits, dark wet banks and sparse shrubs.
+Water and effects: muddy river mixing visibly with blue ocean, distributary ripples, white shorebreak outside delta.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+D09 | 峡谷荒漠 | 荒漠海蚀拱
+
+建模关注：海蚀拱洞口与基脚单独建网格；台地层理贯穿拱体。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: D09 — 荒漠海蚀拱.
+Scene/backdrop: A long arid peninsula with two massive natural sandstone sea arches, isolated offshore buttes and a sheltered inner bay beneath a terraced plateau.
+Materials/textures: honey-colored bedded sandstone, fractured arch abutments, talus rubble and dry sandy terraces.
+Water and effects: clear teal water beneath arches, dark blue outer sea, refracted shallow light and white foam around stacks.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S01 | 雪山冰原 | 深切冰川峡湾
+
+建模关注：U形谷、悬谷与峡湾主支结构清晰，雪线与坡向呼应。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S01 — 深切冰川峡湾.
+Scene/backdrop: An immense branching fjord system cutting into snowy alpine mountains; two main fjord arms and a hanging tributary valley, steep glaciated walls and a few ice floes.
+Materials/textures: dark exposed gneiss, thin snow on ledges, dense lower conifer patches and scree strips.
+Water and effects: deep cold blue fjord water, tiny brash ice, pale snowmelt plumes and subtle shore foam.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S02 | 雪山冰原 | 冰舌入海
+
+建模关注：冰川流向、横向裂隙与侧碛对应；入海前缘使用立体厚冰网格。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S02 — 冰舌入海.
+Scene/backdrop: A wide valley glacier flowing between jagged mountain ridges into an open polar bay; curved flow bands, lateral moraines and an irregular calving front.
+Materials/textures: compressed blue glacier ice, white snow bridges, dark moraine gravel and fractured rock.
+Water and effects: milky glacial meltwater mixing with dark ocean, floating icebergs and small calving-front ripples.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S03 | 雪山冰原 | 浮冰群岛
+
+建模关注：浮冰与陆岛分开，冰块尺度多样；保留清晰连续水道。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S03 — 浮冰群岛.
+Scene/backdrop: A sprawling polar archipelago of low snow-covered rocky islands separated by broad navigable leads and irregular drifting pack ice, with a higher central island.
+Materials/textures: wind-scoured snow, black rock outcrops, blue pressure ridges and rough broken sea ice.
+Water and effects: dark open-water leads, translucent turquoise ice edges, slushy margins and small wavelets.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S04 | 雪山冰原 | 双峰雪隘
+
+建模关注：双峰—鞍部—U形谷形成主轮廓；雪檐与裸岩分独立细节层。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S04 — 双峰雪隘.
+Scene/backdrop: Two dominant alpine peaks overlooking a broad saddle and a winding U-shaped valley; multiple lower ridges, a partly frozen lake and rock shelves create varied relief.
+Materials/textures: granite ribs, compact snow cornices, blue lake ice, scree fans and sparse low-elevation conifers.
+Water and effects: partly frozen inland lake with dark open center, cloudy edge ice and fine wind ripples.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S05 | 雪山冰原 | 冻土海岸
+
+建模关注：冻土多边形、融池与海岸断崖；低起伏图也保留微地形。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S05 — 冻土海岸.
+Scene/backdrop: A low Arctic tundra coastal plain with thaw ponds, polygon-patterned ground, shallow coastal lagoons and eroded permafrost bluffs.
+Materials/textures: patchy snow, brown mossy tundra, polygonal frozen soil, exposed earth layers and pebble beach.
+Water and effects: gray-blue ocean with a thin broken ice fringe, turquoise lagoons and wet thaw margins.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S06 | 雪山冰原 | 黑岩雪火山
+
+建模关注：黑岩与积雪边界强调坡面，火山口及径向脊线可读。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S06 — 黑岩雪火山.
+Scene/backdrop: A dormant snow-covered volcanic island with a wide summit crater, black radial lava ridges and steaming geothermal ponds limited to one low coastal pocket.
+Materials/textures: black basalt against white snow, rough old lava, gray ash bands and translucent ice patches.
+Water and effects: cold cobalt ocean, white surf on lava shelves, green-blue tidal water and a few small offshore floes.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S07 | 雪山冰原 | 冰盖裂隙
+
+建模关注：裂隙不可全部同向同宽；冰上融水顺坡汇入主沟。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S07 — 冰盖裂隙.
+Scene/backdrop: A broad coastal ice cap dissected by deep crevasse fields and a winding meltwater canyon; isolated nunatak peaks and a sloping shelf descending to the sea.
+Materials/textures: blue compressed ice walls, rough white firn, dark nunatak rock and debris streaks.
+Water and effects: bright blue supraglacial meltwater channels, dark polar sea and broken shelf-edge ice.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S08 | 雪山冰原 | 雪林河谷
+
+建模关注：林区作为成片实例化植被，河谷、冻结河道与海口连续。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S08 — 雪林河谷.
+Scene/backdrop: A snow-covered boreal valley winding toward a coastal estuary, dense conifer forests on rolling foothills, a frozen meandering river and an exposed rock ridge.
+Materials/textures: powder snow, dark conifer masses, gray rock, patchy river ice and muddy thawed banks.
+Water and effects: partly frozen river and cold estuary water, thin ice rafts, brackish mixing patterns and modest coastal waves.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================
+
+S09 | 雪山冰原 | 层阶冰架
+
+建模关注：冰架层阶与厚度是重点，桌状冰山独立建模并保留水下冰体。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S09 — 层阶冰架.
+Scene/backdrop: A spectacular stepped polar ice-shelf coast beneath an inland mountain chain, terraced ice cliffs, an isolated tabular iceberg and a broad curved open bay.
+Materials/textures: layered white firn, turquoise pressure ice, wind-carved snow ripples and exposed dark cliff patches.
+Water and effects: deep indigo ocean, teal submerged iceberg skirt, white brash-ice bands and gentle swell reflections.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
+
+================================================================================

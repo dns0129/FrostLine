@@ -1,0 +1,18 @@
+{
+  "total": 27,
+  "counts": {
+    "海洋群岛": 9,
+    "峡谷荒漠": 9,
+    "雪山冰原": 9
+  },
+  "unique_sha256": 27,
+  "all_png_headers_valid": true,
+  "all_paths_exist": true,
+  "dimensions": {
+    "1536x1024": 8,
+    "1672x941": 18,
+    "1672x940": 1
+  },
+  "total_image_bytes": 97433612,
+  "visual_review": "All 27 generated images inspected in generation outputs; distinct single-scene terrain concepts, no captions or HUD."
+}

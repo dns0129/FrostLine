@@ -1,0 +1,15 @@
+S05 | 雪山冰原 | 冻土海岸
+
+建模关注：冻土多边形、融池与海岸断崖；低起伏图也保留微地形。
+
+实际生成提示词：
+Use case: stylized-concept.
+Asset type: one standalone air-combat game environment background concept, usable as a 3D terrain modeling reference.
+Style: cohesive premium realistic AAA environment concept art with physically plausible terrain and PBR-like material detail, highly resolved rock and water surfaces, natural proportions, no fantasy exaggeration.
+Composition: wide landscape image, one continuous scene filling the canvas, elevated aerial oblique view looking down approximately 55–65 degrees, show the full distinctive regional layout AND readable foreground surface detail; minimal or no sky, no obscuring clouds; strong readable valleys and open flight corridors. Continuous natural environment extending beyond frame, no floating diorama or exposed cutaway slab. Keep every region sharp with balanced daylight and restrained atmospheric depth, no excessive bloom or crushing shadows.
+Constraints: exactly ONE full-frame image of ONE map. No collage, no panels, no inset, no typography, no labels, no watermark, no UI or HUD, no aircraft, no characters, no explosions, no decorative border. Natural terrain is the focus. Preserve credible erosion, drainage, consistent water level and geology. Render surface foam, depth-color transitions and wind direction coherently when water is present. This is visual concept art, not an actual heightmap or a ready-made 3D asset.
+Map concept: S05 — 冻土海岸.
+Scene/backdrop: A low Arctic tundra coastal plain with thaw ponds, polygon-patterned ground, shallow coastal lagoons and eroded permafrost bluffs.
+Materials/textures: patchy snow, brown mossy tundra, polygonal frozen soil, exposed earth layers and pebble beach.
+Water and effects: gray-blue ocean with a thin broken ice fringe, turquoise lagoons and wet thaw margins.
+Lighting: clear neutral daylight, soft angled sunlight revealing relief and material roughness, balanced exposure and accurate local color. Very detailed full-resolution landscape.
